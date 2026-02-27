@@ -1,3 +1,7 @@
-export default function MarketingPage() {
-  return <div>Landing page</div>;
+export default function HomePage() {
+  return (
+    <main>
+      <h1>SaaS Agentique</h1>
+    </main>
+  );
 }
