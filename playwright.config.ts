@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = process.env.PORT ?? (process.env.CI ? "3000" : "3001");
+const PORT = process.env.PORT ?? "3001";
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
 
 // En CI on sert le build compilé (next start), plus rapide et stable.
