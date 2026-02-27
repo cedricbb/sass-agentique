@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { getTableName } from "drizzle-orm";
 import {
   tenants,
   users,
@@ -26,7 +27,7 @@ describe("schema — exports", () => {
 
 describe("schema — table tenants", () => {
   it("a le bon nom de table", () => {
-    expect(tenants[Symbol.for("drizzle:Name")]).toBe("tenants");
+    expect(getTableName(tenants)).toBe("tenants");
   });
 
   it("contient les colonnes attendues", () => {
@@ -43,7 +44,7 @@ describe("schema — table tenants", () => {
 
 describe("schema — table users", () => {
   it("a le bon nom de table", () => {
-    expect(users[Symbol.for("drizzle:Name")]).toBe("users");
+    expect(getTableName(users)).toBe("users");
   });
 
   it("contient les colonnes auth attendues", () => {
@@ -58,7 +59,7 @@ describe("schema — table users", () => {
 
 describe("schema — table memberships", () => {
   it("a le bon nom de table", () => {
-    expect(memberships[Symbol.for("drizzle:Name")]).toBe("memberships");
+    expect(getTableName(memberships)).toBe("memberships");
   });
 
   it("contient userId, tenantId et role", () => {
@@ -71,7 +72,7 @@ describe("schema — table memberships", () => {
 
 describe("schema — table sessions", () => {
   it("a le bon nom de table", () => {
-    expect(sessions[Symbol.for("drizzle:Name")]).toBe("sessions");
+    expect(getTableName(sessions)).toBe("sessions");
   });
 
   it("contient userId et sessionToken", () => {
@@ -84,7 +85,7 @@ describe("schema — table sessions", () => {
 
 describe("schema — table agent_tasks", () => {
   it("a le bon nom de table", () => {
-    expect(agentTasks[Symbol.for("drizzle:Name")]).toBe("agent_tasks");
+    expect(getTableName(agentTasks)).toBe("agent_tasks");
   });
 
   it("contient tenantId, agentType, status, payload, result", () => {
@@ -99,7 +100,7 @@ describe("schema — table agent_tasks", () => {
 
 describe("schema — table agent_logs", () => {
   it("a le bon nom de table", () => {
-    expect(agentLogs[Symbol.for("drizzle:Name")]).toBe("agent_logs");
+    expect(getTableName(agentLogs)).toBe("agent_logs");
   });
 
   it("contient taskId, level et message", () => {
