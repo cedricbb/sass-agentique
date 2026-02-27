@@ -1,0 +1,27 @@
+{
+  "name": "@saas/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@saas/config": "workspace:*",
+    "@saas/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5.7.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0"
+  }
+}
