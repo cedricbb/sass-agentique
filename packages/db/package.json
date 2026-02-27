@@ -9,7 +9,9 @@
     "push": "drizzle-kit push",
     "studio": "drizzle-kit studio",
     "check": "drizzle-kit check",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "drizzle-orm": "^0.38.0",

@@ -22,6 +22,10 @@ build/
 # Turbo
 .turbo/
 
+# Playwright
+playwright-report/
+test-results/
+
 # IDE
 .idea/
 .vscode/
