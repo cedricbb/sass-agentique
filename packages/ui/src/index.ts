@@ -1,0 +1,2 @@
+// Shared design system
+export {};
