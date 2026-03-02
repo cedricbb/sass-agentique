@@ -1,7 +1,8 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession } from "@saas/services";
 import { logoutAction } from "../../../actions/auth";
+import { TenantInfo } from "../../../../components/tenant/TenantInfo";
 
 export default async function DashboardPage({
   params,
@@ -16,9 +17,6 @@ export default async function DashboardPage({
 
   const user = await validateSession(sessionToken);
   if (!user) redirect("/login");
-
-  const headersList = await headers();
-  const tenantPlan = headersList.get("x-tenant-plan") ?? "free";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -49,9 +47,7 @@ export default async function DashboardPage({
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Bienvenue{user.name ? `, ${user.name}` : ""} !
           </h2>
-          <p className="text-gray-500 mb-4">
-            Espace : <strong>{tenantSlug}</strong> · Plan : {tenantPlan}
-          </p>
+          <TenantInfo />
         </div>
       </main>
     </div>

@@ -1,6 +1,12 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getMembersByTenant, getInvitationsByTenant } from "@saas/services";
+import {
+  validateSession,
+  getTenantBySlug,
+  getUserRole,
+  getMembersByTenant,
+  getInvitationsByTenant,
+} from "@saas/services";
 import {
   inviteMemberAction,
   cancelInvitationAction,
@@ -13,16 +19,23 @@ export default async function MembersPage({
   params: Promise<{ tenantSlug: string }>;
 }) {
   const { tenantSlug } = await params;
-  const headersList = await headers();
-  const tenantId = headersList.get("x-tenant-id");
-  const userRole = headersList.get("x-user-role");
-  const userId = headersList.get("x-user-id");
 
-  if (!tenantId) redirect("/login");
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("session-token")?.value;
+  if (!sessionToken) redirect("/login");
+
+  const user = await validateSession(sessionToken);
+  if (!user) redirect("/login");
+
+  const tenant = await getTenantBySlug(tenantSlug);
+  if (!tenant) redirect("/");
+
+  const userRole = await getUserRole(user.id, tenant.id);
+  if (!userRole) redirect("/");
 
   const [members, invitations] = await Promise.all([
-    getMembersByTenant(tenantId),
-    getInvitationsByTenant(tenantId),
+    getMembersByTenant(tenant.id),
+    getInvitationsByTenant(tenant.id),
   ]);
 
   const canManage = userRole === "OWNER" || userRole === "ADMIN";
@@ -53,10 +66,10 @@ export default async function MembersPage({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-gray-600">{m.role}</span>
-                  {canManage && m.role !== "OWNER" && m.userId !== userId && (
+                  {canManage && m.role !== "OWNER" && m.userId !== user.id && (
                     <form action={removeMemberAction}>
                       <input type="hidden" name="membershipId" value={m.id} />
-                      <input type="hidden" name="tenantId" value={tenantId} />
+                      <input type="hidden" name="tenantId" value={tenant.id} />
                       <button
                         type="submit"
                         className="text-sm text-red-500 hover:text-red-700"
@@ -78,10 +91,7 @@ export default async function MembersPage({
             </h2>
             <div className="bg-white rounded-xl border border-gray-200 divide-y">
               {pendingInvitations.map((inv) => (
-                <div
-                  key={inv.id}
-                  className="flex items-center justify-between p-4"
-                >
+                <div key={inv.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-medium text-gray-900">{inv.email}</p>
                     <p className="text-sm text-gray-500">{inv.role}</p>
@@ -89,7 +99,7 @@ export default async function MembersPage({
                   {canManage && (
                     <form action={cancelInvitationAction}>
                       <input type="hidden" name="invitationId" value={inv.id} />
-                      <input type="hidden" name="tenantId" value={tenantId} />
+                      <input type="hidden" name="tenantId" value={tenant.id} />
                       <button
                         type="submit"
                         className="text-sm text-gray-500 hover:text-gray-900"
@@ -106,13 +116,11 @@ export default async function MembersPage({
 
         {canManage && (
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Inviter un membre
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Inviter un membre</h2>
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <form action={inviteMemberAction} className="flex gap-3">
-                <input type="hidden" name="tenantId" value={tenantId} />
-                <input type="hidden" name="invitedBy" value={userId ?? ""} />
+                <input type="hidden" name="tenantId" value={tenant.id} />
+                <input type="hidden" name="invitedBy" value={user.id} />
                 <input
                   type="email"
                   name="email"
