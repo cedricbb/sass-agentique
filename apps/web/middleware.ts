@@ -1,7 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 // Routes accessibles sans authentification
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(
@@ -51,6 +58,6 @@ export const config = {
      * - favicon.ico, sitemap.xml, robots.txt
      * - /api/inngest (webhook public)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/inngest).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/inngest|api/auth).*)",
   ],
 };

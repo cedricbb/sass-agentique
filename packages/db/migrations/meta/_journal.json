@@ -15,6 +15,13 @@
       "when": 1772201753272,
       "tag": "0001_organic_shen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772221424735,
+      "tag": "0002_left_otto_octavius",
+      "breakpoints": true
     }
   ]
 }
