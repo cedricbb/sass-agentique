@@ -57,3 +57,32 @@ export async function sendPasswordResetEmail(
     `,
   });
 }
+
+export async function sendInvitationEmail(
+  email: string,
+  token: string,
+  tenantName: string,
+  inviterName?: string,
+): Promise<void> {
+  const url = `${env.APP_URL ?? "http://localhost:3001"}/accept-invitation?token=${token}`;
+
+  if (!resend) {
+    console.log(`[email.service] RESEND missing — invitation URL: ${url}`);
+    return;
+  }
+
+  await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `Invitation à rejoindre ${tenantName}`,
+    html: `
+      <h1>Vous êtes invité à rejoindre ${tenantName}</h1>
+      <p>${inviterName ? `${inviterName} vous invite` : "Vous êtes invité"} à rejoindre l'espace <strong>${tenantName}</strong>.</p>
+      <a href="${url}" style="background:#0070f3;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">
+        Accepter l'invitation
+      </a>
+      <p>Ce lien expire dans 7 jours.</p>
+      <p>Si vous n'êtes pas concerné par cette invitation, ignorez cet email.</p>
+    `,
+  });
+}

@@ -9,6 +9,9 @@ import {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  listTenantsByUser,
+  acceptInvitation,
+  validateSession,
 } from "@saas/services";
 
 const SESSION_COOKIE = "session-token";
@@ -35,7 +38,7 @@ export async function registerAction(
   }
 
   try {
-    const { sessionToken } = await register({ email, password, name });
+    const { sessionToken, tenantSlug } = await register({ email, password, name });
 
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, sessionToken, {
@@ -45,6 +48,8 @@ export async function registerAction(
       maxAge: COOKIE_MAX_AGE,
       path: "/",
     });
+
+    redirect(`/${tenantSlug}/dashboard`);
   } catch (err) {
     if (err instanceof Error && err.message === "EMAIL_ALREADY_EXISTS") {
       return { error: "Cet email est déjà utilisé." };
@@ -52,7 +57,7 @@ export async function registerAction(
     return { error: "Une erreur est survenue. Réessayez." };
   }
 
-  redirect("/dashboard");
+  return null;
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
@@ -63,17 +68,19 @@ export async function loginAction(
 ): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/dashboard");
+  const next = String(formData.get("next") ?? "");
 
   if (!email || !password) {
     return { error: "Email et mot de passe requis." };
   }
 
+  let userId: string;
   try {
-    const { sessionToken } = await login({ email, password });
+    const result = await login({ email, password });
+    userId = result.userId;
 
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, sessionToken, {
+    cookieStore.set(SESSION_COOKIE, result.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -87,7 +94,13 @@ export async function loginAction(
     return { error: "Une erreur est survenue. Réessayez." };
   }
 
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  if (next.startsWith("/")) {
+    redirect(next);
+  }
+
+  const tenants = await listTenantsByUser(userId);
+  const destination = tenants[0]?.slug ? `/${tenants[0].slug}/dashboard` : "/onboarding";
+  redirect(destination);
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────
@@ -158,6 +171,40 @@ export async function resetPasswordAction(
   }
 
   redirect("/login?reset=success");
+}
+
+// ── Accept invitation ─────────────────────────────────────────────────────────
+
+export async function acceptInvitationAction(token: string): Promise<void> {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
+
+  if (!sessionToken) {
+    redirect("/login");
+  }
+
+  const user = await validateSession(sessionToken);
+  if (!user) {
+    redirect("/login");
+  }
+
+  let tenantSlug: string;
+  try {
+    const result = await acceptInvitation({ token, userId: user.id });
+    tenantSlug = result.tenantSlug;
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === "INVALID_TOKEN")
+        redirect("/login?error=invalid-invitation");
+      if (err.message === "TOKEN_EXPIRED")
+        redirect("/login?error=expired-invitation");
+      if (err.message === "INVITATION_NOT_PENDING")
+        redirect("/login?error=invitation-used");
+    }
+    redirect("/login?error=unknown");
+  }
+
+  redirect(`/${tenantSlug}/dashboard`);
 }
 
 // ── Verify email ──────────────────────────────────────────────────────────────
