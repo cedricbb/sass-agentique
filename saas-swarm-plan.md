@@ -133,12 +133,22 @@ my-saas/
 ## 🗄️ SCHÉMA DB MULTI-TENANT (Drizzle)
 
 ```
+# — Infrastructure / Auth / Billing —
 tenants          — id, slug, name, plan, stripeCustomerId
 users            — id, email, hashedPassword, totpSecret, role
 memberships      — userId, tenantId, role (OWNER/ADMIN/MEMBER/VIEWER)
 sessions         — standard NextAuth
 plans            — id, name, stripeProductId, stripePriceId, features (json)
 subscriptions    — tenantId, planId, stripeSubscriptionId, status
+
+# — CRM métier —
+contacts         — id, tenantId, firstName, lastName, email, phone, company, tags (json), createdAt
+tasks            — id, tenantId, title, description, status (TODO/IN_PROGRESS/DONE), priority, dueAt, assigneeId, contactId
+calendar_events  — id, tenantId, title, description, startAt, endAt, location, attendees (json), contactId, externalId
+email_threads    — id, tenantId, subject, lastMessageAt, contactId
+emails           — id, tenantId, subject, body, from, to, cc, status (DRAFT/SENT/RECEIVED), contactId, threadId, receivedAt
+
+# — Agents IA —
 agent_tasks      — id, tenantId, agentType, status, payload, result
 agent_logs       — taskId, level, message, createdAt
 ```
@@ -359,6 +369,67 @@ swarm-log feature admin-backoffice
 
 ---
 
+### PHASE 7.5 — CRM CORE (Clients · Tâches · Agenda · Emails)
+> Feature slug : `crm-core` | Branche : `feat/crm-core`
+
+```bash
+swarm-log feature crm-core
+```
+
+#### Schéma DB complémentaire
+
+```
+contacts         — id, tenantId, firstName, lastName, email, phone, company, tags (json), createdAt
+tasks            — id, tenantId, title, description, status (TODO/IN_PROGRESS/DONE), priority, dueAt, assigneeId, contactId
+calendar_events  — id, tenantId, title, description, startAt, endAt, location, attendees (json), contactId, externalId
+emails           — id, tenantId, subject, body, from, to, cc, status (DRAFT/SENT/RECEIVED), contactId, threadId, receivedAt
+email_threads    — id, tenantId, subject, lastMessageAt, contactId
+```
+
+#### Tâches
+
+| # | Tâche | Agent | Skill |
+|---|-------|-------|-------|
+| 7.5.1 | ADR : modèle de données CRM (contacts, tâches, agenda, emails) | 🏗️ Architect | `/adr` |
+| 7.5.2 | Schema Drizzle `contacts` + `tasks` + `calendar_events` + `emails` + `email_threads` | ⚙️ Dev-Back | `/schema` |
+| 7.5.3 | Migration + seed factory (contacts, tâches, events) | ⚙️ Dev-Back | `/schema` |
+| 7.5.4 | Service `contact.service.ts` (CRUD + search + pagination) | ⚙️ Dev-Back | `/api` |
+| 7.5.5 | Service `task.service.ts` (CRUD + filtres status/priority/assignee) | ⚙️ Dev-Back | `/api` |
+| 7.5.6 | Service `calendar.service.ts` (CRUD + findFreeSlot + attendees) | ⚙️ Dev-Back | `/api` |
+| 7.5.7 | Service `email.service.ts` (CRUD + threads + markAsRead + draft) | ⚙️ Dev-Back | `/api` |
+| 7.5.8 | API Routes : `/api/contacts`, `/api/tasks`, `/api/calendar`, `/api/emails` | ⚙️ Dev-Back | `/api` |
+| 7.5.9 | Spec CRM : user stories contacts, tâches, agenda, inbox | 🧭 PM | `/spec` |
+| 7.5.10 | Maquette Dashboard principal (vue d'ensemble : contacts, tâches du jour, prochains events) | ✏️ UI/UX | `/dashboard` |
+| 7.5.11 | Maquette CRM Contacts (liste, fiche contact, timeline) | ✏️ UI/UX | `/mockup` |
+| 7.5.12 | Maquette Task Board (kanban + liste + filtres) | ✏️ UI/UX | `/mockup` |
+| 7.5.13 | Maquette Agenda (vue mois/semaine/jour, création event) | ✏️ UI/UX | `/mockup` |
+| 7.5.14 | Maquette Inbox (liste threads, vue thread, éditeur réponse) | ✏️ UI/UX | `/mockup` |
+| 7.5.15 | Page `/app/dashboard` — vue d'ensemble (contacts récents, tâches dues, events du jour) | 🎨 Dev-Front | `/page` |
+| 7.5.16 | Page `/app/contacts` — liste paginée + search + filtres tags | 🎨 Dev-Front | `/page` |
+| 7.5.17 | Page `/app/contacts/[id]` — fiche contact + timeline activité + tâches liées | 🎨 Dev-Front | `/page` |
+| 7.5.18 | Composant `ContactCard`, `ContactList`, `ContactForm` | 🎨 Dev-Front | `/component` |
+| 7.5.19 | Page `/app/tasks` — Task Board (Kanban + liste) + drag-and-drop statuts | 🎨 Dev-Front | `/page` |
+| 7.5.20 | Composant `TaskCard`, `TaskForm`, `TaskFilters` | 🎨 Dev-Front | `/component` |
+| 7.5.21 | Page `/app/calendar` — vue mois/semaine/jour, création/édition events | 🎨 Dev-Front | `/page` |
+| 7.5.22 | Composant `CalendarView`, `EventModal`, `EventForm` | 🎨 Dev-Front | `/component` |
+| 7.5.23 | Page `/app/inbox` — liste threads + vue thread + éditeur réponse (draft) | 🎨 Dev-Front | `/page` |
+| 7.5.24 | Composant `ThreadList`, `ThreadView`, `EmailComposer` | 🎨 Dev-Front | `/component` |
+| 7.5.25 | Hook `useContacts`, `useTasks`, `useCalendar`, `useInbox` | 🎨 Dev-Front | `/component` |
+| 7.5.26 | Tests Vitest sur les 4 services (coverage 80%+) | 🧪 QA | `/test-back` |
+| 7.5.27 | Tests Playwright : flow contact (créer → voir fiche → lier tâche) | 🧪 QA | `/e2e` |
+| 7.5.28 | Tests Playwright : flow task board (créer → déplacer → compléter) | 🧪 QA | `/e2e` |
+| 7.5.29 | Tests Playwright : flow agenda (créer event → modifier → supprimer) | 🧪 QA | `/e2e` |
+| 7.5.30 | Tests Playwright : flow inbox (voir thread → rédiger réponse → envoyer) | 🧪 QA | `/e2e` |
+
+**Parallèles :**
+- 7.5.2 → 7.5.4, 7.5.5, 7.5.6, 7.5.7 (services en parallèle)
+- 7.5.9 → 7.5.10, 7.5.11, 7.5.12, 7.5.13, 7.5.14 (maquettes en parallèle)
+- Back (services + API) ‖ UI/UX (maquettes) → Front (pages/composants) → QA (tests)
+
+**Bloquants :** 7.5.1 → tous | Phase 3 (RBAC) doit être terminée (tenantId + permissions sur chaque ressource)
+
+---
+
 ### PHASE 8 — STACK AGENTIQUE
 > Feature slug : `ai-agents` | Branche : `feat/ai-agents`
 
@@ -459,9 +530,11 @@ Phase 4 (2FA) ‖ Phase 5 (Stripe) — parallèles
     ↓
 Phase 6 (Inngest) — bloqué par Phase 5
     ↓
-Phase 7 (Admin) — bloqué par Phase 3
+Phase 7 (Admin Backoffice) — bloqué par Phase 3
+‖
+Phase 7.5 (CRM Core : Contacts, Tâches, Agenda, Inbox) — bloqué par Phase 3
     ↓
-Phase 8 (Agents) — bloqué par Phase 6
+Phase 8 (Agents IA) — bloqué par Phase 6 + Phase 7.5 (les agents opèrent sur les données CRM)
     ↓
 Phase 9 (Tests) — CONTINU dès Phase 1
 Phase 10 (CI/CD) — pipeline minimal dès Phase 1, complet ici
