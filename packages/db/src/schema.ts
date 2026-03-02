@@ -85,6 +85,31 @@ export const passwordResets = pgTable("password_resets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── Invitations ───────────────────────────────────────────────────────────────
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "PENDING",
+  "ACCEPTED",
+  "EXPIRED",
+  "CANCELLED",
+]);
+
+export const invitations = pgTable("invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: membershipRoleEnum("role").notNull().default("MEMBER"),
+  token: text("token").notNull().unique(),
+  status: invitationStatusEnum("status").notNull().default("PENDING"),
+  invitedBy: uuid("invited_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // ── Agent Tasks ───────────────────────────────────────────────────────────────
 export const agentTasks = pgTable("agent_tasks", {
   id: uuid("id").defaultRandom().primaryKey(),

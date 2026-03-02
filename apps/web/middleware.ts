@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { validateSession } from "@saas/services";
 
-// Routes accessibles sans authentification
 const PUBLIC_ROUTES = [
   "/",
   "/login",
@@ -8,7 +8,10 @@ const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/accept-invitation",
 ];
+
+const NON_TENANT_ROUTES = [...PUBLIC_ROUTES, "/onboarding"];
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(
@@ -16,48 +19,71 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
-export function middleware(request: NextRequest): NextResponse {
+function isNonTenantRoute(pathname: string): boolean {
+  return NON_TENANT_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
-  // Récupère le session token (cookie à adapter selon l'auth provider)
   const sessionToken =
     request.cookies.get("session-token")?.value ??
     request.cookies.get("__session")?.value;
 
-  const isAuthenticated = Boolean(sessionToken);
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next();
+  }
 
-  // Redirige vers /login si non authentifié sur une route protégée
-  if (!isPublicRoute(pathname) && !isAuthenticated) {
+  if (!sessionToken) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Placeholder : résolution du tenant (subdomain ou path)
-  // TODO Phase 2 — multi-tenant : extraire tenantSlug du subdomain ou header
-  const tenantSlug =
-    request.headers.get("x-tenant-slug") ??
-    request.nextUrl.hostname.split(".")[0];
+  const sessionUser = await validateSession(sessionToken);
+  if (!sessionUser) {
+    const loginUrl = new URL("/login", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (isNonTenantRoute(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set("x-user-id", sessionUser.id);
+    return response;
+  }
+
+  const tenantSlug = pathname.split("/").filter(Boolean)[0];
+
+  if (!tenantSlug) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  const { getTenantBySlug, getUserRole } = await import("@saas/services");
+
+  const tenant = await getTenantBySlug(tenantSlug);
+  if (!tenant) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  const userRole = await getUserRole(sessionUser.id, tenant.id);
+  if (!userRole) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   const response = NextResponse.next();
-
-  // Injecte le tenant slug dans les headers pour les Server Components
-  if (tenantSlug) {
-    response.headers.set("x-tenant-slug", tenantSlug);
-  }
+  response.headers.set("x-tenant-id", tenant.id);
+  response.headers.set("x-tenant-slug", tenant.slug);
+  response.headers.set("x-tenant-plan", tenant.plan);
+  response.headers.set("x-user-id", sessionUser.id);
+  response.headers.set("x-user-role", userRole);
 
   return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths EXCEPT:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico, sitemap.xml, robots.txt
-     * - /api/inngest (webhook public)
-     */
     "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/inngest|api/auth).*)",
   ],
 };

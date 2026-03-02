@@ -53,14 +53,14 @@ test.describe("Smoke — Sécurité de base", () => {
   test("une route protégée redirige vers /login si non authentifié", async ({
     page,
   }) => {
-    // /dashboard est une route de l'app protégée par le middleware
-    const response = await page.goto("/dashboard");
+    // /some-tenant/dashboard est une route de l'app protégée par le middleware
+    const response = await page.goto("/some-tenant/dashboard");
     // Soit redirect vers /login, soit page de login rendue
     const url = page.url();
     const status = response?.status() ?? 0;
 
     const isRedirectedToLogin =
-      url.includes("/login") || url.includes("next=%2Fdashboard");
+      url.includes("/login") || url.includes("next=%2F");
     const isOkOrRedirect = status < 500;
 
     expect(isOkOrRedirect).toBe(true);

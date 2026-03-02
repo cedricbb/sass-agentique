@@ -1,21 +1,24 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession } from "@saas/services";
-import { logoutAction } from "../../actions/auth";
+import { logoutAction } from "../../../actions/auth";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  params,
+}: {
+  params: Promise<{ tenantSlug: string }>;
+}) {
+  const { tenantSlug } = await params;
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session-token")?.value;
 
-  if (!sessionToken) {
-    redirect("/login");
-  }
+  if (!sessionToken) redirect("/login");
 
   const user = await validateSession(sessionToken);
+  if (!user) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
+  const headersList = await headers();
+  const tenantPlan = headersList.get("x-tenant-plan") ?? "free";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,6 +27,12 @@ export default async function DashboardPage() {
           <h1 className="text-lg font-semibold text-gray-900">SaaS Agentique</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{user.email}</span>
+            <a
+              href={`/${tenantSlug}/members`}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Membres
+            </a>
             <form action={logoutAction}>
               <button
                 type="submit"
@@ -35,14 +44,13 @@ export default async function DashboardPage() {
           </div>
         </div>
       </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <div className="bg-white rounded-xl border border-gray-200 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Bienvenue{user.name ? `, ${user.name}` : ""} !
           </h2>
-          <p className="text-gray-500">
-            Phase 1 Auth terminée. Les phases suivantes ajouteront les fonctionnalités.
+          <p className="text-gray-500 mb-4">
+            Espace : <strong>{tenantSlug}</strong> · Plan : {tenantPlan}
           </p>
         </div>
       </main>
