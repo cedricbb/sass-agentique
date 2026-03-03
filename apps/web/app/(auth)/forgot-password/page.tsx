@@ -1,13 +1,26 @@
 import { ForgotPasswordForm } from "../../../components/auth/ForgotPasswordForm";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function ForgotPasswordPage() {
   return (
-    <>
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">Mot de passe oublié</h2>
-      <p className="text-sm text-gray-500 mb-6">
-        Entrez votre email pour recevoir un lien de réinitialisation.
-      </p>
-      <ForgotPasswordForm />
-    </>
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="text-2xl">
+          SaaS Agentique<span className="text-amber-500 ml-1">·</span>
+        </CardTitle>
+        <CardDescription>
+          Entrez votre email pour recevoir un lien de réinitialisation.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ForgotPasswordForm />
+      </CardContent>
+    </Card>
   );
 }

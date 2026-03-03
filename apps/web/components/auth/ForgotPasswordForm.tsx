@@ -3,25 +3,32 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { forgotPasswordAction } from "../../app/actions/auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function ForgotPasswordForm() {
-  const [state, action, pending] = useActionState(forgotPasswordAction, null);
+  const [state, action, isPending] = useActionState(forgotPasswordAction, null);
 
   if (state && "success" in state) {
     return (
-      <div className="text-center">
-        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
+      <div className="space-y-4">
+        <Alert className="border-green-500 text-green-700 [&>svg]:text-green-600">
+          <AlertDescription>
+            <p className="font-semibold mb-1">Email envoyé !</p>
+            <p>
+              Si cette adresse email existe, vous recevrez un lien de
+              réinitialisation sous peu.
+            </p>
+          </AlertDescription>
+        </Alert>
+        <div className="text-center">
+          <Link href="/login" className="text-primary hover:underline text-sm">
+            Retour à la connexion
+          </Link>
         </div>
-        <h3 className="font-semibold text-gray-900 mb-2">Email envoyé !</h3>
-        <p className="text-sm text-gray-500 mb-6">
-          Si cette adresse email existe, vous recevrez un lien de réinitialisation sous peu.
-        </p>
-        <Link href="/login" className="text-blue-600 hover:text-blue-500 text-sm">
-          Retour à la connexion
-        </Link>
       </div>
     );
   }
@@ -29,41 +36,34 @@ export function ForgotPasswordForm() {
   return (
     <>
       {state && "error" in state && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-          {state.error}
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
       )}
 
       <form action={action} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
             id="email"
             name="email"
             type="email"
             required
             autoComplete="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="vous@exemple.com"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors"
-        >
-          {pending ? "Envoi…" : "Envoyer le lien"}
-        </button>
+        <Button type="submit" disabled={isPending} className="w-full">
+          {isPending ? "Envoi…" : "Envoyer le lien"}
+        </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
-        <Link href="/login" className="text-blue-600 hover:text-blue-500">
+      <CardFooter className="flex justify-center px-0 pt-4">
+        <Link href="/login" className="text-primary hover:underline text-sm">
           Retour à la connexion
         </Link>
-      </p>
+      </CardFooter>
     </>
   );
 }

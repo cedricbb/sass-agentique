@@ -2,9 +2,11 @@
 
 import { useActionState } from "react";
 import { regenerateBackupCodesAction } from "../../app/actions/totp";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 export function RegenerateBackupCodesForm() {
-  const [state, action, pending] = useActionState(regenerateBackupCodesAction, null);
+  const [state, action, isPending] = useActionState(regenerateBackupCodesAction, null);
 
   const backupCodes =
     state && "success" in state && state.backupCodes ? state.backupCodes : null;
@@ -13,15 +15,18 @@ export function RegenerateBackupCodesForm() {
     <div className="space-y-3">
       {backupCodes && (
         <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
-            Nouveaux codes générés. Sauvegardez-les maintenant, ils ne seront plus affichés.
-          </div>
-          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <Alert className="border-amber-500 text-amber-700 [&>svg]:text-amber-600">
+            <AlertDescription>
+              Nouveaux codes générés. Sauvegardez-les maintenant, ils ne seront
+              plus affichés.
+            </AlertDescription>
+          </Alert>
+          <div className="rounded-lg border bg-muted/40 p-4">
             <ul className="grid grid-cols-2 gap-1">
               {backupCodes.map((code) => (
                 <li
                   key={code}
-                  className="font-mono text-sm text-gray-800 bg-white border border-gray-200 rounded px-2 py-1 text-center"
+                  className="font-mono text-sm bg-background border rounded px-2 py-1 text-center"
                 >
                   {code}
                 </li>
@@ -32,19 +37,20 @@ export function RegenerateBackupCodesForm() {
       )}
 
       {state && "error" in state && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-          {state.error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
       )}
 
       <form action={action}>
-        <button
+        <Button
           type="submit"
-          disabled={pending}
-          className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 font-medium rounded-lg text-sm transition-colors border border-gray-300"
+          variant="outline"
+          disabled={isPending}
+          className="w-full"
         >
-          {pending ? "Génération…" : "Régénérer les codes de secours"}
-        </button>
+          {isPending ? "Génération…" : "Régénérer les codes de secours"}
+        </Button>
       </form>
     </div>
   );

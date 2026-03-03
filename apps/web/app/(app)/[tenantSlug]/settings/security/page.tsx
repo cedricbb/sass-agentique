@@ -4,6 +4,10 @@ import Link from "next/link";
 import { validateSession, getUserTotpStatus } from "@saas/services";
 import { DisableTotpForm } from "../../../../../components/auth/DisableTotpForm";
 import { RegenerateBackupCodesForm } from "../../../../../components/auth/RegenerateBackupCodesForm";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 type Props = {
   params: Promise<{ tenantSlug: string }>;
@@ -22,48 +26,75 @@ export default async function SecuritySettingsPage({ params }: Props) {
   const { totpEnabled } = await getUserTotpStatus(user.id);
 
   return (
-    <div className="max-w-lg mx-auto mt-8 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Sécurité</h1>
-
-      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">
-              Authentification à deux facteurs
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {totpEnabled
-                ? "Le 2FA est activé sur votre compte."
-                : "Renforcez la sécurité de votre compte avec un code TOTP."}
-            </p>
+    <div className="min-h-screen bg-muted/30">
+      <header className="sticky top-0 z-10 bg-background border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <span className="font-semibold text-sm">SaaS Agentique</span>
+            <nav className="flex items-center gap-1">
+              <Link
+                href={`/${tenantSlug}/dashboard`}
+                className="text-muted-foreground hover:text-foreground text-sm px-3 py-1.5 rounded-md hover:bg-muted/50"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href={`/${tenantSlug}/members`}
+                className="text-muted-foreground hover:text-foreground text-sm px-3 py-1.5 rounded-md hover:bg-muted/50"
+              >
+                Membres
+              </Link>
+              <Link
+                href={`/${tenantSlug}/settings/security`}
+                className="text-foreground font-medium text-sm px-3 py-1.5 rounded-md bg-muted"
+              >
+                Sécurité
+              </Link>
+            </nav>
           </div>
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              totpEnabled
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-500"
-            }`}
-          >
-            {totpEnabled ? "Activé" : "Désactivé"}
-          </span>
         </div>
+      </header>
 
-        {!totpEnabled && (
-          <Link
-            href={`/${tenantSlug}/settings/security/setup`}
-            className="inline-block w-full text-center py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition-colors"
-          >
-            Activer le 2FA
-          </Link>
-        )}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-lg space-y-6">
+          <h1 className="text-2xl font-bold">Sécurité</h1>
 
-        {totpEnabled && (
-          <div className="space-y-4 pt-2 border-t border-gray-100">
-            <DisableTotpForm />
-            <RegenerateBackupCodesForm />
-          </div>
-        )}
-      </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <CardTitle>Authentification à deux facteurs</CardTitle>
+                  <CardDescription>
+                    {totpEnabled
+                      ? "Le 2FA est activé sur votre compte."
+                      : "Renforcez la sécurité de votre compte avec un code TOTP."}
+                  </CardDescription>
+                </div>
+                <Badge variant={totpEnabled ? "default" : "secondary"}>
+                  {totpEnabled ? "Activé" : "Désactivé"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!totpEnabled && (
+                <Button asChild className="w-full">
+                  <Link href={`/${tenantSlug}/settings/security/setup`}>
+                    Activer le 2FA
+                  </Link>
+                </Button>
+              )}
+
+              {totpEnabled && (
+                <div className="space-y-4">
+                  <Separator />
+                  <DisableTotpForm />
+                  <RegenerateBackupCodesForm />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 }

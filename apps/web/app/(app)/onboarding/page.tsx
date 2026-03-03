@@ -2,6 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession, listTenantsByUser } from "@saas/services";
 import { createWorkspaceAction } from "../../actions/onboarding";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default async function OnboardingPage({
   searchParams,
@@ -25,46 +30,42 @@ export default async function OnboardingPage({
   const { error } = await searchParams;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl border border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Créer votre espace
-        </h1>
-        <p className="text-gray-500 mb-6">
-          Donnez un nom à votre espace de travail.
-        </p>
+    <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Créer votre espace</CardTitle>
+            <CardDescription>
+              Donnez un nom à votre espace de travail.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error === "name" && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>
+                  Le nom doit contenir au moins 2 caractères.
+                </AlertDescription>
+              </Alert>
+            )}
 
-        {error === "name" && (
-          <p className="text-sm text-red-600 mb-4">
-            Le nom doit contenir au moins 2 caractères.
-          </p>
-        )}
-
-        <form action={createWorkspaceAction} className="space-y-4">
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Nom de l&apos;espace
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              minLength={2}
-              placeholder="Mon entreprise"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700"
-          >
-            Créer l&apos;espace
-          </button>
-        </form>
+            <form action={createWorkspaceAction} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nom de l&apos;espace</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  minLength={2}
+                  placeholder="Mon entreprise"
+                />
+              </div>
+              <Button type="submit" className="w-full">
+                Créer l&apos;espace
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

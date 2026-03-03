@@ -1,4 +1,11 @@
 import { TotpVerifyForm } from "../../../components/auth/TotpVerifyForm";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 type Props = {
   searchParams: Promise<{ next?: string }>;
@@ -8,14 +15,18 @@ export default async function Verify2FAPage({ searchParams }: Props) {
   const { next } = await searchParams;
 
   return (
-    <>
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">
-        Vérification en deux étapes
-      </h2>
-      <p className="text-sm text-gray-500 mb-6">
-        Entrez le code depuis votre application d&apos;authentification.
-      </p>
-      <TotpVerifyForm next={next} />
-    </>
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="text-2xl">
+          SaaS Agentique<span className="text-amber-500 ml-1">·</span>
+        </CardTitle>
+        <CardDescription>
+          Entrez le code depuis votre application d&apos;authentification.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <TotpVerifyForm next={next} />
+      </CardContent>
+    </Card>
   );
 }

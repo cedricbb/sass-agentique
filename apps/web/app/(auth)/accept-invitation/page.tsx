@@ -1,4 +1,11 @@
 import { AcceptInvitationForm } from "../../../components/auth/AcceptInvitationForm";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default async function AcceptInvitationPage({
   searchParams,
@@ -8,13 +15,16 @@ export default async function AcceptInvitationPage({
   const { token } = await searchParams;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl border border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-          Accepter l&apos;invitation
-        </h1>
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="text-2xl">
+          SaaS Agentique<span className="text-amber-500 ml-1">·</span>
+        </CardTitle>
+        <CardDescription>Accepter l&apos;invitation</CardDescription>
+      </CardHeader>
+      <CardContent>
         <AcceptInvitationForm token={token} />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

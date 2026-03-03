@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession, generateTotpSecret } from "@saas/services";
 import { TotpSetupForm } from "../../../../../../components/auth/TotpSetupForm";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Props = {
   params: Promise<{ tenantSlug: string }>;
@@ -18,15 +19,21 @@ export default async function TotpSetupPage({ params: _params }: Props) {
   const { secret, qrDataUrl } = await generateTotpSecret(user.email);
 
   return (
-    <div className="max-w-lg mx-auto mt-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">
-        Configurer le 2FA
-      </h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Scannez ce QR code avec votre application d&apos;authentification (Google
-        Authenticator, Authy…), puis entrez le code pour confirmer.
-      </p>
-      <TotpSetupForm secret={secret} qrDataUrl={qrDataUrl} />
+    <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4">
+      <div className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Configurer le 2FA</CardTitle>
+            <CardDescription>
+              Scannez ce QR code avec votre application d&apos;authentification
+              (Google Authenticator, Authy…), puis entrez le code pour confirmer.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TotpSetupForm secret={secret} qrDataUrl={qrDataUrl} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

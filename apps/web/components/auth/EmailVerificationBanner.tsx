@@ -3,6 +3,8 @@
 import { useActionState } from "react";
 import { useTenant } from "../../contexts/TenantContext";
 import { resendVerificationEmailAction } from "../../app/actions/auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 type ActionState = { error: string } | { success: true } | null;
 
@@ -16,33 +18,40 @@ export function EmailVerificationBanner() {
   if (currentUser.emailVerified) return null;
 
   return (
-    <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        <p className="text-sm text-amber-800">
-          Votre adresse email n&apos;est pas encore vérifiée. Certaines fonctionnalités sont
-          limitées.
-        </p>
-        <div className="flex items-center gap-3 shrink-0">
-          {"success" in (state ?? {}) ? (
-            <span className="text-sm text-amber-700 font-medium">Email envoyé ✓</span>
-          ) : (
-            <form action={formAction}>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="text-sm font-medium text-amber-900 underline hover:no-underline disabled:opacity-50"
-              >
-                {isPending ? "Envoi…" : "Renvoyer l'email"}
-              </button>
-            </form>
-          )}
-          {"error" in (state ?? {}) && (
-            <span className="text-sm text-red-600">
-              {"error" in (state as { error: string }) ? (state as { error: string }).error : ""}
-            </span>
-          )}
+    <Alert
+      className="rounded-none border-x-0 border-t-0 border-amber-400 bg-amber-50 text-amber-800 [&>svg]:text-amber-600"
+    >
+      <AlertDescription>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <span>
+            Votre adresse email n&apos;est pas encore vérifiée. Certaines
+            fonctionnalités sont limitées.
+          </span>
+          <div className="flex items-center gap-3 shrink-0">
+            {"success" in (state ?? {}) ? (
+              <span className="text-sm font-medium">Email envoyé ✓</span>
+            ) : (
+              <form action={formAction}>
+                <Button
+                  type="submit"
+                  variant="link"
+                  disabled={isPending}
+                  className="h-auto p-0 text-amber-900 font-medium"
+                >
+                  {isPending ? "Envoi…" : "Renvoyer l'email"}
+                </Button>
+              </form>
+            )}
+            {"error" in (state ?? {}) && (
+              <span className="text-sm text-destructive">
+                {"error" in (state as { error: string })
+                  ? (state as { error: string }).error
+                  : ""}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </AlertDescription>
+    </Alert>
   );
 }

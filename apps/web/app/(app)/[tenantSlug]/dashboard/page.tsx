@@ -1,8 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { validateSession } from "@saas/services";
 import { logoutAction } from "../../../actions/auth";
 import { TenantInfo } from "../../../../components/tenant/TenantInfo";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default async function DashboardPage({
   params,
@@ -19,36 +23,55 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">SaaS Agentique</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">{user.email}</span>
-            <a
-              href={`/${tenantSlug}/members`}
-              className="text-sm text-gray-500 hover:text-gray-900"
-            >
-              Membres
-            </a>
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="text-sm text-gray-500 hover:text-gray-900"
+    <div className="min-h-screen bg-muted/30">
+      <header className="sticky top-0 z-10 bg-background border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <span className="font-semibold text-sm">SaaS Agentique</span>
+            <nav className="flex items-center gap-1">
+              <Link
+                href={`/${tenantSlug}/dashboard`}
+                className="text-foreground font-medium text-sm px-3 py-1.5 rounded-md bg-muted"
               >
+                Dashboard
+              </Link>
+              <Link
+                href={`/${tenantSlug}/members`}
+                className="text-muted-foreground hover:text-foreground text-sm px-3 py-1.5 rounded-md hover:bg-muted/50"
+              >
+                Membres
+              </Link>
+              <Link
+                href={`/${tenantSlug}/settings/security`}
+                className="text-muted-foreground hover:text-foreground text-sm px-3 py-1.5 rounded-md hover:bg-muted/50"
+              >
+                Sécurité
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">{user.email}</span>
+            <Separator orientation="vertical" className="h-4" />
+            <form action={logoutAction}>
+              <Button type="submit" variant="ghost" size="sm">
                 Déconnexion
-              </button>
+              </Button>
             </form>
           </div>
         </div>
       </header>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Bienvenue{user.name ? `, ${user.name}` : ""} !
-          </h2>
-          <TenantInfo />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">
+              Bienvenue{user.name ? `, ${user.name}` : ""} !
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TenantInfo />
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
