@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession, getTenantBySlug, getUserRole } from "@saas/services";
 import { TenantProvider, type TenantContextValue } from "../../../contexts/TenantContext";
-import { EmailVerificationBanner } from "../../../components/auth/EmailVerificationBanner";
+import { AppShell } from "../../../components/layout/AppShell";
 import type { ReactNode } from "react";
 
 export default async function TenantLayout({
@@ -16,7 +16,6 @@ export default async function TenantLayout({
 
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session-token")?.value;
-
   if (!sessionToken) redirect("/login");
 
   const user = await validateSession(sessionToken);
@@ -32,10 +31,13 @@ export default async function TenantLayout({
     tenant: {
       id: tenant.id,
       slug: tenant.slug,
+      name: tenant.name,
       plan: tenant.plan,
     },
     currentUser: {
       id: user.id,
+      name: user.name,
+      email: user.email,
       role,
       emailVerified: user.emailVerified,
     },
@@ -43,8 +45,7 @@ export default async function TenantLayout({
 
   return (
     <TenantProvider value={value}>
-      <EmailVerificationBanner />
-      {children}
+      <AppShell>{children}</AppShell>
     </TenantProvider>
   );
 }

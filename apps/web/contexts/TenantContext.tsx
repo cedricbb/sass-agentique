@@ -6,10 +6,13 @@ export type TenantContextValue = {
   tenant: {
     id: string;
     slug: string;
+    name: string;
     plan: string;
   };
   currentUser: {
     id: string;
+    name: string | null;
+    email: string;
     role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
     emailVerified: boolean;
   };

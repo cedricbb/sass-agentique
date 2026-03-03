@@ -15,21 +15,19 @@ export default async function TotpSetupPage() {
   const { secret, qrDataUrl } = await generateTotpSecret(user.email);
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4">
-      <div className="w-full max-w-lg">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Configurer le 2FA</CardTitle>
-            <CardDescription>
-              Scannez ce QR code avec votre application d&apos;authentification
-              (Google Authenticator, Authy…), puis entrez le code pour confirmer.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TotpSetupForm secret={secret} qrDataUrl={qrDataUrl} />
-          </CardContent>
-        </Card>
-      </div>
+    <div className="max-w-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Configurer le 2FA</CardTitle>
+          <CardDescription>
+            Scannez ce QR code avec votre application d&apos;authentification
+            (Google Authenticator, Authy…), puis entrez le code pour confirmer.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TotpSetupForm secret={secret} qrDataUrl={qrDataUrl} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
