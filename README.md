@@ -145,9 +145,9 @@ Trois jobs GitHub Actions sur chaque push et PR :
 | Phase | Feature | Statut |
 |-------|---------|--------|
 | 0 | Fondations (monorepo, DB, CI, Next.js) | ✅ Fait |
-| 1 | Auth Core (Supabase Auth, sessions, emails) | En cours |
-| 2 | Multi-tenant (workspaces, invitations, RLS) | — |
-| 3 | RBAC CASL (rôles, guards serveur + client) | — |
+| 1 | Auth Core (Supabase Auth, sessions, emails) | ✅ Fait |
+| 2 | Multi-tenant (workspaces, invitations, RLS) | ✅ Fait |
+| 3 | RBAC CASL (rôles, guards serveur + client) | ✅ Fait |
 | 4 | 2FA / OTP (TOTP, backup codes) | — |
 | 5 | Stripe Billing (plans, webhooks, portail) | — |
 | 6 | Inngest Workflows (events, CRONs) | — |
