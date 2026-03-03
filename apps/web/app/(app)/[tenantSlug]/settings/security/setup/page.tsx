@@ -4,11 +4,7 @@ import { validateSession, generateTotpSecret } from "@saas/services";
 import { TotpSetupForm } from "../../../../../../components/auth/TotpSetupForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Props = {
-  params: Promise<{ tenantSlug: string }>;
-};
-
-export default async function TotpSetupPage({ params: _params }: Props) {
+export default async function TotpSetupPage() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session-token")?.value;
   if (!sessionToken) redirect("/login");
