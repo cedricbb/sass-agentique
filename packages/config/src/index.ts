@@ -15,6 +15,11 @@ const envSchema = z.object({
   APP_URL: z.string().url().optional(),
   // Email — Phase 1
   RESEND_API_KEY: z.string().optional(),
+  // SMTP (MailHog / dev) — prioritaire sur Resend si défini
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional().default(1025),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
   // TOTP — Phase 4
   TOTP_ISSUER: z.string().optional().default("SaaS Agentique"),
 });
