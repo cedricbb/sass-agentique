@@ -204,6 +204,7 @@ export type SessionUser = {
   email: string;
   name: string | null;
   role: string;
+  emailVerified: boolean;
 };
 
 export async function validateSession(
@@ -218,6 +219,7 @@ export async function validateSession(
       email: users.email,
       name: users.name,
       role: users.role,
+      emailVerified: users.emailVerified,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
@@ -225,14 +227,14 @@ export async function validateSession(
 
   if (result.length === 0) return null;
 
-  const { expires, userId, email, name, role } = result[0];
+  const { expires, userId, email, name, role, emailVerified } = result[0];
 
   if (expires < now) {
     await db.delete(sessions).where(eq(sessions.sessionToken, sessionToken));
     return null;
   }
 
-  return { id: userId, email, name, role };
+  return { id: userId, email, name, role, emailVerified };
 }
 
 // ── Verify email ──────────────────────────────────────────────────────────────
@@ -256,6 +258,36 @@ export async function verifyEmail(token: string): Promise<void> {
   await db
     .delete(emailVerifications)
     .where(eq(emailVerifications.id, verification.id));
+
+  await db
+    .update(users)
+    .set({ emailVerified: true, updatedAt: now })
+    .where(eq(users.id, verification.userId));
+}
+
+// ── Resend verification email ──────────────────────────────────────────────────
+
+export async function resendVerificationEmail(userId: string): Promise<void> {
+  const [user] = await db
+    .select({ email: users.email, emailVerified: users.emailVerified })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (!user) throw new Error("USER_NOT_FOUND");
+  if (user.emailVerified) return; // déjà vérifié — no-op
+
+  // Supprimer l'ancien token s'il existe
+  await db
+    .delete(emailVerifications)
+    .where(eq(emailVerifications.userId, userId));
+
+  const token = generateToken();
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + EMAIL_VERIFY_TTL_HOURS);
+
+  await db.insert(emailVerifications).values({ userId, token, expiresAt });
+
+  await sendVerificationEmail(user.email, token);
 }
 
 // ── Forgot password ───────────────────────────────────────────────────────────

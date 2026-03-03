@@ -39,6 +39,7 @@ export default async function MembersPage({
   ]);
 
   const canManage = userRole === "OWNER" || userRole === "ADMIN";
+  const canInvite = canManage && user.emailVerified;
   const pendingInvitations = invitations.filter((inv) => inv.status === "PENDING");
 
   return (
@@ -118,7 +119,12 @@ export default async function MembersPage({
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Inviter un membre</h2>
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <form action={inviteMemberAction} className="flex gap-3">
+              {!user.emailVerified && (
+                <p className="text-sm text-amber-700 mb-4">
+                  Vérifiez votre email pour pouvoir inviter des membres.
+                </p>
+              )}
+              <form action={inviteMemberAction} className={`flex gap-3 ${!canInvite ? "opacity-50 pointer-events-none" : ""}`}>
                 <input type="hidden" name="tenantId" value={tenant.id} />
                 <input type="hidden" name="invitedBy" value={user.id} />
                 <input
@@ -126,10 +132,12 @@ export default async function MembersPage({
                   name="email"
                   placeholder="email@exemple.com"
                   required
+                  disabled={!canInvite}
                   className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm"
                 />
                 <select
                   name="role"
+                  disabled={!canInvite}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 >
                   <option value="MEMBER">Membre</option>
@@ -138,7 +146,8 @@ export default async function MembersPage({
                 </select>
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+                  disabled={!canInvite}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
                 >
                   Inviter
                 </button>

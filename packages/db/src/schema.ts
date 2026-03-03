@@ -34,6 +34,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   hashedPassword: text("hashed_password"),
   totpSecret: text("totp_secret"),
+  emailVerified: boolean("email_verified").default(false).notNull(),
   totpEnabled: boolean("totp_enabled").default(false).notNull(),
   backupCodes: jsonb("backup_codes").$type<string[]>(),
   role: text("role").notNull().default("user"),

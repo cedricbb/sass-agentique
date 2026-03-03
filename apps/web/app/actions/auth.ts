@@ -9,6 +9,7 @@ import {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  resendVerificationEmail,
   listTenantsByUser,
   acceptInvitation,
   validateSession,
@@ -274,6 +275,27 @@ export async function acceptInvitationAction(token: string): Promise<void> {
   }
 
   redirect(`/${tenantSlug}/dashboard`);
+}
+
+// ── Resend verification email ─────────────────────────────────────────────────
+
+export async function resendVerificationEmailAction(): Promise<ActionState> {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!sessionToken) return { error: "Non authentifié." };
+
+  const user = await validateSession(sessionToken);
+  if (!user) return { error: "Non authentifié." };
+
+  try {
+    await resendVerificationEmail(user.id);
+    return { success: true };
+  } catch (err) {
+    if (err instanceof Error && err.message === "USER_NOT_FOUND") {
+      return { error: "Utilisateur introuvable." };
+    }
+    return { error: "Une erreur est survenue. Réessayez." };
+  }
 }
 
 // ── Verify email ──────────────────────────────────────────────────────────────

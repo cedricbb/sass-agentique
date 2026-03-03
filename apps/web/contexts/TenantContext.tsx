@@ -11,6 +11,7 @@ export type TenantContextValue = {
   currentUser: {
     id: string;
     role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+    emailVerified: boolean;
   };
 };
 

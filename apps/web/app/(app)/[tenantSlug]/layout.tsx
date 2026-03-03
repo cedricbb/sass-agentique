@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession, getTenantBySlug, getUserRole } from "@saas/services";
 import { TenantProvider, type TenantContextValue } from "../../../contexts/TenantContext";
+import { EmailVerificationBanner } from "../../../components/auth/EmailVerificationBanner";
 import type { ReactNode } from "react";
 
 export default async function TenantLayout({
@@ -36,8 +37,14 @@ export default async function TenantLayout({
     currentUser: {
       id: user.id,
       role,
+      emailVerified: user.emailVerified,
     },
   };
 
-  return <TenantProvider value={value}>{children}</TenantProvider>;
+  return (
+    <TenantProvider value={value}>
+      <EmailVerificationBanner />
+      {children}
+    </TenantProvider>
+  );
 }

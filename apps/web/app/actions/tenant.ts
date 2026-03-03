@@ -36,6 +36,7 @@ export async function inviteMemberAction(formData: FormData): Promise<void> {
 
   try {
     const { user, ability } = await getActorAbility(tenantId);
+    if (!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED");
     if (ability.cannot("invite", "Member")) throw new Error("FORBIDDEN");
     await inviteMember({ tenantId, invitedBy: user.id, email, role });
   } catch (err) {
