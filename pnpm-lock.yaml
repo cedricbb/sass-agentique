@@ -35,6 +35,9 @@ importers:
       '@saas/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@saas/permissions':
+        specifier: workspace:*
+        version: link:../../packages/permissions
       '@saas/services':
         specifier: workspace:*
         version: link:../../packages/services

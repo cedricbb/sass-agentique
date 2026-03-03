@@ -15,7 +15,8 @@
     "react-dom": "^19.0.0",
     "@saas/config": "workspace:*",
     "@saas/db": "workspace:*",
-    "@saas/services": "workspace:*"
+    "@saas/services": "workspace:*",
+    "@saas/permissions": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22",
