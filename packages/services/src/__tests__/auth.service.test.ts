@@ -31,6 +31,11 @@ vi.mock("@saas/db", () => ({
   passwordResets: {},
   tenants: {},
   memberships: {},
+  totpChallenges: {},
+}));
+
+vi.mock("../totp.service", () => ({
+  createTotpChallenge: vi.fn().mockResolvedValue("totp-challenge-token"),
 }));
 
 vi.mock("../email.service", () => ({
@@ -71,6 +76,7 @@ import {
   forgotPassword,
   resetPassword,
 } from "../auth.service";
+import { createTotpChallenge } from "../totp.service";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -146,15 +152,31 @@ describe("auth.service", () => {
       ).rejects.toThrow("INVALID_CREDENTIALS");
     });
 
-    it("retourne sessionToken + userId sur credentials valides", async () => {
+    it("retourne sessionToken + userId sur credentials valides (2FA inactif)", async () => {
       vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as never);
-      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed" }]); // user lookup
+      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed", totpEnabled: false }]); // user lookup
       dbMock.where.mockResolvedValueOnce([{ slug: "test-tenant" }]); // membership+tenant join
 
       const result = await login({ email: "user@test.com", password: "good" });
 
-      expect(result).toHaveProperty("sessionToken");
-      expect(result.userId).toBe("u1");
+      expect(result).toHaveProperty("requiresTotp", false);
+      if (!result.requiresTotp) {
+        expect(result).toHaveProperty("sessionToken");
+        expect(result.userId).toBe("u1");
+      }
+    });
+
+    it("retourne requiresTotp=true et challengeToken si 2FA activé", async () => {
+      vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as never);
+      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed", totpEnabled: true }]);
+
+      const result = await login({ email: "user@test.com", password: "good" });
+
+      expect(result).toHaveProperty("requiresTotp", true);
+      if (result.requiresTotp) {
+        expect(result.challengeToken).toBe("totp-challenge-token");
+        expect(createTotpChallenge).toHaveBeenCalledWith("u1");
+      }
     });
   });
 

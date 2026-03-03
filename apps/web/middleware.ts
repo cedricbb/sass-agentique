@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/accept-invitation",
+  "/verify-2fa",
 ];
 
 function isPublicRoute(pathname: string): boolean {

@@ -8,6 +8,7 @@ import {
   tenants,
   memberships,
 } from "@saas/db";
+import { createTotpChallenge } from "./totp.service";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email.service";
@@ -135,13 +136,18 @@ export type LoginInput = {
   password: string;
 };
 
-export async function login(input: LoginInput): Promise<AuthResult> {
+export type LoginResult =
+  | { requiresTotp: false; sessionToken: string; userId: string; tenantSlug: string }
+  | { requiresTotp: true; challengeToken: string };
+
+export async function login(input: LoginInput): Promise<LoginResult> {
   const { email, password } = input;
 
   const [user] = await db
     .select({
       id: users.id,
       hashedPassword: users.hashedPassword,
+      totpEnabled: users.totpEnabled,
     })
     .from(users)
     .where(eq(users.email, email.toLowerCase()));
@@ -153,6 +159,12 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   const valid = await bcrypt.compare(password, user.hashedPassword);
   if (!valid) {
     throw new Error("INVALID_CREDENTIALS");
+  }
+
+  // Si 2FA activé → créer un challenge et rediriger vers /verify-2fa
+  if (user.totpEnabled) {
+    const challengeToken = await createTotpChallenge(user.id);
+    return { requiresTotp: true, challengeToken };
   }
 
   const sessionToken = generateToken();
@@ -170,7 +182,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     .innerJoin(tenants, eq(memberships.tenantId, tenants.id))
     .where(eq(memberships.userId, user.id));
 
-  return { sessionToken, userId: user.id, tenantSlug: membership?.slug ?? "" };
+  return { requiresTotp: false, sessionToken, userId: user.id, tenantSlug: membership?.slug ?? "" };
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────

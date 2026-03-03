@@ -15,6 +15,8 @@ const envSchema = z.object({
   APP_URL: z.string().url().optional(),
   // Email — Phase 1
   RESEND_API_KEY: z.string().optional(),
+  // TOTP — Phase 4
+  TOTP_ISSUER: z.string().optional().default("SaaS Agentique"),
 });
 
 const _env = envSchema.safeParse(process.env);
