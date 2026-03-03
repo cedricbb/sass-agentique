@@ -40,19 +40,13 @@ export async function registerAction(
     return { error: "Le mot de passe doit contenir au moins 8 caractères." };
   }
 
+  let sessionToken: string;
+  let tenantSlug: string;
+
   try {
-    const { sessionToken, tenantSlug } = await register({ email, password, name });
-
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE,
-      path: "/",
-    });
-
-    redirect(`/${tenantSlug}/dashboard`);
+    const result = await register({ email, password, name });
+    sessionToken = result.sessionToken;
+    tenantSlug = result.tenantSlug;
   } catch (err) {
     if (err instanceof Error && err.message === "EMAIL_ALREADY_EXISTS") {
       return { error: "Cet email est déjà utilisé." };
@@ -60,7 +54,16 @@ export async function registerAction(
     return { error: "Une erreur est survenue. Réessayez." };
   }
 
-  return null;
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+
+  redirect(`/${tenantSlug}/dashboard`);
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────

@@ -66,22 +66,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     })
     .returning({ id: users.id, email: users.email });
 
-  // Envoyer l'email de vérification
-  const verificationToken = generateToken();
-  const verificationExpires = new Date();
-  verificationExpires.setHours(
-    verificationExpires.getHours() + EMAIL_VERIFY_TTL_HOURS,
-  );
-
-  await db.insert(emailVerifications).values({
-    userId: user.id,
-    token: verificationToken,
-    expiresAt: verificationExpires,
-  });
-
-  await sendVerificationEmail(user.email, verificationToken);
-
-  // Créer la session
+  // Créer la session en priorité — doit exister avant toute redirection
   const sessionToken = generateToken();
 
   await db.insert(sessions).values({
@@ -125,6 +110,25 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 
     tenantSlug = tenant.slug;
   });
+
+  // Envoyer l'email de vérification — après session/tenant (échec = non bloquant)
+  const verificationToken = generateToken();
+  const verificationExpires = new Date();
+  verificationExpires.setHours(
+    verificationExpires.getHours() + EMAIL_VERIFY_TTL_HOURS,
+  );
+
+  await db.insert(emailVerifications).values({
+    userId: user.id,
+    token: verificationToken,
+    expiresAt: verificationExpires,
+  });
+
+  try {
+    await sendVerificationEmail(user.email, verificationToken);
+  } catch (err) {
+    console.error("[auth.service] sendVerificationEmail failed:", err);
+  }
 
   return { sessionToken, userId: user.id, tenantSlug };
 }
