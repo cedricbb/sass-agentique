@@ -148,7 +148,7 @@ Trois jobs GitHub Actions sur chaque push et PR :
 | 1 | Auth Core (Supabase Auth, sessions, emails) | ✅ Fait |
 | 2 | Multi-tenant (workspaces, invitations, RLS) | ✅ Fait |
 | 3 | RBAC CASL (rôles, guards serveur + client) | ✅ Fait |
-| 4 | 2FA / OTP (TOTP, backup codes) | — |
+| 4 | 2FA / OTP (TOTP, backup codes) | ✅ Fait |
 | 5 | Stripe Billing (plans, webhooks, portail) | — |
 | 6 | Inngest Workflows (events, CRONs) | — |
 | 7 | Admin Backoffice | — |
