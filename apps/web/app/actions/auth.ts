@@ -140,6 +140,8 @@ export async function totpVerifyAction(
     redirect("/login");
   }
 
+  let destination: string;
+
   try {
     const result = await consumeTotpChallenge(challengeToken, code);
 
@@ -152,14 +154,11 @@ export async function totpVerifyAction(
       path: "/",
     });
 
-    if (next.startsWith("/")) {
-      redirect(next);
-    }
-
-    const destination = result.tenantSlug
-      ? `/${result.tenantSlug}/dashboard`
-      : "/onboarding";
-    redirect(destination);
+    destination = next.startsWith("/")
+      ? next
+      : result.tenantSlug
+        ? `/${result.tenantSlug}/dashboard`
+        : "/onboarding";
   } catch (err) {
     if (err instanceof Error) {
       if (err.message === "CHALLENGE_EXPIRED") {
@@ -171,6 +170,10 @@ export async function totpVerifyAction(
     }
     return { error: "Une erreur est survenue. Réessayez." };
   }
+
+  // redirect() doit être hors du try/catch — il lance une erreur spéciale
+  // que le catch attraperait sinon
+  redirect(destination);
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────

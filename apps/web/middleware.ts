@@ -11,7 +11,6 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/accept-invitation",
-  "/verify-2fa",
 ];
 
 function isPublicRoute(pathname: string): boolean {
@@ -25,6 +24,15 @@ export function middleware(request: NextRequest): NextResponse {
 
   // Routes publiques — accès libre
   if (isPublicRoute(pathname)) {
+    return NextResponse.next();
+  }
+
+  // /verify-2fa est semi-protégée : accessible uniquement avec un cookie totp-challenge actif
+  if (pathname === "/verify-2fa" || pathname.startsWith("/verify-2fa/")) {
+    const challengeToken = request.cookies.get("totp-challenge")?.value;
+    if (!challengeToken) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
     return NextResponse.next();
   }
 

@@ -5,7 +5,6 @@ import { useActionState } from "react";
 import { loginAction } from "../../app/actions/auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -18,9 +17,9 @@ export function LoginForm({ next, resetSuccess }: Props) {
   const [state, action, isPending] = useActionState(loginAction, null);
 
   return (
-    <>
+    <div className="space-y-6">
       {resetSuccess && (
-        <Alert className="mb-4 border-green-500 text-green-700 [&>svg]:text-green-600">
+        <Alert className="border-green-500 text-green-700 [&>svg]:text-green-600">
           <AlertDescription>
             Mot de passe réinitialisé. Connectez-vous avec vos nouveaux identifiants.
           </AlertDescription>
@@ -28,16 +27,18 @@ export function LoginForm({ next, resetSuccess }: Props) {
       )}
 
       {state && "error" in state && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive">
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       )}
 
-      <form action={action} className="space-y-4">
+      <form action={action} className="space-y-5">
         {next && <input type="hidden" name="next" value={next} />}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Email <span className="text-red-500">*</span>
+          </Label>
           <Input
             id="email"
             name="email"
@@ -45,15 +46,18 @@ export function LoginForm({ next, resetSuccess }: Props) {
             required
             autoComplete="email"
             placeholder="vous@exemple.com"
+            className="h-11"
           />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Mot de passe</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Mot de passe <span className="text-red-500">*</span>
+            </Label>
             <Link
               href="/forgot-password"
-              className="text-primary hover:underline text-sm"
+              className="text-sm text-amber-600 hover:text-amber-700 dark:text-amber-500 font-medium"
             >
               Mot de passe oublié ?
             </Link>
@@ -64,22 +68,25 @@ export function LoginForm({ next, resetSuccess }: Props) {
             type="password"
             required
             autoComplete="current-password"
+            className="h-11"
           />
         </div>
 
-        <Button type="submit" disabled={isPending} className="w-full">
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white font-medium"
+        >
           {isPending ? "Connexion…" : "Se connecter"}
         </Button>
       </form>
 
-      <CardFooter className="flex justify-center px-0 pt-4">
-        <p className="text-sm text-muted-foreground">
-          Pas encore de compte ?{" "}
-          <Link href="/register" className="text-primary hover:underline text-sm font-medium">
-            S&apos;inscrire
-          </Link>
-        </p>
-      </CardFooter>
-    </>
+      <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+        Pas encore de compte ?{" "}
+        <Link href="/register" className="text-amber-600 hover:text-amber-700 dark:text-amber-500 font-medium">
+          S&apos;inscrire
+        </Link>
+      </p>
+    </div>
   );
 }

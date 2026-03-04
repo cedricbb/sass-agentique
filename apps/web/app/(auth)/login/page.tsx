@@ -1,11 +1,4 @@
 import { LoginForm } from "../../../components/auth/LoginForm";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 type Props = {
   searchParams: Promise<{ next?: string; reset?: string }>;
@@ -15,16 +8,16 @@ export default async function LoginPage({ searchParams }: Props) {
   const { next, reset } = await searchParams;
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl">
-          SaaS Agentique<span className="text-amber-500 ml-1">·</span>
-        </CardTitle>
-        <CardDescription>Connectez-vous à votre espace</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LoginForm next={next} resetSuccess={reset === "success"} />
-      </CardContent>
-    </Card>
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+          Connexion
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Entrez vos identifiants pour accéder à votre espace
+        </p>
+      </div>
+      <LoginForm next={next} resetSuccess={reset === "success"} />
+    </div>
   );
 }

@@ -90,19 +90,33 @@ export default async function MembersPage({
                 </div>
                 <div className="flex items-center gap-3">
                   <RoleBadge role={m.role as Role} />
-                  {canManage && m.role !== "OWNER" && m.userId !== user.id && (
-                    <form action={removeMemberAction}>
-                      <input type="hidden" name="membershipId" value={m.id} />
-                      <input type="hidden" name="tenantId" value={tenant.id} />
+                  {canManage && m.userId !== user.id && (
+                    m.role === "OWNER" ? (
                       <Button
-                        type="submit"
+                        type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
+                        disabled
+                        title="Le propriétaire ne peut pas être retiré"
+                        className="text-muted-foreground"
                       >
                         Retirer
                       </Button>
-                    </form>
+                    ) : (
+                      <form action={removeMemberAction}>
+                        <input type="hidden" name="membershipId" value={m.id} />
+                        <input type="hidden" name="tenantId" value={tenant.id} />
+                        <input type="hidden" name="tenantSlug" value={tenantSlug} />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Retirer
+                        </Button>
+                      </form>
+                    )
                   )}
                 </div>
               </div>
@@ -128,6 +142,7 @@ export default async function MembersPage({
                     <form action={cancelInvitationAction}>
                       <input type="hidden" name="invitationId" value={inv.id} />
                       <input type="hidden" name="tenantId" value={tenant.id} />
+                      <input type="hidden" name="tenantSlug" value={tenantSlug} />
                       <Button type="submit" variant="ghost" size="sm">
                         Annuler
                       </Button>
@@ -158,6 +173,7 @@ export default async function MembersPage({
               className={`space-y-4 ${!canInvite ? "pointer-events-none opacity-50" : ""}`}
             >
               <input type="hidden" name="tenantId" value={tenant.id} />
+              <input type="hidden" name="tenantSlug" value={tenantSlug} />
               <input type="hidden" name="invitedBy" value={user.id} />
               <div className="flex gap-3">
                 <div className="flex-1 space-y-2">

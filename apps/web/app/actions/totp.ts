@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import {
   enableTotp,
   disableTotp,
@@ -51,6 +52,7 @@ export async function disableTotpAction(
   formData: FormData,
 ): Promise<ActionState> {
   const code = String(formData.get("code") ?? "").trim();
+  const tenantSlug = String(formData.get("tenantSlug") ?? "");
 
   if (!code) {
     return { error: "Code requis." };
@@ -65,6 +67,7 @@ export async function disableTotpAction(
 
   try {
     await disableTotp(user.id, code);
+    revalidatePath(`/${tenantSlug}/settings/security`);
     return { success: true };
   } catch (err) {
     if (err instanceof Error) {

@@ -54,7 +54,7 @@ export default async function SecuritySettingsPage({ params }: Props) {
           {totpEnabled && (
             <div className="space-y-4">
               <Separator />
-              <DisableTotpForm />
+              <DisableTotpForm tenantSlug={tenantSlug} />
               <RegenerateBackupCodesForm />
             </div>
           )}

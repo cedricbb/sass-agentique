@@ -1,24 +1,17 @@
 import { RegisterForm } from "../../../components/auth/RegisterForm";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export default function RegisterPage() {
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl">
-          SaaS Agentique<span className="text-amber-500 ml-1">·</span>
-        </CardTitle>
-        <CardDescription>Créez votre compte gratuitement</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <RegisterForm />
-      </CardContent>
-    </Card>
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+          Créer un compte
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Inscrivez-vous gratuitement, sans carte bancaire
+        </p>
+      </div>
+      <RegisterForm />
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, PanelLeftClose, PanelLeftOpen, Bell, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -52,6 +53,7 @@ export function Header({ onMenuClick, onToggle, collapsed }: HeaderProps) {
   const title = usePageTitle();
   const initials = getInitials(currentUser.name, currentUser.email);
   const { resolvedTheme, setTheme } = useTheme();
+  const logoutFormRef = useRef<HTMLFormElement>(null);
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4 z-10">
@@ -138,17 +140,16 @@ export function Header({ onMenuClick, onToggle, collapsed }: HeaderProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            asChild
-            className="text-destructive focus:text-destructive"
+            className="text-destructive focus:text-destructive cursor-pointer"
+            onSelect={() => logoutFormRef.current?.requestSubmit()}
           >
-            <form action={logoutAction} className="w-full">
-              <button type="submit" className="w-full text-left">
-                Déconnexion
-              </button>
-            </form>
+            Déconnexion
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Form caché — contourne le preventDefault de Radix sur pointerdown */}
+      <form ref={logoutFormRef} action={logoutAction} className="hidden" />
     </header>
   );
 }
