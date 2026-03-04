@@ -8,6 +8,7 @@ import {
   tenants,
   memberships,
 } from "@saas/db";
+import { createTotpChallenge } from "./totp.service";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email.service";
@@ -65,22 +66,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     })
     .returning({ id: users.id, email: users.email });
 
-  // Envoyer l'email de vérification
-  const verificationToken = generateToken();
-  const verificationExpires = new Date();
-  verificationExpires.setHours(
-    verificationExpires.getHours() + EMAIL_VERIFY_TTL_HOURS,
-  );
-
-  await db.insert(emailVerifications).values({
-    userId: user.id,
-    token: verificationToken,
-    expiresAt: verificationExpires,
-  });
-
-  await sendVerificationEmail(user.email, verificationToken);
-
-  // Créer la session
+  // Créer la session en priorité — doit exister avant toute redirection
   const sessionToken = generateToken();
 
   await db.insert(sessions).values({
@@ -125,6 +111,25 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     tenantSlug = tenant.slug;
   });
 
+  // Envoyer l'email de vérification — après session/tenant (échec = non bloquant)
+  const verificationToken = generateToken();
+  const verificationExpires = new Date();
+  verificationExpires.setHours(
+    verificationExpires.getHours() + EMAIL_VERIFY_TTL_HOURS,
+  );
+
+  await db.insert(emailVerifications).values({
+    userId: user.id,
+    token: verificationToken,
+    expiresAt: verificationExpires,
+  });
+
+  try {
+    await sendVerificationEmail(user.email, verificationToken);
+  } catch (err) {
+    console.error("[auth.service] sendVerificationEmail failed:", err);
+  }
+
   return { sessionToken, userId: user.id, tenantSlug };
 }
 
@@ -135,13 +140,18 @@ export type LoginInput = {
   password: string;
 };
 
-export async function login(input: LoginInput): Promise<AuthResult> {
+export type LoginResult =
+  | { requiresTotp: false; sessionToken: string; userId: string; tenantSlug: string }
+  | { requiresTotp: true; challengeToken: string };
+
+export async function login(input: LoginInput): Promise<LoginResult> {
   const { email, password } = input;
 
   const [user] = await db
     .select({
       id: users.id,
       hashedPassword: users.hashedPassword,
+      totpEnabled: users.totpEnabled,
     })
     .from(users)
     .where(eq(users.email, email.toLowerCase()));
@@ -153,6 +163,12 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   const valid = await bcrypt.compare(password, user.hashedPassword);
   if (!valid) {
     throw new Error("INVALID_CREDENTIALS");
+  }
+
+  // Si 2FA activé → créer un challenge et rediriger vers /verify-2fa
+  if (user.totpEnabled) {
+    const challengeToken = await createTotpChallenge(user.id);
+    return { requiresTotp: true, challengeToken };
   }
 
   const sessionToken = generateToken();
@@ -170,7 +186,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     .innerJoin(tenants, eq(memberships.tenantId, tenants.id))
     .where(eq(memberships.userId, user.id));
 
-  return { sessionToken, userId: user.id, tenantSlug: membership?.slug ?? "" };
+  return { requiresTotp: false, sessionToken, userId: user.id, tenantSlug: membership?.slug ?? "" };
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────
@@ -188,6 +204,7 @@ export type SessionUser = {
   email: string;
   name: string | null;
   role: string;
+  emailVerified: boolean;
 };
 
 export async function validateSession(
@@ -202,6 +219,7 @@ export async function validateSession(
       email: users.email,
       name: users.name,
       role: users.role,
+      emailVerified: users.emailVerified,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
@@ -209,14 +227,14 @@ export async function validateSession(
 
   if (result.length === 0) return null;
 
-  const { expires, userId, email, name, role } = result[0];
+  const { expires, userId, email, name, role, emailVerified } = result[0];
 
   if (expires < now) {
     await db.delete(sessions).where(eq(sessions.sessionToken, sessionToken));
     return null;
   }
 
-  return { id: userId, email, name, role };
+  return { id: userId, email, name, role, emailVerified };
 }
 
 // ── Verify email ──────────────────────────────────────────────────────────────
@@ -240,6 +258,36 @@ export async function verifyEmail(token: string): Promise<void> {
   await db
     .delete(emailVerifications)
     .where(eq(emailVerifications.id, verification.id));
+
+  await db
+    .update(users)
+    .set({ emailVerified: true, updatedAt: now })
+    .where(eq(users.id, verification.userId));
+}
+
+// ── Resend verification email ──────────────────────────────────────────────────
+
+export async function resendVerificationEmail(userId: string): Promise<void> {
+  const [user] = await db
+    .select({ email: users.email, emailVerified: users.emailVerified })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (!user) throw new Error("USER_NOT_FOUND");
+  if (user.emailVerified) return; // déjà vérifié — no-op
+
+  // Supprimer l'ancien token s'il existe
+  await db
+    .delete(emailVerifications)
+    .where(eq(emailVerifications.userId, userId));
+
+  const token = generateToken();
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + EMAIL_VERIFY_TTL_HOURS);
+
+  await db.insert(emailVerifications).values({ userId, token, expiresAt });
+
+  await sendVerificationEmail(user.email, token);
 }
 
 // ── Forgot password ───────────────────────────────────────────────────────────

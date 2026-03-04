@@ -5,6 +5,8 @@ import {
   uuid,
   pgEnum,
   json,
+  jsonb,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -32,6 +34,9 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   hashedPassword: text("hashed_password"),
   totpSecret: text("totp_secret"),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  totpEnabled: boolean("totp_enabled").default(false).notNull(),
+  backupCodes: jsonb("backup_codes").$type<string[]>(),
   role: text("role").notNull().default("user"),
   name: text("name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -122,6 +127,16 @@ export const agentTasks = pgTable("agent_tasks", {
   result: json("result"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── TOTP Challenges ───────────────────────────────────────────────────────────
+export const totpChallenges = pgTable("totp_challenges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
 });
 
 // ── Agent Logs ────────────────────────────────────────────────────────────────

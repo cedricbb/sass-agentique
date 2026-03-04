@@ -29,6 +29,20 @@
       "when": 1772459945899,
       "tag": "0003_magenta_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772534181268,
+      "tag": "0004_nappy_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772547411907,
+      "tag": "0005_dear_machine_man",
+      "breakpoints": true
     }
   ]
 }

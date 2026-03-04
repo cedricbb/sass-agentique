@@ -31,6 +31,11 @@ vi.mock("@saas/db", () => ({
   passwordResets: {},
   tenants: {},
   memberships: {},
+  totpChallenges: {},
+}));
+
+vi.mock("../totp.service", () => ({
+  createTotpChallenge: vi.fn().mockResolvedValue("totp-challenge-token"),
 }));
 
 vi.mock("../email.service", () => ({
@@ -70,7 +75,9 @@ import {
   verifyEmail,
   forgotPassword,
   resetPassword,
+  resendVerificationEmail,
 } from "../auth.service";
+import { createTotpChallenge } from "../totp.service";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -146,15 +153,31 @@ describe("auth.service", () => {
       ).rejects.toThrow("INVALID_CREDENTIALS");
     });
 
-    it("retourne sessionToken + userId sur credentials valides", async () => {
+    it("retourne sessionToken + userId sur credentials valides (2FA inactif)", async () => {
       vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as never);
-      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed" }]); // user lookup
+      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed", totpEnabled: false }]); // user lookup
       dbMock.where.mockResolvedValueOnce([{ slug: "test-tenant" }]); // membership+tenant join
 
       const result = await login({ email: "user@test.com", password: "good" });
 
-      expect(result).toHaveProperty("sessionToken");
-      expect(result.userId).toBe("u1");
+      expect(result).toHaveProperty("requiresTotp", false);
+      if (!result.requiresTotp) {
+        expect(result).toHaveProperty("sessionToken");
+        expect(result.userId).toBe("u1");
+      }
+    });
+
+    it("retourne requiresTotp=true et challengeToken si 2FA activé", async () => {
+      vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as never);
+      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed", totpEnabled: true }]);
+
+      const result = await login({ email: "user@test.com", password: "good" });
+
+      expect(result).toHaveProperty("requiresTotp", true);
+      if (result.requiresTotp) {
+        expect(result.challengeToken).toBe("totp-challenge-token");
+        expect(createTotpChallenge).toHaveBeenCalledWith("u1");
+      }
     });
   });
 
@@ -185,6 +208,7 @@ describe("auth.service", () => {
         email: "u@t.com",
         name: null,
         role: "user",
+        emailVerified: false,
       }]);
 
       expect(await validateSession("expired")).toBeNull();
@@ -198,6 +222,7 @@ describe("auth.service", () => {
         email: "u@t.com",
         name: "Jean",
         role: "user",
+        emailVerified: true,
       }]);
 
       const user = await validateSession("valid-token");
@@ -205,6 +230,7 @@ describe("auth.service", () => {
       expect(user).not.toBeNull();
       expect(user?.id).toBe("u1");
       expect(user?.email).toBe("u@t.com");
+      expect(user?.emailVerified).toBe(true);
     });
   });
 
@@ -227,16 +253,50 @@ describe("auth.service", () => {
       await expect(verifyEmail("expired")).rejects.toThrow("TOKEN_EXPIRED");
     });
 
-    it("supprime le token sur succès", async () => {
+    it("supprime le token et marque emailVerified=true sur succès", async () => {
       dbMock.where.mockResolvedValueOnce([{
         id: "v1",
         userId: "u1",
         expiresAt: new Date(Date.now() + 1_000_000),
       }]);
       dbMock.where.mockResolvedValueOnce(undefined); // delete
+      dbMock.where.mockResolvedValueOnce(undefined); // update user
 
       await expect(verifyEmail("valid")).resolves.toBeUndefined();
       expect(dbMock.delete).toHaveBeenCalled();
+      expect(dbMock.update).toHaveBeenCalled();
+      expect(dbMock.set).toHaveBeenCalledWith(
+        expect.objectContaining({ emailVerified: true }),
+      );
+    });
+  });
+
+  // ── resendVerificationEmail ────────────────────────────────────────────────
+
+  describe("resendVerificationEmail", () => {
+    it("ne fait rien si l'email est déjà vérifié", async () => {
+      dbMock.where.mockResolvedValueOnce([{ email: "u@t.com", emailVerified: true }]);
+
+      await expect(resendVerificationEmail("u1")).resolves.toBeUndefined();
+      expect(dbMock.insert).not.toHaveBeenCalled();
+    });
+
+    it("lève USER_NOT_FOUND si l'utilisateur n'existe pas", async () => {
+      dbMock.where.mockResolvedValueOnce([]);
+
+      await expect(resendVerificationEmail("unknown")).rejects.toThrow("USER_NOT_FOUND");
+    });
+
+    it("recrée un token et renvoie l'email", async () => {
+      dbMock.where
+        .mockResolvedValueOnce([{ email: "u@t.com", emailVerified: false }])
+        .mockResolvedValue(undefined);
+      dbMock.values.mockResolvedValue(undefined);
+
+      await expect(resendVerificationEmail("u1")).resolves.toBeUndefined();
+      expect(dbMock.delete).toHaveBeenCalled();
+      expect(dbMock.insert).toHaveBeenCalled();
+      expect(sendVerificationEmail).toHaveBeenCalledWith("u@t.com", expect.any(String));
     });
   });
 

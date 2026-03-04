@@ -12,6 +12,31 @@ import {
   cancelInvitationAction,
   removeMemberAction,
 } from "../../../actions/tenant";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+function getInitials(name: string | null, email: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
+type Role = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+
+function RoleBadge({ role }: { role: Role }) {
+  if (role === "OWNER")
+    return <Badge className="bg-primary text-primary-foreground">{role}</Badge>;
+  if (role === "ADMIN") return <Badge>{role}</Badge>;
+  return <Badge variant="secondary">{role}</Badge>;
+}
 
 export default async function MembersPage({
   params,
@@ -39,114 +64,150 @@ export default async function MembersPage({
   ]);
 
   const canManage = userRole === "OWNER" || userRole === "ADMIN";
+  const canInvite = canManage && user.emailVerified;
   const pendingInvitations = invitations.filter((inv) => inv.status === "PENDING");
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">
-            <a href={`/${tenantSlug}/dashboard`}>SaaS Agentique</a>
-          </h1>
-          <span className="text-sm text-gray-500">{userRole}</span>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <section>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
-            Membres ({members.length})
-          </h2>
-          <div className="bg-white rounded-xl border border-gray-200 divide-y">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Membres ({members.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          <div className="divide-y">
             {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="font-medium text-gray-900">{m.name ?? m.email}</p>
-                  <p className="text-sm text-gray-500">{m.email}</p>
+              <div key={m.id} className="flex items-center justify-between px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarFallback>
+                      {getInitials(m.name ?? null, m.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{m.name ?? m.email}</p>
+                    <p className="text-sm text-muted-foreground">{m.email}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-600">{m.role}</span>
-                  {canManage && m.role !== "OWNER" && m.userId !== user.id && (
-                    <form action={removeMemberAction}>
-                      <input type="hidden" name="membershipId" value={m.id} />
-                      <input type="hidden" name="tenantId" value={tenant.id} />
-                      <button
-                        type="submit"
-                        className="text-sm text-red-500 hover:text-red-700"
+                  <RoleBadge role={m.role as Role} />
+                  {canManage && m.userId !== user.id && (
+                    m.role === "OWNER" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled
+                        title="Le propriétaire ne peut pas être retiré"
+                        className="text-muted-foreground"
                       >
                         Retirer
-                      </button>
-                    </form>
+                      </Button>
+                    ) : (
+                      <form action={removeMemberAction}>
+                        <input type="hidden" name="membershipId" value={m.id} />
+                        <input type="hidden" name="tenantId" value={tenant.id} />
+                        <input type="hidden" name="tenantSlug" value={tenantSlug} />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Retirer
+                        </Button>
+                      </form>
+                    )
                   )}
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </CardContent>
+      </Card>
 
-        {pendingInvitations.length > 0 && (
-          <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Invitations en attente ({pendingInvitations.length})
-            </h2>
-            <div className="bg-white rounded-xl border border-gray-200 divide-y">
+      {pendingInvitations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invitations en attente ({pendingInvitations.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div className="divide-y">
               {pendingInvitations.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between p-4">
+                <div key={inv.id} className="flex items-center justify-between px-6 py-4">
                   <div>
-                    <p className="font-medium text-gray-900">{inv.email}</p>
-                    <p className="text-sm text-gray-500">{inv.role}</p>
+                    <p className="text-sm font-medium">{inv.email}</p>
+                    <p className="text-sm text-muted-foreground">{inv.role}</p>
                   </div>
                   {canManage && (
                     <form action={cancelInvitationAction}>
                       <input type="hidden" name="invitationId" value={inv.id} />
                       <input type="hidden" name="tenantId" value={tenant.id} />
-                      <button
-                        type="submit"
-                        className="text-sm text-gray-500 hover:text-gray-900"
-                      >
+                      <input type="hidden" name="tenantSlug" value={tenantSlug} />
+                      <Button type="submit" variant="ghost" size="sm">
                         Annuler
-                      </button>
+                      </Button>
                     </form>
                   )}
                 </div>
               ))}
             </div>
-          </section>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {canManage && (
-          <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Inviter un membre</h2>
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <form action={inviteMemberAction} className="flex gap-3">
-                <input type="hidden" name="tenantId" value={tenant.id} />
-                <input type="hidden" name="invitedBy" value={user.id} />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="email@exemple.com"
-                  required
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm"
-                />
-                <select
-                  name="role"
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                >
-                  <option value="MEMBER">Membre</option>
-                  <option value="ADMIN">Admin</option>
-                  <option value="VIEWER">Lecteur</option>
-                </select>
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-                >
-                  Inviter
-                </button>
-              </form>
-            </div>
-          </section>
-        )}
-      </main>
+      {canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Inviter un membre</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!user.emailVerified && (
+              <Alert className="mb-4">
+                <AlertDescription className="text-amber-700">
+                  Vérifiez votre email pour pouvoir inviter des membres.
+                </AlertDescription>
+              </Alert>
+            )}
+            <form
+              action={inviteMemberAction}
+              className={`space-y-4 ${!canInvite ? "pointer-events-none opacity-50" : ""}`}
+            >
+              <input type="hidden" name="tenantId" value={tenant.id} />
+              <input type="hidden" name="tenantSlug" value={tenantSlug} />
+              <input type="hidden" name="invitedBy" value={user.id} />
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="invite-email">Adresse email</Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    name="email"
+                    placeholder="email@exemple.com"
+                    required
+                    disabled={!canInvite}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invite-role">Rôle</Label>
+                  <select
+                    id="invite-role"
+                    name="role"
+                    disabled={!canInvite}
+                    className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="MEMBER">Membre</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="VIEWER">Lecteur</option>
+                  </select>
+                </div>
+              </div>
+              <Button type="submit" disabled={!canInvite}>
+                Inviter
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -9,13 +9,17 @@ import {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  resendVerificationEmail,
   listTenantsByUser,
   acceptInvitation,
   validateSession,
+  consumeTotpChallenge,
 } from "@saas/services";
 
 const SESSION_COOKIE = "session-token";
+const TOTP_CHALLENGE_COOKIE = "totp-challenge";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 jours
+const TOTP_CHALLENGE_MAX_AGE = 60 * 15; // 15 minutes
 
 type ActionState = { error: string } | { success: true } | null;
 
@@ -37,19 +41,13 @@ export async function registerAction(
     return { error: "Le mot de passe doit contenir au moins 8 caractères." };
   }
 
+  let sessionToken: string;
+  let tenantSlug: string;
+
   try {
-    const { sessionToken, tenantSlug } = await register({ email, password, name });
-
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: COOKIE_MAX_AGE,
-      path: "/",
-    });
-
-    redirect(`/${tenantSlug}/dashboard`);
+    const result = await register({ email, password, name });
+    sessionToken = result.sessionToken;
+    tenantSlug = result.tenantSlug;
   } catch (err) {
     if (err instanceof Error && err.message === "EMAIL_ALREADY_EXISTS") {
       return { error: "Cet email est déjà utilisé." };
@@ -57,7 +55,16 @@ export async function registerAction(
     return { error: "Une erreur est survenue. Réessayez." };
   }
 
-  return null;
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+
+  redirect(`/${tenantSlug}/dashboard`);
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
@@ -74,12 +81,22 @@ export async function loginAction(
     return { error: "Email et mot de passe requis." };
   }
 
-  let userId: string;
   try {
     const result = await login({ email, password });
-    userId = result.userId;
-
     const cookieStore = await cookies();
+
+    if (result.requiresTotp) {
+      cookieStore.set(TOTP_CHALLENGE_COOKIE, result.challengeToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: TOTP_CHALLENGE_MAX_AGE,
+        path: "/",
+      });
+      const verifyUrl = next ? `/verify-2fa?next=${encodeURIComponent(next)}` : "/verify-2fa";
+      redirect(verifyUrl);
+    }
+
     cookieStore.set(SESSION_COOKIE, result.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -87,19 +104,75 @@ export async function loginAction(
       maxAge: COOKIE_MAX_AGE,
       path: "/",
     });
+
+    if (next.startsWith("/")) {
+      redirect(next);
+    }
+
+    const tenantList = await listTenantsByUser(result.userId);
+    const destination = tenantList[0]?.slug ? `/${tenantList[0].slug}/dashboard` : "/onboarding";
+    redirect(destination);
   } catch (err) {
     if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
       return { error: "Email ou mot de passe incorrect." };
     }
+    throw err;
+  }
+}
+
+// ── Verify 2FA ────────────────────────────────────────────────────────────────
+
+export async function totpVerifyAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const code = String(formData.get("code") ?? "").trim();
+  const next = String(formData.get("next") ?? "");
+
+  if (!code) {
+    return { error: "Code requis." };
+  }
+
+  const cookieStore = await cookies();
+  const challengeToken = cookieStore.get(TOTP_CHALLENGE_COOKIE)?.value;
+
+  if (!challengeToken) {
+    redirect("/login");
+  }
+
+  let destination: string;
+
+  try {
+    const result = await consumeTotpChallenge(challengeToken, code);
+
+    cookieStore.delete(TOTP_CHALLENGE_COOKIE);
+    cookieStore.set(SESSION_COOKIE, result.sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: COOKIE_MAX_AGE,
+      path: "/",
+    });
+
+    destination = next.startsWith("/")
+      ? next
+      : result.tenantSlug
+        ? `/${result.tenantSlug}/dashboard`
+        : "/onboarding";
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === "CHALLENGE_EXPIRED") {
+        redirect("/login?error=session-expired");
+      }
+      if (err.message === "INVALID_TOTP_CODE") {
+        return { error: "Code invalide. Réessayez." };
+      }
+    }
     return { error: "Une erreur est survenue. Réessayez." };
   }
 
-  if (next.startsWith("/")) {
-    redirect(next);
-  }
-
-  const tenants = await listTenantsByUser(userId);
-  const destination = tenants[0]?.slug ? `/${tenants[0].slug}/dashboard` : "/onboarding";
+  // redirect() doit être hors du try/catch — il lance une erreur spéciale
+  // que le catch attraperait sinon
   redirect(destination);
 }
 
@@ -205,6 +278,27 @@ export async function acceptInvitationAction(token: string): Promise<void> {
   }
 
   redirect(`/${tenantSlug}/dashboard`);
+}
+
+// ── Resend verification email ─────────────────────────────────────────────────
+
+export async function resendVerificationEmailAction(): Promise<ActionState> {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!sessionToken) return { error: "Non authentifié." };
+
+  const user = await validateSession(sessionToken);
+  if (!user) return { error: "Non authentifié." };
+
+  try {
+    await resendVerificationEmail(user.id);
+    return { success: true };
+  } catch (err) {
+    if (err instanceof Error && err.message === "USER_NOT_FOUND") {
+      return { error: "Utilisateur introuvable." };
+    }
+    return { error: "Une erreur est survenue. Réessayez." };
+  }
 }
 
 // ── Verify email ──────────────────────────────────────────────────────────────

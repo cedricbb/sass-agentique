@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { inviteMember, removeMember, cancelInvitation, validateSession, getUserRole } from "@saas/services";
 import type { SessionUser } from "@saas/services";
 import { createAbility } from "@saas/permissions";
@@ -28,6 +29,7 @@ async function getActorAbility(tenantId: string): Promise<{ user: SessionUser; a
 
 export async function inviteMemberAction(formData: FormData): Promise<void> {
   const tenantId = String(formData.get("tenantId") ?? "");
+  const tenantSlug = String(formData.get("tenantSlug") ?? "");
   const email = String(formData.get("email") ?? "").trim();
   const role =
     (formData.get("role") as "ADMIN" | "MEMBER" | "VIEWER") ?? "MEMBER";
@@ -36,8 +38,10 @@ export async function inviteMemberAction(formData: FormData): Promise<void> {
 
   try {
     const { user, ability } = await getActorAbility(tenantId);
+    if (!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED");
     if (ability.cannot("invite", "Member")) throw new Error("FORBIDDEN");
     await inviteMember({ tenantId, invitedBy: user.id, email, role });
+    revalidatePath(`/${tenantSlug}/members`);
   } catch (err) {
     if (err instanceof Error) {
       console.error("[inviteMemberAction]", err.message);
@@ -48,6 +52,7 @@ export async function inviteMemberAction(formData: FormData): Promise<void> {
 export async function removeMemberAction(formData: FormData): Promise<void> {
   const membershipId = String(formData.get("membershipId") ?? "");
   const tenantId = String(formData.get("tenantId") ?? "");
+  const tenantSlug = String(formData.get("tenantSlug") ?? "");
 
   if (!membershipId || !tenantId) return;
 
@@ -55,6 +60,7 @@ export async function removeMemberAction(formData: FormData): Promise<void> {
     const { ability } = await getActorAbility(tenantId);
     if (ability.cannot("remove", "Member")) throw new Error("FORBIDDEN");
     await removeMember(membershipId, tenantId);
+    revalidatePath(`/${tenantSlug}/members`);
   } catch (err) {
     if (err instanceof Error) {
       console.error("[removeMemberAction]", err.message);
@@ -65,6 +71,7 @@ export async function removeMemberAction(formData: FormData): Promise<void> {
 export async function cancelInvitationAction(formData: FormData): Promise<void> {
   const invitationId = String(formData.get("invitationId") ?? "");
   const tenantId = String(formData.get("tenantId") ?? "");
+  const tenantSlug = String(formData.get("tenantSlug") ?? "");
 
   if (!invitationId || !tenantId) return;
 
@@ -72,6 +79,7 @@ export async function cancelInvitationAction(formData: FormData): Promise<void> 
     const { ability } = await getActorAbility(tenantId);
     if (ability.cannot("cancel", "Invitation")) throw new Error("FORBIDDEN");
     await cancelInvitation(invitationId, tenantId);
+    revalidatePath(`/${tenantSlug}/members`);
   } catch (err) {
     if (err instanceof Error) {
       console.error("[cancelInvitationAction]", err.message);

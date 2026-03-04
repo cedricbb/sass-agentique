@@ -27,6 +27,15 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
+  // /verify-2fa est semi-protégée : accessible uniquement avec un cookie totp-challenge actif
+  if (pathname === "/verify-2fa" || pathname.startsWith("/verify-2fa/")) {
+    const challengeToken = request.cookies.get("totp-challenge")?.value;
+    if (!challengeToken) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return NextResponse.next();
+  }
+
   // Vérification légère : présence du cookie de session (pas de DB en Edge Runtime)
   const sessionToken =
     request.cookies.get("session-token")?.value ??

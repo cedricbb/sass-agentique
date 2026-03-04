@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction } from "../../app/actions/auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Props = {
   next?: string;
@@ -10,75 +14,79 @@ type Props = {
 };
 
 export function LoginForm({ next, resetSuccess }: Props) {
-  const [state, action, pending] = useActionState(loginAction, null);
+  const [state, action, isPending] = useActionState(loginAction, null);
 
   return (
-    <>
+    <div className="space-y-6">
       {resetSuccess && (
-        <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-          Mot de passe réinitialisé. Connectez-vous avec vos nouveaux identifiants.
-        </div>
+        <Alert className="border-green-500 text-green-700 [&>svg]:text-green-600">
+          <AlertDescription>
+            Mot de passe réinitialisé. Connectez-vous avec vos nouveaux identifiants.
+          </AlertDescription>
+        </Alert>
       )}
 
       {state && "error" in state && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-          {state.error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
       )}
 
-      <form action={action} className="space-y-4">
+      <form action={action} className="space-y-5">
         {next && <input type="hidden" name="next" value={next} />}
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Email <span className="text-red-500">*</span>
+          </Label>
+          <Input
             id="email"
             name="email"
             type="email"
             required
             autoComplete="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="vous@exemple.com"
+            className="h-11"
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Mot de passe
-          </label>
-          <input
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Mot de passe <span className="text-red-500">*</span>
+            </Label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-amber-600 hover:text-amber-700 dark:text-amber-500 font-medium"
+            >
+              Mot de passe oublié ?
+            </Link>
+          </div>
+          <Input
             id="password"
             name="password"
             type="password"
             required
             autoComplete="current-password"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="h-11"
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
-            Mot de passe oublié ?
-          </Link>
-        </div>
-
-        <button
+        <Button
           type="submit"
-          disabled={pending}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors"
+          disabled={isPending}
+          className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white font-medium"
         >
-          {pending ? "Connexion…" : "Se connecter"}
-        </button>
+          {isPending ? "Connexion…" : "Se connecter"}
+        </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-gray-500 dark:text-gray-400">
         Pas encore de compte ?{" "}
-        <Link href="/register" className="text-blue-600 hover:text-blue-500 font-medium">
+        <Link href="/register" className="text-amber-600 hover:text-amber-700 dark:text-amber-500 font-medium">
           S&apos;inscrire
         </Link>
       </p>
-    </>
+    </div>
   );
 }
