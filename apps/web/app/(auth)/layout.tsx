@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col bg-white dark:bg-gray-950">
         {/* Back link */}
         <div className="flex justify-start p-6">
-          <a
+          <Link
             href="/"
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
           >
@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             Accueil
-          </a>
+          </Link>
         </div>
 
         {/* Form container */}
