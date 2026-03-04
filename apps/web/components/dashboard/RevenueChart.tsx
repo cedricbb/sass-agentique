@@ -89,7 +89,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-lg border bg-white p-3 shadow-md">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-md text-card-foreground">
       <p className="mb-2 text-sm font-semibold text-foreground">{label}</p>
       {payload.map((entry) => (
         <div key={entry.dataKey} className="flex items-center gap-2 text-sm">
@@ -136,15 +136,15 @@ export function RevenueChart() {
           >
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
+                <stop offset="5%" stopColor="var(--color-chart-1)" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="var(--color-chart-1)" stopOpacity={0.05} />
               </linearGradient>
               <linearGradient id="colorAgents" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                <stop offset="5%" stopColor="var(--color-chart-3)" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="var(--color-chart-3)" stopOpacity={0.05} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis
               dataKey="label"
               tick={{ fontSize: 12 }}
@@ -167,7 +167,7 @@ export function RevenueChart() {
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="#f59e0b"
+              stroke="var(--color-chart-1)"
               strokeWidth={2}
               fill="url(#colorRevenue)"
               name="revenue"
@@ -175,7 +175,7 @@ export function RevenueChart() {
             <Area
               type="monotone"
               dataKey="agents"
-              stroke="#3b82f6"
+              stroke="var(--color-chart-3)"
               strokeWidth={2}
               fill="url(#colorAgents)"
               name="agents"

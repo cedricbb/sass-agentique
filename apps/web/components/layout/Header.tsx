@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, PanelLeftClose, PanelLeftOpen, Bell } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, Bell, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -50,6 +51,7 @@ export function Header({ onMenuClick, onToggle, collapsed }: HeaderProps) {
   const { currentUser, tenant } = useTenant();
   const title = usePageTitle();
   const initials = getInitials(currentUser.name, currentUser.email);
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4 z-10">
@@ -77,6 +79,17 @@ export function Header({ onMenuClick, onToggle, collapsed }: HeaderProps) {
       <h1 className="hidden text-sm font-semibold sm:block">{title}</h1>
 
       <div className="flex-1" />
+
+      {/* Theme toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        title="Basculer le thème"
+      >
+        <Sun size={18} className="block dark:hidden" />
+        <Moon size={18} className="hidden dark:block" />
+      </Button>
 
       {/* Notifications */}
       <Button variant="ghost" size="icon" className="relative">

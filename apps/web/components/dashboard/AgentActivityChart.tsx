@@ -44,7 +44,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   const total = payload.reduce((sum, entry) => sum + entry.value, 0);
 
   return (
-    <div className="rounded-lg border bg-white p-3 shadow-md">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-md text-card-foreground">
       <p className="mb-2 text-sm font-semibold text-foreground">{label}</p>
       {payload.map((entry) => (
         <div key={entry.dataKey} className="flex items-center gap-2 text-sm">
@@ -81,7 +81,7 @@ export function AgentActivityChart() {
           >
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="#f0f0f0"
+              stroke="var(--color-border)"
               vertical={false}
             />
             <XAxis
@@ -96,14 +96,14 @@ export function AgentActivityChart() {
             />
             <Bar
               dataKey="success"
-              fill="#f59e0b"
+              fill="var(--color-chart-1)"
               radius={[4, 4, 0, 0]}
               name="Succès"
               stackId="stack"
             />
             <Bar
               dataKey="error"
-              fill="#ef4444"
+              fill="var(--color-destructive)"
               radius={[4, 4, 0, 0]}
               name="Erreurs"
               stackId="stack"

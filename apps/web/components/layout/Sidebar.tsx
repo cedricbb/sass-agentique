@@ -61,8 +61,8 @@ function NavLink({
       className={cn(
         "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
         active
-          ? "bg-white/10 text-white"
-          : "text-gray-400 hover:bg-white/5 hover:text-white",
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-white hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         collapsed && "justify-center px-2.5",
       )}
     >
@@ -91,18 +91,18 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
   const groups = buildNavGroups(tenant.slug);
 
   return (
-    <div className="flex h-full flex-col bg-[#1c2434]">
+    <div className="flex h-full flex-col bg-sidebar">
       {/* Logo */}
       <div
         className={cn(
-          "flex h-16 shrink-0 items-center border-b border-white/10 px-4",
+          "flex h-16 shrink-0 items-center border-b border-sidebar-border px-4",
           collapsed && "justify-center",
         )}
       >
         {collapsed ? (
           <span className="text-lg font-bold text-primary">S</span>
         ) : (
-          <span className="text-sm font-bold tracking-wide text-white">
+          <span className="text-sm font-bold tracking-wide text-sidebar-foreground">
             SaaS{" "}
             <span className="text-primary">●</span>{" "}
             Agentique
@@ -117,7 +117,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
             {groups.map((group) => (
               <div key={group.title}>
                 {!collapsed && (
-                  <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                  <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
                     {group.title}
                   </p>
                 )}
@@ -163,7 +163,7 @@ export function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) 
       <Sheet open={mobileOpen} onOpenChange={onMobileClose}>
         <SheetContent
           side="left"
-          className="w-[260px] border-0 bg-[#1c2434] p-0 [&>button]:text-white"
+          className="w-[260px] border-0 bg-sidebar p-0 [&>button]:text-sidebar-foreground"
         >
           <SidebarContent collapsed={false} />
         </SheetContent>

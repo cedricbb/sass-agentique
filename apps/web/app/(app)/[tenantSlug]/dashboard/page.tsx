@@ -34,7 +34,7 @@ export default async function DashboardPage() {
           <button className="inline-flex items-center rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
             30 jours
           </button>
-          <button className="inline-flex items-center rounded-lg border border-amber-500 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors">
+          <button className="inline-flex items-center rounded-lg border border-primary bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors">
             Ce mois
           </button>
         </div>
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
           value="€8 240"
           trend={12.5}
           icon={DollarSign}
-          iconBg="bg-amber-100 text-amber-600"
+          iconBg="bg-accent text-accent-foreground"
         />
         <StatCard
           title="Utilisateurs Actifs"
