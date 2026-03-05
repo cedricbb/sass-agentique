@@ -4,8 +4,7 @@ import { useActionState } from "react";
 import { confirmTotpSetupAction } from "../../app/actions/totp";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { OtpInput } from "@/components/ui/otp-input";
 
 type Props = {
   secret: string;
@@ -75,20 +74,11 @@ export function TotpSetupForm({ secret, qrDataUrl }: Props) {
       <form action={action} className="space-y-4">
         <input type="hidden" name="secret" value={secret} />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="code">Code de vérification</Label>
-          <Input
-            id="code"
-            name="code"
-            type="text"
-            required
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            maxLength={6}
-            pattern="[0-9]{6}"
-            className="tracking-widest text-center"
-            placeholder="123456"
-          />
+        <div className="space-y-3">
+          <p className="text-center text-sm text-muted-foreground">
+            Entrez le code affiché dans votre application
+          </p>
+          <OtpInput name="code" length={6} autoFocus />
         </div>
 
         <Button type="submit" disabled={isPending} className="w-full">
