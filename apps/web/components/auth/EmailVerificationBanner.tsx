@@ -1,21 +1,19 @@
 "use client";
 
 import { useActionState } from "react";
-import { useTenant } from "../../contexts/TenantContext";
 import { resendVerificationEmailAction } from "../../app/actions/auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 type ActionState = { error: string } | { success: true } | null;
 
-export function EmailVerificationBanner() {
-  const { currentUser } = useTenant();
+export function EmailVerificationBanner({ emailVerified }: { emailVerified: boolean }) {
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     resendVerificationEmailAction as (state: ActionState, formData: FormData) => Promise<ActionState>,
     null,
   );
 
-  if (currentUser.emailVerified) return null;
+  if (emailVerified) return null;
 
   return (
     <Alert
