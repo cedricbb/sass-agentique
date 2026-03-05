@@ -14,6 +14,7 @@ export type TenantContextValue = {
     name: string | null;
     email: string;
     role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+    systemRole: string;
     emailVerified: boolean;
   };
 };

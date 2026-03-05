@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Shield } from "lucide-react";
+import { LayoutDashboard, Users, Shield, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/contexts/TenantContext";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -25,8 +25,8 @@ interface NavGroup {
   items: NavItem[];
 }
 
-function buildNavGroups(slug: string): NavGroup[] {
-  return [
+function buildNavGroups(slug: string, isAdmin: boolean): NavGroup[] {
+  const groups: NavGroup[] = [
     {
       title: "Menu",
       items: [
@@ -41,6 +41,17 @@ function buildNavGroups(slug: string): NavGroup[] {
       ],
     },
   ];
+
+  if (isAdmin) {
+    groups.push({
+      title: "Administration",
+      items: [
+        { href: "/admin", label: "Admin Panel", icon: ShieldCheck },
+      ],
+    });
+  }
+
+  return groups;
 }
 
 function NavLink({
@@ -86,9 +97,9 @@ function NavLink({
 }
 
 function SidebarContent({ collapsed }: { collapsed: boolean }) {
-  const { tenant } = useTenant();
+  const { tenant, currentUser } = useTenant();
   const pathname = usePathname();
-  const groups = buildNavGroups(tenant.slug);
+  const groups = buildNavGroups(tenant.slug, currentUser.systemRole === "admin");
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
