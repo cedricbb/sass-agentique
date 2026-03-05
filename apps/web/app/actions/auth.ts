@@ -10,7 +10,6 @@ import {
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
-  listTenantsByUser,
   acceptInvitation,
   validateSession,
   consumeTotpChallenge,
@@ -42,12 +41,10 @@ export async function registerAction(
   }
 
   let sessionToken: string;
-  let tenantSlug: string;
 
   try {
     const result = await register({ email, password, name });
     sessionToken = result.sessionToken;
-    tenantSlug = result.tenantSlug;
   } catch (err) {
     if (err instanceof Error && err.message === "EMAIL_ALREADY_EXISTS") {
       return { error: "Cet email est déjà utilisé." };
@@ -64,7 +61,7 @@ export async function registerAction(
     path: "/",
   });
 
-  redirect(`/${tenantSlug}/dashboard`);
+  redirect("/account/profile");
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
@@ -109,8 +106,8 @@ export async function loginAction(
       redirect(next);
     }
 
-    const tenantList = await listTenantsByUser(result.userId);
-    const destination = tenantList[0]?.slug ? `/${tenantList[0].slug}/dashboard` : "/onboarding";
+    const sessionUser = await validateSession(result.sessionToken);
+    const destination = sessionUser?.role === "admin" ? "/admin/" : "/account/profile";
     redirect(destination);
   } catch (err) {
     if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
@@ -154,11 +151,12 @@ export async function totpVerifyAction(
       path: "/",
     });
 
+    const sessionUser = await validateSession(result.sessionToken);
     destination = next.startsWith("/")
       ? next
-      : result.tenantSlug
-        ? `/${result.tenantSlug}/dashboard`
-        : "/onboarding";
+      : sessionUser?.role === "admin"
+        ? "/admin/"
+        : "/account/profile";
   } catch (err) {
     if (err instanceof Error) {
       if (err.message === "CHALLENGE_EXPIRED") {
@@ -261,10 +259,8 @@ export async function acceptInvitationAction(token: string): Promise<void> {
     redirect("/login");
   }
 
-  let tenantSlug: string;
   try {
-    const result = await acceptInvitation({ token, userId: user.id });
-    tenantSlug = result.tenantSlug;
+    await acceptInvitation({ token, userId: user.id });
   } catch (err) {
     if (err instanceof Error) {
       if (err.message === "INVALID_TOKEN")
@@ -277,7 +273,7 @@ export async function acceptInvitationAction(token: string): Promise<void> {
     redirect("/login?error=unknown");
   }
 
-  redirect(`/${tenantSlug}/dashboard`);
+  redirect("/account/profile");
 }
 
 // ── Resend verification email ─────────────────────────────────────────────────

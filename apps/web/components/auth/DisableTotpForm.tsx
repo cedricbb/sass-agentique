@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function DisableTotpForm({ tenantSlug }: { tenantSlug: string }) {
+export function DisableTotpForm() {
   const [state, action, isPending] = useActionState(disableTotpAction, null);
 
   if (state && "success" in state) {
@@ -20,8 +20,7 @@ export function DisableTotpForm({ tenantSlug }: { tenantSlug: string }) {
 
   return (
     <form action={action} className="space-y-3">
-      <input type="hidden" name="tenantSlug" value={tenantSlug} />
-      {state && "error" in state && (
+{state && "error" in state && (
         <Alert variant="destructive">
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>

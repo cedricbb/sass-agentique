@@ -2,20 +2,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { validateSession, getUserTotpStatus } from "@saas/services";
-import { DisableTotpForm } from "../../../../../components/auth/DisableTotpForm";
-import { RegenerateBackupCodesForm } from "../../../../../components/auth/RegenerateBackupCodesForm";
+import { DisableTotpForm } from "@/components/auth/DisableTotpForm";
+import { RegenerateBackupCodesForm } from "@/components/auth/RegenerateBackupCodesForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-type Props = {
-  params: Promise<{ tenantSlug: string }>;
-};
-
-export default async function SecuritySettingsPage({ params }: Props) {
-  const { tenantSlug } = await params;
-
+export default async function SecurityPage() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session-token")?.value;
   if (!sessionToken) redirect("/login");
@@ -46,15 +40,13 @@ export default async function SecuritySettingsPage({ params }: Props) {
         <CardContent>
           {!totpEnabled && (
             <Button asChild className="w-full">
-              <Link href={`/${tenantSlug}/settings/security/setup`}>
-                Activer le 2FA
-              </Link>
+              <Link href="/account/security/setup">Activer le 2FA</Link>
             </Button>
           )}
           {totpEnabled && (
             <div className="space-y-4">
               <Separator />
-              <DisableTotpForm tenantSlug={tenantSlug} />
+              <DisableTotpForm />
               <RegenerateBackupCodesForm />
             </div>
           )}

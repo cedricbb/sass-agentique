@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession, generateTotpSecret } from "@saas/services";
-import { TotpSetupForm } from "../../../../../../components/auth/TotpSetupForm";
+import { TotpSetupForm } from "@/components/auth/TotpSetupForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function TotpSetupPage() {
