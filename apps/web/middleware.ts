@@ -47,8 +47,8 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.redirect(loginUrl);
   }
 
-  // La validation complète (session DB, tenant, membership) est faite dans
-  // app/(app)/[tenantSlug]/layout.tsx qui tourne en Node.js runtime
+  // La validation complète (session DB) est faite dans
+  // app/(customer)/account/layout.tsx qui tourne en Node.js runtime
   return NextResponse.next();
 }
 
