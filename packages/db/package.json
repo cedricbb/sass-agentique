@@ -10,6 +10,7 @@
     "studio": "drizzle-kit studio",
     "check": "drizzle-kit check",
     "check-types": "tsc --noEmit",
+    "seed": "tsx src/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

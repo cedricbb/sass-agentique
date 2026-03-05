@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OtpInput } from "@/components/ui/otp-input";
 
 type Props = {
   next?: string;
@@ -23,26 +24,33 @@ export function TotpVerifyForm({ next }: Props) {
         </Alert>
       )}
 
-      <form action={action} className="space-y-4">
+      <form action={action} className="space-y-6">
         {next && <input type="hidden" name="next" value={next} />}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="code">
-            {useBackupCode ? "Code de secours" : "Code à 6 chiffres"}
-          </Label>
-          <Input
-            id="code"
-            name="code"
-            type="text"
-            required
-            autoComplete="one-time-code"
-            inputMode={useBackupCode ? "text" : "numeric"}
-            maxLength={useBackupCode ? 10 : 6}
-            pattern={useBackupCode ? "[0-9a-f]{10}" : "[0-9]{6}"}
-            className="tracking-widest text-center"
-            placeholder={useBackupCode ? "xxxxxxxxxx" : "123456"}
-          />
-        </div>
+        {useBackupCode ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="code">Code de secours</Label>
+            <Input
+              id="code"
+              name="code"
+              type="text"
+              required
+              autoComplete="off"
+              maxLength={10}
+              pattern="[0-9a-f]{10}"
+              className="tracking-widest text-center font-mono"
+              placeholder="xxxxxxxxxx"
+              autoFocus
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-center text-sm text-muted-foreground">
+              Entrez le code à 6 chiffres de votre application
+            </p>
+            <OtpInput name="code" length={6} autoFocus />
+          </div>
+        )}
 
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? "Vérification…" : "Vérifier"}

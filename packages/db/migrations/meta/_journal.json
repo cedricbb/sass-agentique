@@ -43,6 +43,20 @@
       "when": 1772547411907,
       "tag": "0005_dear_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772643491203,
+      "tag": "0006_hard_prowler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772718766734,
+      "tag": "0007_tearful_leper_queen",
+      "breakpoints": true
     }
   ]
 }

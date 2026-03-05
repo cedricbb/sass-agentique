@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { CustomerSidebar } from "./CustomerSidebar";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -16,7 +17,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { logoutAction } from "@/app/actions/auth";
 
 export interface CustomerUser {
   id: string;
@@ -50,7 +50,6 @@ export function CustomerShell({ user, children }: CustomerShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
-  const logoutFormRef = useRef<HTMLFormElement>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -150,19 +149,14 @@ export function CustomerShell({ user, children }: CustomerShellProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive cursor-pointer"
-                onSelect={() => logoutFormRef.current?.requestSubmit()}
-              >
-                Déconnexion
+              <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+                <LogoutButton />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <form ref={logoutFormRef} action={logoutAction} className="hidden" />
         </header>
 
-        <EmailVerificationBanner />
+        <EmailVerificationBanner emailVerified={user.emailVerified} />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}

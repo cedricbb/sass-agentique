@@ -205,6 +205,10 @@ export type SessionUser = {
   name: string | null;
   role: string;
   emailVerified: boolean;
+  bio: string | null;
+  location: string | null;
+  website: string | null;
+  socialLinks: { github?: string; linkedin?: string; twitter?: string; instagram?: string } | null;
 };
 
 export async function validateSession(
@@ -220,6 +224,10 @@ export async function validateSession(
       name: users.name,
       role: users.role,
       emailVerified: users.emailVerified,
+      bio: users.bio,
+      location: users.location,
+      website: users.website,
+      socialLinks: users.socialLinks,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
@@ -227,14 +235,14 @@ export async function validateSession(
 
   if (result.length === 0) return null;
 
-  const { expires, userId, email, name, role, emailVerified } = result[0];
+  const { expires, userId, email, name, role, emailVerified, bio, location, website, socialLinks } = result[0];
 
   if (expires < now) {
     await db.delete(sessions).where(eq(sessions.sessionToken, sessionToken));
     return null;
   }
 
-  return { id: userId, email, name, role, emailVerified };
+  return { id: userId, email, name, role, emailVerified, bio, location, website, socialLinks };
 }
 
 // ── Verify email ──────────────────────────────────────────────────────────────
