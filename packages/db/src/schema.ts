@@ -39,6 +39,15 @@ export const users = pgTable("users", {
   backupCodes: jsonb("backup_codes").$type<string[]>(),
   role: text("role").notNull().default("user"),
   name: text("name"),
+  bio: text("bio"),
+  location: text("location"),
+  website: text("website"),
+  socialLinks: jsonb("social_links").$type<{
+    github?: string;
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+  }>(),
   bannedAt: timestamp("banned_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

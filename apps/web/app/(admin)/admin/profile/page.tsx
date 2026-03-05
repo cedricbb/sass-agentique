@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession } from "@saas/services";
-import { adminProfile } from "@/config/admin-profile";
 import { Badge } from "@/components/ui/badge";
 import {
   Mail,
@@ -15,6 +14,8 @@ import {
   Twitter,
   Instagram,
 } from "lucide-react";
+import { ProfileEditButton } from "@/components/profile/ProfileEditButton";
+import { SocialLinksEditButton } from "@/components/profile/SocialLinksEditButton";
 
 function getInitials(name: string | null, email: string): string {
   if (name) {
@@ -25,12 +26,12 @@ function getInitials(name: string | null, email: string): string {
   return email.slice(0, 2).toUpperCase();
 }
 
-const socialLinks = [
-  { key: "github", icon: Github, label: "GitHub", href: adminProfile.social.github },
-  { key: "linkedin", icon: Linkedin, label: "LinkedIn", href: adminProfile.social.linkedin },
-  { key: "twitter", icon: Twitter, label: "Twitter / X", href: adminProfile.social.twitter },
-  { key: "instagram", icon: Instagram, label: "Instagram", href: adminProfile.social.instagram },
-] as const;
+const SOCIAL_DEFS = [
+  { key: "github" as const, icon: Github, label: "GitHub" },
+  { key: "linkedin" as const, icon: Linkedin, label: "LinkedIn" },
+  { key: "twitter" as const, icon: Twitter, label: "Twitter / X" },
+  { key: "instagram" as const, icon: Instagram, label: "Instagram" },
+];
 
 export default async function AdminProfilePage() {
   const cookieStore = await cookies();
@@ -41,9 +42,10 @@ export default async function AdminProfilePage() {
   if (!user || user.role !== "admin") redirect("/admin");
 
   const initials = getInitials(user.name, user.email);
+  const socialLinks = user.socialLinks ?? {};
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
 
       {/* ── Meta card ─────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card p-5 lg:p-6">
@@ -63,30 +65,35 @@ export default async function AdminProfilePage() {
               </h4>
               <div className="mt-1 flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
                 <Badge className="text-xs">Admin</Badge>
-                {adminProfile.location && (
+                {user.location && (
                   <>
                     <span className="hidden h-3.5 w-px bg-border sm:block" />
                     <p className="flex items-center gap-1 text-sm text-muted-foreground">
                       <MapPin size={12} />
-                      {adminProfile.location}
+                      {user.location}
                     </p>
                   </>
                 )}
               </div>
-              {adminProfile.bio && (
-                <p className="mt-2 text-sm text-muted-foreground">{adminProfile.bio}</p>
+              {user.bio && (
+                <p className="mt-2 text-sm text-muted-foreground">{user.bio}</p>
               )}
             </div>
           </div>
 
-          {/* Réseaux sociaux */}
-          <div className="flex items-center justify-center gap-2 xl:justify-end">
-            {socialLinks
-              .filter((s) => s.href)
-              .map(({ key, icon: Icon, label, href }) => (
+          {/* Icônes réseaux sociaux + bouton edit */}
+          <div className="flex flex-col items-center gap-3 xl:items-end">
+            <ProfileEditButton
+              initialName={user.name}
+              initialBio={user.bio}
+              initialLocation={user.location}
+              initialWebsite={user.website}
+            />
+            <div className="flex items-center gap-2">
+              {SOCIAL_DEFS.filter(({ key }) => socialLinks[key]).map(({ key, icon: Icon, label }) => (
                 <a
                   key={key}
-                  href={href}
+                  href={socialLinks[key]}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={label}
@@ -95,6 +102,7 @@ export default async function AdminProfilePage() {
                   <Icon size={18} />
                 </a>
               ))}
+            </div>
           </div>
 
         </div>
@@ -102,9 +110,15 @@ export default async function AdminProfilePage() {
 
       {/* ── Informations personnelles ─────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card p-5 lg:p-6">
-        <h4 className="mb-6 text-lg font-semibold text-foreground">
-          Informations personnelles
-        </h4>
+        <div className="mb-6 flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-foreground">Informations personnelles</h4>
+          <ProfileEditButton
+            initialName={user.name}
+            initialBio={user.bio}
+            initialLocation={user.location}
+            initialWebsite={user.website}
+          />
+        </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
@@ -154,7 +168,7 @@ export default async function AdminProfilePage() {
             </div>
           </div>
 
-          {adminProfile.website && (
+          {user.website && (
             <div className="flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                 <Globe size={16} className="text-muted-foreground" />
@@ -162,12 +176,12 @@ export default async function AdminProfilePage() {
               <div>
                 <p className="text-xs text-muted-foreground">Site web</p>
                 <a
-                  href={adminProfile.website}
+                  href={user.website}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-0.5 text-sm font-medium text-primary hover:underline"
                 >
-                  {adminProfile.website.replace(/^https?:\/\//, "")}
+                  {user.website.replace(/^https?:\/\//, "")}
                 </a>
               </div>
             </div>
@@ -178,33 +192,37 @@ export default async function AdminProfilePage() {
 
       {/* ── Réseaux sociaux ───────────────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card p-5 lg:p-6">
-        <h4 className="mb-6 text-lg font-semibold text-foreground">
-          Réseaux sociaux
-        </h4>
+        <div className="mb-6 flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-foreground">Réseaux sociaux</h4>
+          <SocialLinksEditButton initialLinks={user.socialLinks} />
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {socialLinks.map(({ key, icon: Icon, label, href }) => (
-            <div key={key} className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <Icon size={16} className="text-muted-foreground" />
+          {SOCIAL_DEFS.map(({ key, icon: Icon, label }) => {
+            const href = socialLinks[key];
+            return (
+              <div key={key} className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Icon size={16} className="text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 block truncate text-sm font-medium text-primary hover:underline"
+                    >
+                      {href.replace(/^https?:\/\//, "")}
+                    </a>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-muted-foreground italic">Non renseigné</p>
+                  )}
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-0.5 block truncate text-sm font-medium text-primary hover:underline"
-                  >
-                    {href.replace(/^https?:\/\//, "")}
-                  </a>
-                ) : (
-                  <p className="mt-0.5 text-sm text-muted-foreground italic">Non renseigné</p>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { validateSession } from "@saas/services";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Mail, User, ShieldCheck } from "lucide-react";
+import { ProfileEditButton } from "@/components/profile/ProfileEditButton";
 
 function getInitials(name: string | null, email: string): string {
   if (name) {
@@ -24,38 +25,43 @@ export default async function ProfilePage() {
   const initials = getInitials(user.name, user.email);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
 
       {/* ── Meta card ─────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card p-5 lg:p-6">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-          {/* Avatar */}
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-            {initials}
-          </div>
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+            {/* Avatar */}
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+              {initials}
+            </div>
 
-          {/* Nom + email + badge */}
-          <div className="text-center sm:text-left">
-            <h4 className="text-lg font-semibold text-foreground">
-              {user.name ?? user.email.split("@")[0]}
-            </h4>
-            <div className="mt-1 flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-              <span className="hidden h-3.5 w-px bg-border sm:block" />
-              <Badge variant={user.emailVerified ? "default" : "secondary"} className="text-xs">
-                {user.emailVerified ? "Email vérifié" : "Email non vérifié"}
-              </Badge>
+            {/* Nom + email + badge */}
+            <div className="text-center sm:text-left">
+              <h4 className="text-lg font-semibold text-foreground">
+                {user.name ?? user.email.split("@")[0]}
+              </h4>
+              <div className="mt-1 flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <span className="hidden h-3.5 w-px bg-border sm:block" />
+                <Badge variant={user.emailVerified ? "default" : "secondary"} className="text-xs">
+                  {user.emailVerified ? "Email vérifié" : "Email non vérifié"}
+                </Badge>
+              </div>
             </div>
           </div>
+
+          <ProfileEditButton initialName={user.name} />
         </div>
       </div>
 
       {/* ── Informations personnelles ─────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card p-5 lg:p-6">
-        <h4 className="mb-6 text-lg font-semibold text-foreground">
-          Informations personnelles
-        </h4>
+        <div className="mb-6 flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-foreground">Informations personnelles</h4>
+          <ProfileEditButton initialName={user.name} />
+        </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
