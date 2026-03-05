@@ -8,6 +8,7 @@ import {
   Building2,
   Bot,
   ChevronRight,
+  CircleUser,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems: NavItem[] = [
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
   { href: "/admin/tenants", label: "Tenants", icon: Building2 },
   { href: "/admin/agent-tasks", label: "Tâches Agent", icon: Bot },
+  { href: "/admin/profile", label: "Mon profil", icon: CircleUser },
 ];
 
 export function AdminSidebar() {
