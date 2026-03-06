@@ -32,3 +32,5 @@ if (!_env.success) {
 }
 
 export const env = _env.data;
+
+export { isAllowedRedirectUrl } from './allowed-urls';

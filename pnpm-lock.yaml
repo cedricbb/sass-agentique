@@ -41,6 +41,9 @@ importers:
       '@saas/services':
         specifier: workspace:*
         version: link:../../packages/services
+      '@saas/workflows':
+        specifier: workspace:*
+        version: link:../../packages/workflows
       '@tailwindcss/postcss':
         specifier: ^4.2.1
         version: 4.2.1
@@ -74,6 +77,9 @@ importers:
       recharts:
         specifier: ^3.7.0
         version: 3.7.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@16.13.1)(react@19.2.4)(redux@5.0.1)
+      stripe:
+        specifier: ^17.0.0
+        version: 17.7.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -187,6 +193,9 @@ importers:
       resend:
         specifier: ^6.9.2
         version: 6.9.2(@react-email/render@2.0.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      stripe:
+        specifier: ^17.0.0
+        version: 17.7.0
     devDependencies:
       '@types/nodemailer':
         specifier: ^7.0.11
@@ -4668,6 +4677,10 @@ packages:
     engines: {node: '>=10.13.0'}
     hasBin: true
 
+  qs@6.15.0:
+    resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
+    engines: {node: '>=0.6'}
+
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
@@ -4990,6 +5003,10 @@ packages:
 
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
+
+  stripe@17.7.0:
+    resolution: {integrity: sha512-aT2BU9KkizY9SATf14WhhYVv2uOapBWX0OFWF4xvcj1mPaNotlSc2CsxpS4DS46ZueSppmCF5BX1sNYBtwBvfw==}
+    engines: {node: '>=12.*'}
 
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
@@ -9923,6 +9940,10 @@ snapshots:
       pngjs: 5.0.0
       yargs: 15.4.1
 
+  qs@6.15.0:
+    dependencies:
+      side-channel: 1.1.0
+
   queue-microtask@1.2.3: {}
 
   radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
@@ -10402,6 +10423,11 @@ snapshots:
   strip-literal@3.1.0:
     dependencies:
       js-tokens: 9.0.1
+
+  stripe@17.7.0:
+    dependencies:
+      '@types/node': 22.19.13
+      qs: 6.15.0
 
   styled-jsx@5.1.6(react@19.2.4):
     dependencies:

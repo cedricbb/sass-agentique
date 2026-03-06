@@ -19,7 +19,8 @@
     "otplib": "^12.0.0",
     "qrcode": "^1.5.0",
     "react": "^19.0.0",
-    "resend": "^6.9.2"
+    "resend": "^6.9.2",
+    "stripe": "^17.0.0"
   },
   "devDependencies": {
     "@types/nodemailer": "^7.0.11"

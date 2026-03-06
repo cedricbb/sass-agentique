@@ -14,6 +14,8 @@
     "@saas/db": "workspace:*",
     "@saas/permissions": "workspace:*",
     "@saas/services": "workspace:*",
+    "@saas/workflows": "workspace:*",
+    "stripe": "^17.0.0",
     "@tailwindcss/postcss": "^4.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

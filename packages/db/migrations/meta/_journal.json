@@ -57,6 +57,13 @@
       "when": 1772718766734,
       "tag": "0007_tearful_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772727998888,
+      "tag": "0008_tiny_spacker_dave",
+      "breakpoints": true
     }
   ]
 }
