@@ -39,3 +39,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Orchid
+.readme-cache.json
+codebase.md
