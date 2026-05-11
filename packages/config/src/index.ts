@@ -34,3 +34,7 @@ if (!_env.success) {
 export const env = _env.data;
 
 export { isAllowedRedirectUrl } from './allowed-urls';
+export { PLANS } from './plans';
+export type { PlanId, PlanConfig } from './plans';
+export { syncPlansToStripe } from './stripe-sync';
+export type { StripeSyncResult } from './stripe-sync';
