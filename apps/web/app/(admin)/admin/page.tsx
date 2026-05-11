@@ -1,4 +1,4 @@
-import { Users, Building2, Bot, Activity } from "lucide-react";
+import { Users, Bot, Activity } from "lucide-react";
 import { getAdminStats } from "@saas/services";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           title="Utilisateurs Total"
           value={stats.totalUsers.toLocaleString("fr-FR")}
@@ -24,14 +24,6 @@ export default async function AdminDashboardPage() {
           trendLabel="actifs"
           icon={Users}
           iconBg="bg-blue-100 text-blue-600"
-        />
-        <StatCard
-          title="Tenants"
-          value={stats.totalTenants.toLocaleString("fr-FR")}
-          trend={0}
-          trendLabel="workspaces"
-          icon={Building2}
-          iconBg="bg-violet-100 text-violet-600"
         />
         <StatCard
           title="Tâches Agent"
@@ -52,7 +44,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Quick summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -88,23 +80,6 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Ratio Tenant / User
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {stats.totalTenants > 0 && stats.totalUsers > 0
-                ? (stats.totalUsers / stats.totalTenants).toFixed(1)
-                : "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              utilisateurs / workspace
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
