@@ -12,7 +12,7 @@ import { createTotpChallenge } from "./totp.service";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email.service";
-import { generateSlug } from "./tenant.service";
+import { generateSlug } from "./utils/slug";
 
 const BCRYPT_ROUNDS = 12;
 const SESSION_TTL_DAYS = 30;
