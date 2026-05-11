@@ -5,8 +5,6 @@ import {
   sessions,
   emailVerifications,
   passwordResets,
-  tenants,
-  memberships,
 } from "@saas/db";
 import { createTotpChallenge } from "./totp.service";
 import bcrypt from "bcryptjs";
@@ -75,43 +73,9 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     expires: sessionExpiresAt(),
   });
 
-  // Générer un slug unique
-  const baseName = name ?? email.split("@")[0];
-  const baseSlug = generateSlug(baseName);
-  let finalSlug = baseSlug;
-  for (let attempt = 1; attempt <= 10; attempt++) {
-    const candidate = attempt === 1 ? baseSlug : `${baseSlug}-${attempt - 1}`;
-    const existing = await db
-      .select({ id: tenants.id })
-      .from(tenants)
-      .where(eq(tenants.slug, candidate));
-    if (existing.length === 0) {
-      finalSlug = candidate;
-      break;
-    }
-  }
+  const tenantSlug = generateSlug(name ?? email.split("@")[0]);
 
-  // Transaction: créer tenant + membership OWNER
-  let tenantSlug = finalSlug;
-  await db.transaction(async (tx) => {
-    const [tenant] = await tx
-      .insert(tenants)
-      .values({
-        name: name ?? email.split("@")[0],
-        slug: finalSlug,
-      })
-      .returning({ id: tenants.id, slug: tenants.slug });
-
-    await tx.insert(memberships).values({
-      userId: user.id,
-      tenantId: tenant.id,
-      role: "OWNER",
-    });
-
-    tenantSlug = tenant.slug;
-  });
-
-  // Envoyer l'email de vérification — après session/tenant (échec = non bloquant)
+  // Envoyer l'email de vérification (échec = non bloquant)
   const verificationToken = generateToken();
   const verificationExpires = new Date();
   verificationExpires.setHours(
@@ -152,6 +116,7 @@ export async function login(input: LoginInput): Promise<LoginResult> {
       id: users.id,
       hashedPassword: users.hashedPassword,
       totpEnabled: users.totpEnabled,
+      name: users.name,
     })
     .from(users)
     .where(eq(users.email, email.toLowerCase()));
@@ -179,14 +144,9 @@ export async function login(input: LoginInput): Promise<LoginResult> {
     expires: sessionExpiresAt(),
   });
 
-  // Récupérer le premier tenant du user
-  const [membership] = await db
-    .select({ slug: tenants.slug })
-    .from(memberships)
-    .innerJoin(tenants, eq(memberships.tenantId, tenants.id))
-    .where(eq(memberships.userId, user.id));
+  const tenantSlug = generateSlug(user.name ?? email.split("@")[0]);
 
-  return { requiresTotp: false, sessionToken, userId: user.id, tenantSlug: membership?.slug ?? "" };
+  return { requiresTotp: false, sessionToken, userId: user.id, tenantSlug };
 }
 
 // ── Logout ────────────────────────────────────────────────────────────────────

@@ -5,4 +5,3 @@ export * from "./totp.service";
 export * from "./admin.service";
 export * from "./profile.service";
 export * from "./stripe.service";
-export * from "./subscription.service";

@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "@saas/db";
-import { users, sessions, totpChallenges, memberships, tenants } from "@saas/db";
+import { users, sessions, totpChallenges } from "@saas/db";
 import { authenticator } from "otplib";
 import qrcode from "qrcode";
 import bcrypt from "bcryptjs";
@@ -228,17 +228,10 @@ export async function consumeTotpChallenge(
     expires: sessionExpiresAt(),
   });
 
-  // Récupérer le tenantSlug
-  const [membership] = await db
-    .select({ slug: tenants.slug })
-    .from(memberships)
-    .innerJoin(tenants, eq(memberships.tenantId, tenants.id))
-    .where(eq(memberships.userId, challenge.userId));
-
   return {
     sessionToken,
     userId: challenge.userId,
-    tenantSlug: membership?.slug ?? "",
+    tenantSlug: "",
   };
 }
 

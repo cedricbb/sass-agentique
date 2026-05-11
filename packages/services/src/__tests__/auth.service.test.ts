@@ -29,8 +29,6 @@ vi.mock("@saas/db", () => ({
   sessions: {},
   emailVerifications: {},
   passwordResets: {},
-  tenants: {},
-  memberships: {},
   totpChallenges: {},
 }));
 
@@ -54,12 +52,8 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((a: unknown, b: unknown) => ({ field: a, value: b })),
 }));
 
-vi.mock("../tenant.service", () => ({
+vi.mock("../utils/slug", () => ({
   generateSlug: vi.fn().mockReturnValue("test-user"),
-  getTenantBySlug: vi.fn().mockResolvedValue(null),
-}));
-vi.mock("../membership.service", () => ({
-  addMember: vi.fn().mockResolvedValue({ id: "m1", role: "OWNER" }),
 }));
 
 // ── Import après les mocks ────────────────────────────────────────────────────
@@ -109,23 +103,19 @@ describe("auth.service", () => {
     it("crée l'utilisateur, envoie l'email de vérification et retourne un sessionToken", async () => {
       const mockUser = { id: "user-1", email: "new@test.com" };
       dbMock.where.mockResolvedValueOnce([]); // check email existant → vide
-      // check slug unique (getTenantBySlug est mocké → retourne null automatiquement)
       dbMock.returning.mockResolvedValueOnce([mockUser]); // insert user
-      dbMock.returning.mockResolvedValueOnce([{ id: "t1", slug: "test-user" }]); // insert tenant (dans transaction)
 
       const result = await register({ email: "new@test.com", password: "password123" });
 
       expect(result).toHaveProperty("sessionToken");
       expect(result).toHaveProperty("userId", "user-1");
-      expect(result).toHaveProperty("tenantSlug");
+      expect(result.tenantSlug).toBe("test-user");
       expect(sendVerificationEmail).toHaveBeenCalledWith("new@test.com", expect.any(String));
     });
 
     it("normalise l'email en lowercase", async () => {
       dbMock.where.mockResolvedValueOnce([]);  // check email existant
-      dbMock.where.mockResolvedValueOnce([]);  // check slug unique (loop)
       dbMock.returning.mockResolvedValueOnce([{ id: "u1", email: "user@test.com" }]); // insert user
-      dbMock.returning.mockResolvedValueOnce([{ id: "t1", slug: "test-user" }]); // insert tenant (transaction)
 
       await register({ email: "USER@TEST.COM", password: "password123" });
 
@@ -153,10 +143,9 @@ describe("auth.service", () => {
       ).rejects.toThrow("INVALID_CREDENTIALS");
     });
 
-    it("retourne sessionToken + userId sur credentials valides (2FA inactif)", async () => {
+    it("retourne sessionToken + userId + tenantSlug sur credentials valides (2FA inactif)", async () => {
       vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as never);
-      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed", totpEnabled: false }]); // user lookup
-      dbMock.where.mockResolvedValueOnce([{ slug: "test-tenant" }]); // membership+tenant join
+      dbMock.where.mockResolvedValueOnce([{ id: "u1", hashedPassword: "hashed", totpEnabled: false, name: "Test User" }]);
 
       const result = await login({ email: "user@test.com", password: "good" });
 
@@ -164,6 +153,7 @@ describe("auth.service", () => {
       if (!result.requiresTotp) {
         expect(result).toHaveProperty("sessionToken");
         expect(result.userId).toBe("u1");
+        expect(result.tenantSlug).toBe("test-user");
       }
     });
 

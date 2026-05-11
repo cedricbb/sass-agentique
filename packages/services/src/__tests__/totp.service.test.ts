@@ -23,8 +23,6 @@ vi.mock("@saas/db", () => ({
   users: {},
   sessions: {},
   totpChallenges: {},
-  memberships: {},
-  tenants: {},
 }));
 
 // vi.mock is hoisted — use vi.hoisted to define shared mock objects
@@ -345,7 +343,7 @@ describe("totp.service", () => {
       );
     });
 
-    it("crée une session et retourne sessionToken + userId + tenantSlug sur succès TOTP", async () => {
+    it("crée une session et retourne sessionToken + userId + tenantSlug vide sur succès TOTP", async () => {
       dbMock.where
         .mockResolvedValueOnce([{
           id: "c1",
@@ -354,23 +352,13 @@ describe("totp.service", () => {
         }])
         .mockResolvedValueOnce([{ totpSecret: "SECRET" }]) // user
         .mockResolvedValue(undefined); // delete challenge + session insert
-      dbMock.innerJoin.mockReturnThis();
-      // override where for tenant slug query
-      dbMock.where
-        .mockResolvedValueOnce([{
-          id: "c1",
-          userId: "u1",
-          expiresAt: new Date(Date.now() + 600_000),
-        }])
-        .mockResolvedValueOnce([{ totpSecret: "SECRET" }])
-        .mockResolvedValueOnce(undefined)  // delete challenge
-        .mockResolvedValueOnce([{ slug: "my-tenant" }]); // memberships join
       mockAuthenticator.verify.mockReturnValue(true);
 
       const result = await consumeTotpChallenge("valid-token", "123456");
 
       expect(result).toHaveProperty("sessionToken");
       expect(result.userId).toBe("u1");
+      expect(result.tenantSlug).toBe("");
     });
   });
 
