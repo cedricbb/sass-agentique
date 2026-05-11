@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). Les services multi-tenant (tenant, invitation, membership, subscription) ont été supprimés. Le schéma DB sera refactoré en R2. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -31,7 +31,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 |---------|------|
 | `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation |
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
-| `@saas/services` | Business logic (auth, stripe, tenant, invitation, TOTP…) |
+| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, slug) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
 | `@saas/workflows` | Inngest jobs et CRONs (placeholder) |
 | `@saas/agents` | Stack agentique BaseAgent + tools (placeholder) |
@@ -150,16 +150,20 @@ sass-agentique/
 
 ### Schéma de base de données
 
+> Les tables marquées *(pivot R2)* seront supprimées ou refactorisées lors de la phase R2.
+
 ```
-tenants       — id, slug, name, plan, stripe_customer_id
 users         — id, email, hashed_password, totp_secret, role
-memberships   — user_id, tenant_id, role (OWNER/ADMIN/MEMBER/VIEWER)
 sessions      — user_id, session_token, expires
-invitations   — tenant_id, email, role, status
 agent_tasks   — tenant_id, agent_type, status, payload, result
 agent_logs    — task_id, level, message
 plans         — slug, features (JSONB), stripe IDs
-subscriptions — tenant_id, plan_id, stripe_subscription_id, status
+
+# Héritage multi-tenant — suppression en R2
+tenants       — id, slug, name, plan, stripe_customer_id        (pivot R2)
+memberships   — user_id, tenant_id, role (OWNER/ADMIN/MEMBER/VIEWER) (pivot R2)
+invitations   — tenant_id, email, role, status                  (pivot R2)
+subscriptions — tenant_id, plan_id, stripe_subscription_id, status (pivot R2)
 ```
 
 ### Règles d'architecture (voir `CLAUDE.md`)
@@ -194,15 +198,17 @@ subscriptions — tenant_id, plan_id, stripe_subscription_id, status
 
 Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-document.md`.
 
-| Phase | Objectif | Durée estimée |
-|-------|---------|---------------|
-| R1 | Suppression multi-tenant (schéma, services, UI) | 1 semaine |
-| R2 | Nouveau schéma : clients, projets, devis, factures | 1 semaine |
-| R3 | Refonte Stripe Billing (solo) | 1 semaine |
-| R4 | Modules métier : clients & projets | 1–2 semaines |
-| R5 | Devis & Factures | 1–2 semaines |
-| R6 | Stack agentique IA (pipeline client) | 2 semaines |
-| R7 | CI/CD, déploiement, landing | 1 semaine |
+| Phase | Objectif | Durée estimée | Statut |
+|-------|---------|---------------|--------|
+| R1 | Suppression multi-tenant (services, UI) | 1 semaine | 🔄 En cours |
+| R2 | Nouveau schéma : clients, projets, devis, factures | 1 semaine | — |
+| R3 | Refonte Stripe Billing (solo) | 1 semaine | — |
+| R4 | Modules métier : clients & projets | 1–2 semaines | — |
+| R5 | Devis & Factures | 1–2 semaines | — |
+| R6 | Stack agentique IA (pipeline client) | 2 semaines | — |
+| R7 | CI/CD, déploiement, landing | 1 semaine | — |
+
+**R1 — Avancement actuel** : services multi-tenant supprimés (tenant, invitation, membership, subscription), composants UI nettoyés. Schéma DB à migrer en R2.
 
 ### Plans de facturation (pré-pivot)
 
@@ -229,7 +235,7 @@ Ressources : `Member`, `Invitation`, `Tenant`, `all`
 
 ### Tests unitaires et d'intégration (Vitest)
 
-12 fichiers de tests couvrant les services critiques :
+10 fichiers de tests couvrant les services critiques :
 
 | Fichier | Scope |
 |---------|-------|
@@ -238,16 +244,14 @@ Ressources : `Member`, `Invitation`, `Tenant`, `all`
 | `packages/db/src/__tests__/schema.test.ts` | Schéma Drizzle |
 | `packages/permissions/src/__tests__/ability.test.ts` | CASL — rôles et permissions |
 | `packages/services/src/__tests__/auth.service.test.ts` | Authentification |
-| `packages/services/src/__tests__/invitation.service.test.ts` | Invitations |
-| `packages/services/src/__tests__/membership.service.test.ts` | Memberships |
-| `packages/services/src/__tests__/stripe.service.test.ts` | Stripe billing |
-| `packages/services/src/__tests__/subscription.service.test.ts` | Abonnements |
-| `packages/services/src/__tests__/tenant.service.test.ts` | Gestion tenant |
 | `packages/services/src/__tests__/totp.service.test.ts` | 2FA / TOTP |
+| `packages/services/src/__tests__/stripe.service.test.ts` | Stripe billing |
+| `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
+| `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing (UI) |
 | `apps/web/app/api/billing/portal/__tests__/route.test.ts` | Route API portail |
 
 ```bash
-pnpm test   # Exécute les 12 fichiers via vitest workspace
+pnpm test   # Exécute les 10 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
