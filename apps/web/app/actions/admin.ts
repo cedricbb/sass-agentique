@@ -8,7 +8,6 @@ import {
   banUser,
   unbanUser,
   resetUserTotp,
-  changeTenantPlan,
 } from "@saas/services";
 
 const SESSION_COOKIE = "session-token";
@@ -68,23 +67,3 @@ export async function resetUserTotpAction(userId: string): Promise<{ error?: str
   }
 }
 
-export async function changeTenantPlanAction(
-  tenantId: string,
-  plan: string,
-): Promise<{ error?: string }> {
-  try {
-    await requireAdmin();
-    const validPlans = ["free", "pro", "business"];
-    if (!validPlans.includes(plan)) {
-      return { error: "Plan invalide." };
-    }
-    await changeTenantPlan(tenantId, plan);
-    revalidatePath("/admin/tenants");
-    return {};
-  } catch (err) {
-    if (err instanceof Error && err.message === "FORBIDDEN") {
-      return { error: "Accès refusé." };
-    }
-    return { error: "Une erreur est survenue." };
-  }
-}
