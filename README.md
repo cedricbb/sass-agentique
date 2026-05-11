@@ -1,11 +1,13 @@
 # SaaS Agentique
 
-Boilerplate SaaS multi-tenant avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
+Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
+
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
 
-**sass-agentique** est un point de départ production-ready pour construire un SaaS multi-tenant avec capacités agentiques. Il combine une architecture monorepo strictement en couches avec une stack moderne TypeScript.
+**sass-agentique** est un point de départ production-ready pour construire un SaaS avec capacités agentiques. Il combine une architecture monorepo strictement en couches avec une stack moderne TypeScript.
 
 | Couche | Technologie |
 |--------|-------------|
@@ -13,14 +15,14 @@ Boilerplate SaaS multi-tenant avec stack agentique IA. Architecture monorepo Tur
 | UI | shadcn/ui + Tailwind CSS v4 + Radix |
 | Auth | Sessions custom (bcryptjs) + 2FA TOTP (otplib) |
 | RBAC | CASL v6 |
-| ORM | Drizzle ORM |
+| ORM | Drizzle ORM v0.38 |
 | Base de données | PostgreSQL 15 |
 | Paiements | Stripe (abonnements + webhooks + portail client) |
-| Workflows | Inngest |
-| Agents IA | Vercel AI SDK + Anthropic Claude API |
-| Emails | Resend + React Email |
-| Monorepo | Turborepo + pnpm workspaces |
-| Tests | Vitest (unit/intég.) + Playwright (e2e) |
+| Workflows | Inngest v3 |
+| Agents IA | Vercel AI SDK v4 + Anthropic Claude API |
+| Emails | Resend + React Email (prod) · Nodemailer/MailHog (dev) |
+| Monorepo | Turborepo v2.4 + pnpm v9.1.1 workspaces |
+| Tests | Vitest v3 (unit/intég.) + Playwright v1.50 (e2e) |
 | CI/CD | GitHub Actions (3 jobs parallèles) |
 
 ### Packages du monorepo
@@ -31,8 +33,8 @@ Boilerplate SaaS multi-tenant avec stack agentique IA. Architecture monorepo Tur
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
 | `@saas/services` | Business logic (auth, stripe, tenant, invitation, TOTP…) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
-| `@saas/workflows` | Inngest jobs et CRONs (en cours) |
-| `@saas/agents` | Stack agentique BaseAgent + tools (en cours) |
+| `@saas/workflows` | Inngest jobs et CRONs (placeholder) |
+| `@saas/agents` | Stack agentique BaseAgent + tools (placeholder) |
 | `@saas/ui` | Design system partagé (shadcn/ui) |
 <!-- END:overview -->
 
@@ -104,7 +106,7 @@ pnpm --filter scripts stripe-sync # Synchroniser les plans vers Stripe
 UI (Next.js 15 App Router)
     ↓  Server Actions / API Routes
 Services (@saas/services)
-    ↓  Drizzle queries (tenantId obligatoire)
+    ↓  Drizzle queries
 DB (@saas/db) — PostgreSQL 15
 ```
 
@@ -119,11 +121,10 @@ sass-agentique/
 │       │   ├── (auth)/           # Login, register, 2FA, reset password
 │       │   ├── (app)/            # Application authentifiée (onboarding)
 │       │   ├── (admin)/          # Backoffice admin
-│       │   │   └── admin/        # tenants, users, agent-tasks, profile
 │       │   └── api/
-│       │       ├── billing/      # checkout, portal client
+│       │       ├── billing/      # checkout, portail client
 │       │       └── webhooks/stripe/
-│       ├── components/           # Composants React (admin, auth, dashboard…)
+│       ├── components/           # Composants React (admin, auth, billing, dashboard…)
 │       ├── contexts/             # TenantContext
 │       ├── hooks/                # useAbility (CASL)
 │       └── middleware.ts         # Auth guard + résolution tenant
@@ -135,6 +136,9 @@ sass-agentique/
 │   ├── workflows/                # Inngest (placeholder)
 │   ├── agents/                   # AI agents (placeholder)
 │   └── ui/                       # Design system
+├── docs/
+│   ├── PIVOT.md                  # Résumé du pivot (TL;DR)
+│   └── pivot-document.md         # Analyse complète + roadmap R1–R7
 ├── scripts/                      # stripe-sync et utilitaires
 ├── tests/
 │   └── e2e/                      # Specs Playwright
@@ -151,17 +155,17 @@ tenants       — id, slug, name, plan, stripe_customer_id
 users         — id, email, hashed_password, totp_secret, role
 memberships   — user_id, tenant_id, role (OWNER/ADMIN/MEMBER/VIEWER)
 sessions      — user_id, session_token, expires
+invitations   — tenant_id, email, role, status
 agent_tasks   — tenant_id, agent_type, status, payload, result
 agent_logs    — task_id, level, message
+plans         — slug, features (JSONB), stripe IDs
+subscriptions — tenant_id, plan_id, stripe_subscription_id, status
 ```
-
-Toutes les tables métier incluent `tenant_id`.
 
 ### Règles d'architecture (voir `CLAUDE.md`)
 
 - Les composants React ne font **jamais** d'appels Drizzle directs
 - Les services n'importent **jamais** React
-- Le `tenantId` est **obligatoire** dans toutes les queries DB
 - Les mutations passent par Server Actions ou API Routes dédiées
 - Les agents étendent `BaseAgent`, injectent leurs tools et loggent chaque appel
 <!-- END:architecture -->
@@ -169,7 +173,7 @@ Toutes les tables métier incluent `tenant_id`.
 <!-- SECTION:features -->
 ## Fonctionnalités
 
-### Roadmap
+### Roadmap initiale (phases 0–11)
 
 | Phase | Feature | Statut |
 |-------|---------|--------|
@@ -186,7 +190,21 @@ Toutes les tables métier incluent `tenant_id`.
 | 10 | CI/CD & Déploiement (Vercel + Railway) | — |
 | 11 | Landing Page & GTM | — |
 
-### Plans de facturation
+### Pivot mai 2026 — Roadmap freelance (R1–R7)
+
+Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-document.md`.
+
+| Phase | Objectif | Durée estimée |
+|-------|---------|---------------|
+| R1 | Suppression multi-tenant (schéma, services, UI) | 1 semaine |
+| R2 | Nouveau schéma : clients, projets, devis, factures | 1 semaine |
+| R3 | Refonte Stripe Billing (solo) | 1 semaine |
+| R4 | Modules métier : clients & projets | 1–2 semaines |
+| R5 | Devis & Factures | 1–2 semaines |
+| R6 | Stack agentique IA (pipeline client) | 2 semaines |
+| R7 | CI/CD, déploiement, landing | 1 semaine |
+
+### Plans de facturation (pré-pivot)
 
 | Plan | Membres | Agents IA | Workflows / mois |
 |------|---------|-----------|------------------|
@@ -245,6 +263,13 @@ pnpm test   # Exécute les 12 fichiers via vitest workspace
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
 ```
 
+### Scripts de validation pivot
+
+| Fichier | Scope |
+|---------|-------|
+| `tests/pivot-md.spec.sh` | Validation migration schéma (pivot) |
+| `tests/pivot-r2-schema-0.spec.sh` | Validation schéma R2 (clients/projets/devis) |
+
 ### CI/CD — GitHub Actions
 
 Trois jobs sur chaque push et PR :
@@ -261,7 +286,11 @@ Trois jobs sur chaque push et PR :
 
 Aucun répertoire de backlog structuré (`backlog/todo/`, `backlog/in-progress/`, `backlog/done/`) n'est présent dans ce projet.
 
-Le suivi des tâches est géré via le fichier `saas-swarm-plan.md` à la racine du projet, qui contient le plan de développement Swarm détaillé (phases 0–11).
+Le suivi des tâches est géré via :
+
+- `saas-swarm-plan.md` — Plan de développement Swarm détaillé (phases 0–11)
+- `docs/PIVOT.md` — Résumé du pivot (mai 2026)
+- `docs/pivot-document.md` — Analyse complète avec roadmap R1–R7 et critères de décision
 <!-- END:backlog -->
 
 <!-- SECTION:configuration -->
