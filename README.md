@@ -1,33 +1,51 @@
 # SaaS Agentique
 
-Boilerplate SaaS multi-tenant avec stack agentique IA. Architecture monorepo Turborepo, authentification complète (email + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
+Boilerplate SaaS multi-tenant avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-## Stack
+<!-- SECTION:overview -->
+## Vue d'ensemble
+
+**sass-agentique** est un point de départ production-ready pour construire un SaaS multi-tenant avec capacités agentiques. Il combine une architecture monorepo strictement en couches avec une stack moderne TypeScript.
 
 | Couche | Technologie |
 |--------|-------------|
 | Framework | Next.js 15 App Router + TypeScript strict |
 | UI | shadcn/ui + Tailwind CSS v4 + Radix |
-| Auth | Supabase Auth + NextAuth v5 |
-| 2FA/OTP | `otplib` (TOTP RFC 6238) + QR code |
+| Auth | Sessions custom (bcryptjs) + 2FA TOTP (otplib) |
 | RBAC | CASL v6 |
 | ORM | Drizzle ORM |
-| Base de données | PostgreSQL (Supabase ou self-hosted) |
-| Paiements | Stripe (abonnements + webhooks) |
+| Base de données | PostgreSQL 15 |
+| Paiements | Stripe (abonnements + webhooks + portail client) |
 | Workflows | Inngest |
 | Agents IA | Vercel AI SDK + Anthropic Claude API |
 | Emails | Resend + React Email |
 | Monorepo | Turborepo + pnpm workspaces |
-| Tests | Vitest (unit/integ) + Playwright (e2e) |
-| CI/CD | GitHub Actions |
+| Tests | Vitest (unit/intég.) + Playwright (e2e) |
+| CI/CD | GitHub Actions (3 jobs parallèles) |
 
-## Prérequis
+### Packages du monorepo
+
+| Package | Rôle |
+|---------|------|
+| `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation |
+| `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
+| `@saas/services` | Business logic (auth, stripe, tenant, invitation, TOTP…) |
+| `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
+| `@saas/workflows` | Inngest jobs et CRONs (en cours) |
+| `@saas/agents` | Stack agentique BaseAgent + tools (en cours) |
+| `@saas/ui` | Design system partagé (shadcn/ui) |
+<!-- END:overview -->
+
+<!-- SECTION:getting-started -->
+## Démarrage rapide
+
+### Prérequis
 
 - Node.js v20+
 - pnpm v9.1.1+
-- Docker (pour Postgres local)
+- Docker (pour PostgreSQL local)
 
-## Démarrage rapide
+### Installation
 
 ```bash
 # 1. Cloner et installer les dépendances
@@ -49,66 +67,9 @@ pnpm --filter @saas/db push
 pnpm dev
 ```
 
-L'application est disponible sur [http://localhost:3000](http://localhost:3000).
+L'application est disponible sur [http://localhost:3001](http://localhost:3001).
 
-## Structure du monorepo
-
-```
-sass-agentique/
-├── apps/
-│   └── web/                  # Application Next.js 15
-│       ├── app/
-│       │   ├── (marketing)/  # Landing page publique
-│       │   ├── (auth)/       # Login, register, forgot password
-│       │   ├── (app)/        # Application authentifiée
-│       │   ├── (admin)/      # Backoffice admin
-│       │   └── api/          # API Routes
-│       └── middleware.ts     # Auth guard + résolution tenant
-├── packages/
-│   ├── config/               # Validation env vars (Zod)
-│   ├── db/                   # Drizzle ORM + schema + migrations
-│   ├── services/             # Business logic (auth, stripe, tenant…)
-│   ├── permissions/          # CASL RBAC (rôles × actions × ressources)
-│   ├── workflows/            # Inngest jobs et CRONs
-│   ├── agents/               # Stack agentique (BaseAgent, tools)
-│   └── ui/                   # Design system partagé (shadcn/ui)
-├── tests/
-│   └── e2e/                  # Tests Playwright
-├── infra/
-│   └── docker-compose.yml    # Postgres local
-└── .github/
-    └── workflows/ci.yml      # CI : lint · typecheck · unit · e2e
-```
-
-## Variables d'environnement
-
-Copier `.env.example` en `.env` et renseigner :
-
-```env
-# Base de données
-DATABASE_URL="postgresql://postgres:password@localhost:5432/saas"
-
-# App
-NODE_ENV="development"
-PORT="3000"
-```
-
-Les phases suivantes ajouteront : `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `INNGEST_SIGNING_KEY`, `ANTHROPIC_API_KEY`.
-
-## Schéma de base de données
-
-```
-tenants       — id, slug, name, plan, stripe_customer_id
-users         — id, email, hashed_password, totp_secret, role
-memberships   — user_id, tenant_id, role (OWNER/ADMIN/MEMBER/VIEWER)
-sessions      — user_id, session_token, expires
-agent_tasks   — tenant_id, agent_type, status, payload, result
-agent_logs    — task_id, level, message
-```
-
-Toutes les tables métier incluent `tenant_id` — Row-Level Security Supabase prêt à activer.
-
-## Commandes utiles
+### Commandes utiles
 
 ```bash
 # Développement
@@ -128,47 +89,241 @@ pnpm test:e2e                     # Playwright (e2e)
 pnpm --filter @saas/db generate   # Générer une migration
 pnpm --filter @saas/db push       # Appliquer les migrations
 pnpm --filter @saas/db studio     # Drizzle Studio (UI DB)
+
+# Scripts Stripe
+pnpm --filter scripts stripe-sync # Synchroniser les plans vers Stripe
+```
+<!-- END:getting-started -->
+
+<!-- SECTION:architecture -->
+## Architecture
+
+### Couches strictes (UI → Service → Persistence)
+
+```
+UI (Next.js 15 App Router)
+    ↓  Server Actions / API Routes
+Services (@saas/services)
+    ↓  Drizzle queries (tenantId obligatoire)
+DB (@saas/db) — PostgreSQL 15
 ```
 
-## CI/CD
+### Structure du monorepo
 
-Trois jobs GitHub Actions sur chaque push et PR :
+```
+sass-agentique/
+├── apps/
+│   └── web/                      # Application Next.js 15 (port 3001)
+│       ├── app/
+│       │   ├── (marketing)/      # Landing page publique
+│       │   ├── (auth)/           # Login, register, 2FA, reset password
+│       │   ├── (app)/            # Application authentifiée (onboarding)
+│       │   ├── (admin)/          # Backoffice admin
+│       │   │   └── admin/        # tenants, users, agent-tasks, profile
+│       │   └── api/
+│       │       ├── billing/      # checkout, portal client
+│       │       └── webhooks/stripe/
+│       ├── components/           # Composants React (admin, auth, dashboard…)
+│       ├── contexts/             # TenantContext
+│       ├── hooks/                # useAbility (CASL)
+│       └── middleware.ts         # Auth guard + résolution tenant
+├── packages/
+│   ├── config/                   # Zod env + plans (Free/Pro/Business)
+│   ├── db/                       # Drizzle ORM + schéma
+│   ├── services/                 # Business logic par domaine
+│   ├── permissions/              # CASL (actions: read/invite/remove/update/cancel/manage)
+│   ├── workflows/                # Inngest (placeholder)
+│   ├── agents/                   # AI agents (placeholder)
+│   └── ui/                       # Design system
+├── scripts/                      # stripe-sync et utilitaires
+├── tests/
+│   └── e2e/                      # Specs Playwright
+├── infra/
+│   └── docker-compose.yml        # PostgreSQL 15 (port 5466)
+└── .github/
+    └── workflows/ci.yml          # 3 jobs : lint · unit · e2e
+```
+
+### Schéma de base de données
+
+```
+tenants       — id, slug, name, plan, stripe_customer_id
+users         — id, email, hashed_password, totp_secret, role
+memberships   — user_id, tenant_id, role (OWNER/ADMIN/MEMBER/VIEWER)
+sessions      — user_id, session_token, expires
+agent_tasks   — tenant_id, agent_type, status, payload, result
+agent_logs    — task_id, level, message
+```
+
+Toutes les tables métier incluent `tenant_id`.
+
+### Règles d'architecture (voir `CLAUDE.md`)
+
+- Les composants React ne font **jamais** d'appels Drizzle directs
+- Les services n'importent **jamais** React
+- Le `tenantId` est **obligatoire** dans toutes les queries DB
+- Les mutations passent par Server Actions ou API Routes dédiées
+- Les agents étendent `BaseAgent`, injectent leurs tools et loggent chaque appel
+<!-- END:architecture -->
+
+<!-- SECTION:features -->
+## Fonctionnalités
+
+### Roadmap
+
+| Phase | Feature | Statut |
+|-------|---------|--------|
+| 0 | Fondations (monorepo, DB, CI, Next.js 15) | ✅ Fait |
+| 1 | Auth Core (sessions, emails, reset password) | ✅ Fait |
+| 2 | Multi-tenant (workspaces, invitations) | ✅ Fait |
+| 3 | RBAC CASL (rôles, guards serveur + client) | ✅ Fait |
+| 4 | 2FA / OTP (TOTP RFC 6238, QR code) | ✅ Fait |
+| 5 | Stripe Billing (plans, webhooks, portail client) | 🔄 En cours |
+| 6 | Inngest Workflows (events, CRONs) | — |
+| 7 | Admin Backoffice | 🔄 En cours |
+| 8 | Stack Agentique IA (BaseAgent, outils) | — |
+| 9 | Tests & Qualité (coverage 80%+) | — |
+| 10 | CI/CD & Déploiement (Vercel + Railway) | — |
+| 11 | Landing Page & GTM | — |
+
+### Plans de facturation
+
+| Plan | Membres | Agents IA | Workflows / mois |
+|------|---------|-----------|------------------|
+| Free | 3 | 1 | 10 |
+| Pro | 10 | 5 | 100 |
+| Business | Illimité | Illimité | Illimité |
+
+### RBAC — Matrice des permissions
+
+| Rôle | read | invite | remove | update | cancel | manage |
+|------|------|--------|--------|--------|--------|--------|
+| OWNER | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ADMIN | ✅ | ✅ | ✅ | ✅ | — | — |
+| MEMBER | ✅ | — | — | — | — | — |
+| VIEWER | ✅ | — | — | — | — | — |
+
+Ressources : `Member`, `Invitation`, `Tenant`, `all`
+<!-- END:features -->
+
+<!-- SECTION:test-coverage -->
+## Couverture de tests
+
+### Tests unitaires et d'intégration (Vitest)
+
+12 fichiers de tests couvrant les services critiques :
+
+| Fichier | Scope |
+|---------|-------|
+| `packages/config/src/__tests__/env.test.ts` | Validation variables d'env (Zod) |
+| `packages/config/src/__tests__/stripe-sync.test.ts` | Synchronisation plans Stripe |
+| `packages/db/src/__tests__/schema.test.ts` | Schéma Drizzle |
+| `packages/permissions/src/__tests__/ability.test.ts` | CASL — rôles et permissions |
+| `packages/services/src/__tests__/auth.service.test.ts` | Authentification |
+| `packages/services/src/__tests__/invitation.service.test.ts` | Invitations |
+| `packages/services/src/__tests__/membership.service.test.ts` | Memberships |
+| `packages/services/src/__tests__/stripe.service.test.ts` | Stripe billing |
+| `packages/services/src/__tests__/subscription.service.test.ts` | Abonnements |
+| `packages/services/src/__tests__/tenant.service.test.ts` | Gestion tenant |
+| `packages/services/src/__tests__/totp.service.test.ts` | 2FA / TOTP |
+| `apps/web/app/api/billing/portal/__tests__/route.test.ts` | Route API portail |
+
+```bash
+pnpm test   # Exécute les 12 fichiers via vitest workspace
+```
+
+### Tests E2E (Playwright)
+
+2 specs Playwright sur Chromium :
+
+| Fichier | Scope |
+|---------|-------|
+| `tests/e2e/smoke.spec.ts` | Smoke test — pages accessibles |
+| `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant |
+
+```bash
+pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
+```
+
+### CI/CD — GitHub Actions
+
+Trois jobs sur chaque push et PR :
 
 | Job | Étapes |
 |-----|--------|
 | `lint-typecheck` | ESLint · TypeScript · drizzle-kit check |
 | `unit-tests` | Vitest (`@saas/config` + `@saas/db`) |
-| `e2e-tests` | Postgres service · migrations · Playwright smoke |
+| `e2e-tests` | Service Postgres · migrations · Playwright smoke |
+<!-- END:test-coverage -->
 
-## Roadmap
+<!-- SECTION:backlog -->
+## Backlog
 
-| Phase | Feature | Statut |
-|-------|---------|--------|
-| 0 | Fondations (monorepo, DB, CI, Next.js) | ✅ Fait |
-| 1 | Auth Core (Supabase Auth, sessions, emails) | ✅ Fait |
-| 2 | Multi-tenant (workspaces, invitations, RLS) | ✅ Fait |
-| 3 | RBAC CASL (rôles, guards serveur + client) | ✅ Fait |
-| 4 | 2FA / OTP (TOTP, backup codes) | ✅ Fait |
-| 5 | Stripe Billing (plans, webhooks, portail) | — |
-| 6 | Inngest Workflows (events, CRONs) | — |
-| 7 | Admin Backoffice | — |
-| 8 | Stack Agentique IA (BaseAgent, Calendar, Mail) | — |
-| 9 | Tests & Qualité (coverage 80%+) | — |
-| 10 | CI/CD & Déploiement (Vercel + Railway) | — |
-| 11 | Landing Page & GTM | — |
+Aucun répertoire de backlog structuré (`backlog/todo/`, `backlog/in-progress/`, `backlog/done/`) n'est présent dans ce projet.
 
-## Architecture
+Le suivi des tâches est géré via le fichier `saas-swarm-plan.md` à la racine du projet, qui contient le plan de développement Swarm détaillé (phases 0–11).
+<!-- END:backlog -->
 
+<!-- SECTION:configuration -->
+## Configuration
+
+### Variables d'environnement
+
+Copier `.env.example` en `.env` et renseigner toutes les valeurs :
+
+```env
+# Base de données
+DATABASE_URL="postgresql://postgres:password@localhost:5432/saas"
+
+# Application
+NODE_ENV="development"
+PORT="3001"
+APP_URL="http://localhost:3001"
+
+# Sessions
+SESSION_SECRET="<secret-32-chars-minimum>"
+
+# Emails (MailHog en développement)
+SMTP_HOST="localhost"
+SMTP_PORT="1025"
+SMTP_USER=""
+SMTP_PASS=""
+RESEND_API_KEY="<clé-resend-pour-prod>"
+
+# Stripe
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_PUBLISHABLE_KEY="pk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+
+# 2FA
+TOTP_ISSUER="SaaS Agentique"
 ```
-UI (Next.js)
-    ↓  Server Actions / API Routes
-Services (@saas/services)
-    ↓  Drizzle queries (tenantId obligatoire)
-DB (@saas/db) — PostgreSQL
+
+### Infrastructure locale
+
+PostgreSQL via Docker Compose :
+
+```bash
+docker compose -f infra/docker-compose.yml up -d
 ```
 
-Règles strictes (voir `CLAUDE.md`) :
-- Les composants React ne font jamais d'appels Drizzle directs
-- Les services n't importent jamais React
-- Le `tenantId` est obligatoire dans toutes les queries DB
-- Les agents étendent `BaseAgent` et loggent chaque tool call
+| Paramètre | Valeur |
+|-----------|--------|
+| Image | `postgres:15-alpine` |
+| Port exposé | `5466` → `5432` |
+| Base | `saas` |
+| Utilisateur | `postgres` |
+| Mot de passe | `password` |
+
+### Turbo — cache et dépendances de build
+
+```json
+{
+  "build":       { "dependsOn": ["^build"], "outputs": [".next/**", "dist/**"] },
+  "lint":        { "dependsOn": ["^lint"] },
+  "check-types": { "dependsOn": ["^check-types"] },
+  "test":        { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+  "dev":         { "cache": false, "persistent": true }
+}
+```
+<!-- END:configuration -->
