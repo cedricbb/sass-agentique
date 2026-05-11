@@ -5,4 +5,5 @@ export default defineWorkspace([
   "packages/db",
   "packages/services",
   "packages/permissions",
+  "apps/web",
 ]);
