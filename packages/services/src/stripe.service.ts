@@ -62,7 +62,7 @@ function buildStripeClient(): Stripe {
       "stripe/config_error"
     );
   }
-  return new Stripe(secretKey, { apiVersion: "2025-01-27.acacia" });
+  return new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
 }
 
 function wrapStripeError(err: unknown, method: string): StripeServiceError {
