@@ -14,6 +14,8 @@ export interface StripePrice {
   metadata: Record<string, string>;
 }
 
+type BillingInterval = "day" | "week" | "month" | "year";
+
 export interface StripeClient {
   products: {
     list(params: { limit: number }): Promise<{ data: StripeProduct[] }>;
@@ -34,7 +36,7 @@ export interface StripeClient {
       product: string;
       currency: string;
       unit_amount: number;
-      recurring: { interval: string };
+      recurring: { interval: BillingInterval };
       metadata: Record<string, string>;
     }): Promise<StripePrice>;
   };
@@ -50,7 +52,7 @@ export interface StripeSyncResult {
 
 function findExistingPrice(
   prices: StripePrice[],
-  interval: string,
+  interval: BillingInterval,
   unitAmount: number
 ): StripePrice | undefined {
   return prices.find(
@@ -96,7 +98,7 @@ async function upsertStripeProduct(
 async function ensureStripePrice(
   stripe: StripeClient,
   productId: string,
-  interval: string,
+  interval: BillingInterval,
   amount: number,
   planId: string
 ): Promise<string> {

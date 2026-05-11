@@ -48,7 +48,7 @@ function buildStripeClient(): Stripe {
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not defined");
   }
-  return new Stripe(secretKey, { apiVersion: "2025-01-27.acacia" });
+  return new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
 }
 
 if (process.argv[1]?.endsWith("stripe-sync.ts") || process.argv[1]?.endsWith("stripe-sync")) {

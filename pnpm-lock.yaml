@@ -231,6 +231,25 @@ importers:
         specifier: '>=18'
         version: 19.2.4(react@19.2.4)
 
+  scripts:
+    dependencies:
+      '@saas/config':
+        specifier: workspace:*
+        version: link:../packages/config
+      '@saas/db':
+        specifier: workspace:*
+        version: link:../packages/db
+      drizzle-orm:
+        specifier: ^0.38.0
+        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(@types/react@19.2.14)(postgres@3.4.8)(react@19.2.4)
+      stripe:
+        specifier: ^17.7.0
+        version: 17.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.7.1
+        version: 4.21.0
+
 packages:
 
   '@ai-sdk/provider-utils@2.2.8':
