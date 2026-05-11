@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Building2,
   Bot,
   ChevronRight,
   CircleUser,
@@ -21,7 +20,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
-  { href: "/admin/tenants", label: "Tenants", icon: Building2 },
   { href: "/admin/agent-tasks", label: "Tâches Agent", icon: Bot },
   { href: "/admin/profile", label: "Mon profil", icon: CircleUser },
 ];
