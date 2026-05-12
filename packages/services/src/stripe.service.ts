@@ -12,47 +12,24 @@ export class StripeServiceError extends Error {
   }
 }
 
-export interface StripeCustomer {
-  stripeCustomerId: string;
-  tenantId: string;
-  email: string;
-  name: string;
-}
-
-export interface CheckoutSessionParamsBase {
-  successUrl: string;
-  cancelUrl: string;
-  stripeCustomerId: string;
-  clientReferenceId: string;
-}
-
-export interface CheckoutSessionSubscription extends CheckoutSessionParamsBase {
-  mode: "subscription";
-  priceId: string;
-}
-
-export interface CheckoutSessionPayment extends CheckoutSessionParamsBase {
-  mode: "payment";
-  productId: string;
-  unitAmountCents: number;
-}
-
-export type CheckoutSessionParams = CheckoutSessionSubscription | CheckoutSessionPayment;
-
-export interface CheckoutSession {
-  sessionId: string;
-  url: string;
-}
-
-export interface PortalSession {
-  url: string;
-}
-
-export interface CancelledSubscription {
-  stripeSubscriptionId: string;
-  cancelAtPeriodEnd: boolean;
-  currentPeriodEnd: Date;
-}
+export type CreateCheckoutSessionParams =
+  | {
+      mode: "payment";
+      invoiceId: string;
+      customerId: string;
+      amountEurCents: number;
+      successUrl: string;
+      cancelUrl: string;
+      description?: string;
+    }
+  | {
+      mode: "subscription";
+      maintenanceContractId: string;
+      customerId: string;
+      priceId: string;
+      successUrl: string;
+      cancelUrl: string;
+    };
 
 function buildStripeClient(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -74,7 +51,7 @@ function wrapStripeError(err: unknown): StripeServiceError {
     );
   }
   const message = err instanceof Error ? err.message : String(err);
-  return new StripeServiceError(message, `stripe/unknown_error`, err);
+  return new StripeServiceError(message, "stripe/unknown_error", err);
 }
 
 export class StripeService {
@@ -84,68 +61,52 @@ export class StripeService {
     this.stripe = buildStripeClient();
   }
 
-  async createCustomer(
-    tenantId: string,
-    email: string,
-    name: string
-  ): Promise<StripeCustomer> {
-    console.info("[StripeService.createCustomer] start", { tenantId });
+  async createCustomer(input: {
+    email: string;
+    name?: string;
+    clientId?: string;
+  }): Promise<Stripe.Customer> {
+    const ctx = input.clientId ? { clientId: input.clientId } : {};
+    console.info("[StripeService.createCustomer] start", ctx);
     try {
       const customer = await this.stripe.customers.create({
-        email,
-        name,
-        metadata: { tenantId },
+        email: input.email,
+        ...(input.name && { name: input.name }),
+        ...(input.clientId && { metadata: { clientId: input.clientId } }),
       });
-      console.info("[StripeService.createCustomer] done", { tenantId });
-      return {
-        stripeCustomerId: customer.id,
-        tenantId,
-        email: customer.email ?? email,
-        name: customer.name ?? name,
-      };
+      console.info("[StripeService.createCustomer] done", ctx);
+      return customer;
     } catch (err) {
       const wrapped = wrapStripeError(err);
       console.error("[StripeService.createCustomer] error", {
-        tenantId,
+        ...ctx,
         error: wrapped.message,
       });
       throw wrapped;
     }
   }
 
-  async getCustomer(
-    tenantId: string,
-    stripeCustomerId: string
-  ): Promise<StripeCustomer | null> {
-    console.info("[StripeService.getCustomer] start", { tenantId });
+  async getCustomer(stripeCustomerId: string): Promise<Stripe.Customer | null> {
+    console.info("[StripeService.getCustomer] start", { customerId: stripeCustomerId });
     try {
       const customer = await this.stripe.customers.retrieve(stripeCustomerId);
       if (customer.deleted) {
-        console.info("[StripeService.getCustomer] done (not found)", {
-          tenantId,
-        });
+        console.info("[StripeService.getCustomer] done (not found)", { customerId: stripeCustomerId });
         return null;
       }
-      console.info("[StripeService.getCustomer] done", { tenantId });
-      return {
-        stripeCustomerId: customer.id,
-        tenantId,
-        email: customer.email ?? "",
-        name: customer.name ?? "",
-      };
+      console.info("[StripeService.getCustomer] done", { customerId: stripeCustomerId });
+      return customer;
     } catch (err) {
       if (
         err instanceof Stripe.errors.StripeError &&
         err.statusCode === 404
       ) {
-        console.info("[StripeService.getCustomer] done (not found)", {
-          tenantId,
-        });
+        console.info("[StripeService.getCustomer] done (not found)", { customerId: stripeCustomerId });
         return null;
       }
       const wrapped = wrapStripeError(err);
       console.error("[StripeService.getCustomer] error", {
-        tenantId,
+        customerId: stripeCustomerId,
         error: wrapped.message,
       });
       throw wrapped;
@@ -153,25 +114,26 @@ export class StripeService {
   }
 
   async createCheckoutSession(
-    tenantId: string,
-    params: CheckoutSessionParams
-  ): Promise<CheckoutSession> {
-    console.info("[StripeService.createCheckoutSession] start", { tenantId });
+    params: CreateCheckoutSessionParams
+  ): Promise<Stripe.Checkout.Session> {
+    const logCtx =
+      params.mode === "payment"
+        ? { mode: params.mode, customerId: params.customerId, invoiceId: params.invoiceId }
+        : { mode: params.mode, customerId: params.customerId, maintenanceContractId: params.maintenanceContractId };
+    console.info("[StripeService.createCheckoutSession] start", logCtx);
     try {
-      const session = await this.stripe.checkout.sessions.create(
+      const sessionCreateParams: Stripe.Checkout.SessionCreateParams =
         params.mode === "subscription"
           ? {
-              customer: params.stripeCustomerId,
-              client_reference_id: params.clientReferenceId,
+              customer: params.customerId,
               mode: "subscription",
               line_items: [{ price: params.priceId, quantity: 1 }],
               success_url: params.successUrl,
               cancel_url: params.cancelUrl,
-              metadata: { tenantId: params.clientReferenceId },
+              metadata: { maintenanceContractId: params.maintenanceContractId, source: "maintenance" },
             }
           : {
-              customer: params.stripeCustomerId,
-              client_reference_id: params.clientReferenceId,
+              customer: params.customerId,
               mode: "payment",
               payment_method_types: ["card"],
               line_items: [
@@ -179,29 +141,29 @@ export class StripeService {
                   quantity: 1,
                   price_data: {
                     currency: "eur",
-                    product: params.productId,
-                    unit_amount: params.unitAmountCents,
+                    unit_amount: params.amountEurCents,
+                    product_data: { name: params.description ?? "Payment" },
                   },
                 },
               ],
               success_url: params.successUrl,
               cancel_url: params.cancelUrl,
-              metadata: { tenantId: params.clientReferenceId },
-            }
-      );
+              metadata: { invoiceId: params.invoiceId, source: "invoice" },
+            };
+      const session = await this.stripe.checkout.sessions.create(sessionCreateParams);
       if (!session.url) {
         throw new StripeServiceError(
           "Checkout session URL is missing",
           "stripe/missing_url"
         );
       }
-      console.info("[StripeService.createCheckoutSession] done", { tenantId });
-      return { sessionId: session.id, url: session.url };
+      console.info("[StripeService.createCheckoutSession] done", logCtx);
+      return session;
     } catch (err) {
       if (err instanceof StripeServiceError) throw err;
       const wrapped = wrapStripeError(err);
       console.error("[StripeService.createCheckoutSession] error", {
-        tenantId,
+        ...logCtx,
         error: wrapped.message,
       });
       throw wrapped;
@@ -209,22 +171,21 @@ export class StripeService {
   }
 
   async createPortalSession(
-    tenantId: string,
     stripeCustomerId: string,
     returnUrl: string
-  ): Promise<PortalSession> {
-    console.info("[StripeService.createPortalSession] start", { tenantId });
+  ): Promise<Stripe.BillingPortal.Session> {
+    console.info("[StripeService.createPortalSession] start", { customerId: stripeCustomerId });
     try {
       const session = await this.stripe.billingPortal.sessions.create({
         customer: stripeCustomerId,
         return_url: returnUrl,
       });
-      console.info("[StripeService.createPortalSession] done", { tenantId });
-      return { url: session.url };
+      console.info("[StripeService.createPortalSession] done", { customerId: stripeCustomerId });
+      return session;
     } catch (err) {
       const wrapped = wrapStripeError(err);
       console.error("[StripeService.createPortalSession] error", {
-        tenantId,
+        customerId: stripeCustomerId,
         error: wrapped.message,
       });
       throw wrapped;
@@ -232,28 +193,25 @@ export class StripeService {
   }
 
   async cancelSubscription(
-    tenantId: string,
     stripeSubscriptionId: string
-  ): Promise<CancelledSubscription> {
-    console.info("[StripeService.cancelSubscription] start", { tenantId });
+  ): Promise<Stripe.Subscription> {
+    console.info("[StripeService.cancelSubscription] start", { subscriptionId: stripeSubscriptionId });
     try {
       const subscription = await this.stripe.subscriptions.update(
         stripeSubscriptionId,
         { cancel_at_period_end: true }
       );
-      console.info("[StripeService.cancelSubscription] done", { tenantId });
-      return {
-        stripeSubscriptionId: subscription.id,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      };
+      console.info("[StripeService.cancelSubscription] done", { subscriptionId: stripeSubscriptionId });
+      return subscription;
     } catch (err) {
       const wrapped = wrapStripeError(err);
       console.error("[StripeService.cancelSubscription] error", {
-        tenantId,
+        subscriptionId: stripeSubscriptionId,
         error: wrapped.message,
       });
       throw wrapped;
     }
   }
 }
+
+export const stripeService = new StripeService();
