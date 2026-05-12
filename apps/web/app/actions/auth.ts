@@ -10,7 +10,6 @@ import {
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
-  acceptInvitation,
   validateSession,
   consumeTotpChallenge,
 } from "@saas/services";
@@ -242,38 +241,6 @@ export async function resetPasswordAction(
   }
 
   redirect("/login?reset=success");
-}
-
-// ── Accept invitation ─────────────────────────────────────────────────────────
-
-export async function acceptInvitationAction(token: string): Promise<void> {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
-
-  if (!sessionToken) {
-    redirect("/login");
-  }
-
-  const user = await validateSession(sessionToken);
-  if (!user) {
-    redirect("/login");
-  }
-
-  try {
-    await acceptInvitation({ token, userId: user.id });
-  } catch (err) {
-    if (err instanceof Error) {
-      if (err.message === "INVALID_TOKEN")
-        redirect("/login?error=invalid-invitation");
-      if (err.message === "TOKEN_EXPIRED")
-        redirect("/login?error=expired-invitation");
-      if (err.message === "INVITATION_NOT_PENDING")
-        redirect("/login?error=invitation-used");
-    }
-    redirect("/login?error=unknown");
-  }
-
-  redirect("/account/profile");
 }
 
 // ── Resend verification email ─────────────────────────────────────────────────
