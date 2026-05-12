@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations) est en cours. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est quasi terminé. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -31,7 +31,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 |---------|------|
 | `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation |
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
-| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation) |
+| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation, projet, devis, facture, paiement, rapport) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
 | `@saas/workflows` | Inngest jobs et CRONs (placeholder) |
 | `@saas/agents` | Stack agentique BaseAgent + tools (placeholder) |
@@ -166,7 +166,7 @@ sass-agentique/
     └── workflows/ci.yml          # 3 jobs : lint · unit · e2e
 ```
 
-### Schéma de base de données (état post-R2 partiel)
+### Schéma de base de données (état post-R2)
 
 #### Authentification & agents
 
@@ -187,24 +187,38 @@ agent_logs         — id, task_id (FK), level, message
 
 ```
 clients            — id, slug, name, type (company|individual),
-                     email, phone, billing_address (JSONB), notes
-client_contacts    — id, client_id (FK), user_id (FK) — pivot N-N
+                     email, phone, billing_address (JSONB), notes,
+                     archived_at, created_at, updated_at
+client_contacts    — id, client_id (FK), user_id (FK), is_primary, role
 projects           — id, client_id (FK), slug, name,
                      status (draft|active|on_hold|delivered|cancelled),
-                     timeline_start, timeline_end
+                     started_at, delivered_at, created_at, updated_at
 prestations        — id, slug, name, kind (one_shot|recurring),
-                     base_price_eur_cents, sort_order
+                     base_price_eur_cents, stripe_product_id, stripe_price_id,
+                     is_active, sort_order, created_at, updated_at
 quotes             — id, client_id (FK), project_id (FK, opt.), number,
                      status (draft|sent|accepted|declined|expired),
-                     issued_at, expires_at, total_eur_cents
+                     issued_at, expires_at, accepted_at, total_eur_cents,
+                     vat_rate_bps, notes, created_at, updated_at
 quote_items        — id, quote_id (FK), prestation_id (FK, opt.),
                      description, quantity, unit_price_eur_cents, sort_order
-invoices           — id, client_id (FK), quote_id (FK, opt.), number,
-                     status (draft|sent|paid|overdue|cancelled), total_eur_cents
-invoice_items      — id, invoice_id (FK), description, quantity, unit_price_eur_cents
+invoices           — id, client_id (FK), quote_id (FK, opt.), project_id (FK, opt.),
+                     number, status (draft|sent|paid|overdue|cancelled),
+                     issued_at, due_at, paid_at, total_eur_cents, vat_rate_bps,
+                     stripe_payment_intent_id, stripe_checkout_session_id, notes
+invoice_items      — id, invoice_id (FK), description, quantity,
+                     unit_price_eur_cents, sort_order
 payments           — id, invoice_id (FK), amount_eur_cents,
-                     method (stripe_card|bank_transfer|other), paid_at
-reports            — id, client_id (FK), project_id (FK, opt.), kind, content
+                     method (stripe_card|bank_transfer|other),
+                     external_ref, paid_at, notes, created_at
+reports            — id, client_id (FK), project_id (FK, opt.), title,
+                     kind (delivery|monthly|audit|other), file_path,
+                     summary, issued_at, created_at, updated_at
+maintenance_contracts — id, client_id (FK), prestation_id (FK),
+                     billing_mode (stripe_auto|manual_invoice),
+                     status (active|past_due|canceled),
+                     stripe_subscription_id, stripe_customer_id,
+                     monthly_price_eur_cents, started_at, canceled_at
 ```
 
 ### Règles d'architecture (voir `CLAUDE.md`)
@@ -242,7 +256,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | Phase | Objectif | Durée estimée | Statut |
 |-------|---------|---------------|--------|
 | R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Fait |
-| R2 | Nouveau schéma + services : clients, projets, devis, factures | 1 semaine | 🔄 En cours |
+| R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Quasi terminé |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | — |
 | R4 | Modules métier admin : clients & projets | 1–2 semaines | — |
 | R5 | Devis & Factures | 1–2 semaines | — |
@@ -251,7 +265,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés.
 
-**R2 — En cours** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports). Services `client.service.ts` et `prestation.service.ts` ajoutés et exposés via `@saas/services`.
+**R2 — Quasi terminé** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports, contrats de maintenance). Ensemble des services domaine implémentés et exposés via `@saas/services`.
 
 ### Services métier (`@saas/services`)
 
@@ -263,8 +277,13 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | `stripe.service` | Customer, checkout, portail, abonnements |
 | `admin.service` | Opérations admin : liste utilisateurs, ban, gestion clients |
 | `profile.service` | CRUD profil utilisateur |
-| `client.service` | CRUD entités clients (company / individual) |
+| `client.service` | CRUD entités clients (company / individual), contacts |
+| `project.service` | CRUD projets liés aux clients |
 | `prestation.service` | CRUD catalogue de prestations (one-shot / recurring) |
+| `quote.service` | Génération et gestion des devis |
+| `invoice.service` | CRUD factures |
+| `payment.service` | Enregistrement des paiements |
+| `report.service` | Rapports de projet et de livraison |
 
 ### Plans de facturation (pré-pivot — `config/plans.ts`)
 
@@ -291,7 +310,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-11 fichiers de tests couvrant les services critiques :
+16 fichiers de tests couvrant les services critiques :
 
 | Fichier | Scope |
 |---------|-------|
@@ -303,12 +322,17 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/totp.service.test.ts` | 2FA / TOTP |
 | `packages/services/src/__tests__/stripe.service.test.ts` | Stripe billing |
 | `packages/services/src/__tests__/admin.service.test.ts` | Opérations admin |
+| `packages/services/src/__tests__/client.service.test.ts` | CRUD clients |
+| `packages/services/src/__tests__/project.service.test.ts` | CRUD projets |
+| `packages/services/src/__tests__/prestation.service.test.ts` | Catalogue prestations |
+| `packages/services/src/__tests__/quote.service.test.ts` | Gestion devis |
+| `packages/services/src/__tests__/invoice.service.test.ts` | Gestion factures |
+| `packages/services/src/__tests__/payment.service.test.ts` | Enregistrement paiements |
+| `packages/services/src/__tests__/report.service.test.ts` | Rapports |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
-| `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing (UI) |
-| `apps/web/app/api/billing/portal/__tests__/route.test.ts` | Route API portail |
 
 ```bash
-pnpm test   # Exécute les 11 fichiers via vitest workspace
+pnpm test   # Exécute les 16 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
