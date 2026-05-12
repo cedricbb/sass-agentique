@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). Les services multi-tenant (tenant, invitation, membership, subscription) ont été supprimés. Le schéma DB a été simplifié (R1 complété). La migration vers le nouveau domaine métier démarre en R2. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations) est en cours. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -22,7 +22,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 | Agents IA | Vercel AI SDK v4 + Anthropic Claude API |
 | Emails | Resend + React Email (prod) · Nodemailer/MailHog (dev) |
 | Monorepo | Turborepo v2.4 + pnpm v9.1.1 workspaces |
-| Tests | Vitest v3 (unit/intég.) + Playwright v1.50 (e2e) |
+| Tests | Vitest v3 (unit/intégr.) + Playwright v1.50 (e2e) |
 | CI/CD | GitHub Actions (3 jobs parallèles) |
 
 ### Packages du monorepo
@@ -31,7 +31,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 |---------|------|
 | `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation |
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
-| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, slug) |
+| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
 | `@saas/workflows` | Inngest jobs et CRONs (placeholder) |
 | `@saas/agents` | Stack agentique BaseAgent + tools (placeholder) |
@@ -77,13 +77,17 @@ L'application est disponible sur [http://localhost:3001](http://localhost:3001).
 ### Seed — données de démonstration
 
 ```
-admin@saas.dev   / admin1234   → rôle admin
-alice@acme.dev   / demo1234    → client
-bob@globex.dev   / demo1234    → client
-carol@initech.dev/ demo1234    → client
-dave@umbrella.dev/ demo1234    → client
-eve@banned.dev   / demo1234    → client (banni)
+admin@saas.dev / admin1234   → rôle admin (seul utilisateur créé)
 ```
+
+Le script seed peuple également :
+
+| Entité | Données |
+|--------|---------|
+| Clients | Acme Studio (company), Bob Indep (individual), Globex (company) |
+| Prestations | Site vitrine 5 pages (€2 500, one-shot), Maintenance mensuelle (€50, recurring) |
+| Projet | Site Acme (client : Acme Studio, statut : active) |
+| Devis | Q-2026-001 — €2 550 TTC, 2 lignes (site vitrine + maintenance) |
 
 ### Commandes utiles
 
@@ -146,7 +150,7 @@ sass-agentique/
 │   ├── config/                   # Zod env + plans (Free/Pro/Business)
 │   ├── db/                       # Drizzle ORM + schéma
 │   ├── services/                 # Business logic par domaine
-│   ├── permissions/              # CASL (actions: read/invite/remove/update/cancel/manage)
+│   ├── permissions/              # CASL (actions : read/invite/remove/update/cancel/manage)
 │   ├── workflows/                # Inngest (placeholder)
 │   ├── agents/                   # AI agents (placeholder)
 │   └── ui/                       # Design system
@@ -162,9 +166,9 @@ sass-agentique/
     └── workflows/ci.yml          # 3 jobs : lint · unit · e2e
 ```
 
-### Schéma de base de données (état post-R1)
+### Schéma de base de données (état post-R2 partiel)
 
-Les tables multi-tenant (tenants, memberships, invitations, subscriptions, plans) ont été supprimées lors du pivot R1. Le schéma actuel couvre uniquement l'authentification et les tâches agentiques.
+#### Authentification & agents
 
 ```
 users              — id, email, hashed_password, role (admin|client),
@@ -179,7 +183,29 @@ agent_tasks        — id, agent_type, status, payload (JSON), result (JSON)
 agent_logs         — id, task_id (FK), level, message
 ```
 
-> **R2 (à venir)** — Ajout des tables du domaine freelance : clients, projets, devis, factures.
+#### Domaine freelance (R2 — migré)
+
+```
+clients            — id, slug, name, type (company|individual),
+                     email, phone, billing_address (JSONB), notes
+client_contacts    — id, client_id (FK), user_id (FK) — pivot N-N
+projects           — id, client_id (FK), slug, name,
+                     status (draft|active|on_hold|delivered|cancelled),
+                     timeline_start, timeline_end
+prestations        — id, slug, name, kind (one_shot|recurring),
+                     base_price_eur_cents, sort_order
+quotes             — id, client_id (FK), project_id (FK, opt.), number,
+                     status (draft|sent|accepted|declined|expired),
+                     issued_at, expires_at, total_eur_cents
+quote_items        — id, quote_id (FK), prestation_id (FK, opt.),
+                     description, quantity, unit_price_eur_cents, sort_order
+invoices           — id, client_id (FK), quote_id (FK, opt.), number,
+                     status (draft|sent|paid|overdue|cancelled), total_eur_cents
+invoice_items      — id, invoice_id (FK), description, quantity, unit_price_eur_cents
+payments           — id, invoice_id (FK), amount_eur_cents,
+                     method (stripe_card|bank_transfer|other), paid_at
+reports            — id, client_id (FK), project_id (FK, opt.), kind, content
+```
 
 ### Règles d'architecture (voir `CLAUDE.md`)
 
@@ -216,14 +242,29 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | Phase | Objectif | Durée estimée | Statut |
 |-------|---------|---------------|--------|
 | R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Fait |
-| R2 | Nouveau schéma : clients, projets, devis, factures | 1 semaine | — |
+| R2 | Nouveau schéma + services : clients, projets, devis, factures | 1 semaine | 🔄 En cours |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | — |
-| R4 | Modules métier : clients & projets | 1–2 semaines | — |
+| R4 | Modules métier admin : clients & projets | 1–2 semaines | — |
 | R5 | Devis & Factures | 1–2 semaines | — |
 | R6 | Stack agentique IA (pipeline client) | 2 semaines | — |
 | R7 | CI/CD, déploiement, landing | 1 semaine | — |
 
-**R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés. Le projet est prêt pour R2 (nouveau domaine métier).
+**R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés.
+
+**R2 — En cours** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports). Services `client.service.ts` et `prestation.service.ts` ajoutés et exposés via `@saas/services`.
+
+### Services métier (`@saas/services`)
+
+| Service | Responsabilité |
+|---------|----------------|
+| `auth.service` | Register, login, logout, vérification email, reset password |
+| `email.service` | Envoi d'emails via Nodemailer (dev) ou Resend (prod) |
+| `totp.service` | Génération et validation TOTP, codes de secours |
+| `stripe.service` | Customer, checkout, portail, abonnements |
+| `admin.service` | Opérations admin : liste utilisateurs, ban, gestion clients |
+| `profile.service` | CRUD profil utilisateur |
+| `client.service` | CRUD entités clients (company / individual) |
+| `prestation.service` | CRUD catalogue de prestations (one-shot / recurring) |
 
 ### Plans de facturation (pré-pivot — `config/plans.ts`)
 
@@ -237,18 +278,12 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 ### RBAC — Matrice des permissions (`@saas/permissions`)
 
-Le package CASL gère les permissions de workspace (héritage multi-tenant, à migrer en R2).
+Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur final).
 
-| Rôle | read | invite | remove | update | cancel |
-|------|------|--------|--------|--------|--------|
-| OWNER | ✅ | ✅ | ✅ | ✅ | ✅ |
-| ADMIN | ✅ | ✅ | ✅ | — | ✅ |
-| MEMBER | ✅ | — | — | — | — |
-| VIEWER | — | — | — | — | — |
-
-Ressources : `Member`, `Invitation`, `Tenant`
-
-> **Rôles DB** : le schéma utilisateur distingue `admin` (propriétaire solo) et `client` (utilisateur final).
+| Rôle | Ressources accessibles |
+|------|------------------------|
+| `admin` | Quote, Invoice, Report, Project, Prestation, Member, Invitation (gestion complète) |
+| `client` | Quote, Invoice, Report, Project (lecture seule via portail client) |
 <!-- END:features -->
 
 <!-- SECTION:test-coverage -->
@@ -256,7 +291,7 @@ Ressources : `Member`, `Invitation`, `Tenant`
 
 ### Tests unitaires et d'intégration (Vitest)
 
-10 fichiers de tests couvrant les services critiques :
+11 fichiers de tests couvrant les services critiques :
 
 | Fichier | Scope |
 |---------|-------|
@@ -267,12 +302,13 @@ Ressources : `Member`, `Invitation`, `Tenant`
 | `packages/services/src/__tests__/auth.service.test.ts` | Authentification |
 | `packages/services/src/__tests__/totp.service.test.ts` | 2FA / TOTP |
 | `packages/services/src/__tests__/stripe.service.test.ts` | Stripe billing |
+| `packages/services/src/__tests__/admin.service.test.ts` | Opérations admin |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
 | `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing (UI) |
 | `apps/web/app/api/billing/portal/__tests__/route.test.ts` | Route API portail |
 
 ```bash
-pnpm test   # Exécute les 10 fichiers via vitest workspace
+pnpm test   # Exécute les 11 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)

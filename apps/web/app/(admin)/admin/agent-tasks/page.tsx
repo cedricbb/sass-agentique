@@ -75,7 +75,6 @@ export default async function AdminAgentTasksPage({ searchParams }: PageProps) {
           <TableHeader>
             <TableRow className="text-xs">
               <TableHead>ID</TableHead>
-              <TableHead>Tenant</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Créé</TableHead>
@@ -87,7 +86,7 @@ export default async function AdminAgentTasksPage({ searchParams }: PageProps) {
             {tasks.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={6}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   Aucune tâche trouvée
@@ -99,7 +98,6 @@ export default async function AdminAgentTasksPage({ searchParams }: PageProps) {
                 <TableCell className="font-mono text-xs text-muted-foreground">
                   {task.id.slice(0, 8)}…
                 </TableCell>
-                <TableCell className="text-xs">{task.tenantName}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs font-mono">
                     {task.agentType}
