@@ -11,6 +11,14 @@ import {
   projects,
   clientTypeEnum,
   projectStatusEnum,
+  quotes,
+  quoteItems,
+  invoices,
+  invoiceItems,
+  payments,
+  quoteStatusEnum,
+  invoiceStatusEnum,
+  paymentMethodEnum,
 } from "../schema";
 
 describe("schema — exports", () => {
@@ -22,6 +30,17 @@ describe("schema — exports", () => {
     expect(clients).toBeDefined();
     expect(clientContacts).toBeDefined();
     expect(projects).toBeDefined();
+    expect(quotes).toBeDefined();
+    expect(quoteItems).toBeDefined();
+    expect(invoices).toBeDefined();
+    expect(invoiceItems).toBeDefined();
+    expect(payments).toBeDefined();
+  });
+
+  it("exporte les enums quoteStatus, invoiceStatus et paymentMethod", () => {
+    expect(quoteStatusEnum).toBeDefined();
+    expect(invoiceStatusEnum).toBeDefined();
+    expect(paymentMethodEnum).toBeDefined();
   });
 
   it("exporte l'enum userRole", () => {
@@ -154,5 +173,106 @@ describe("schema — enum userRole", () => {
 
   it("contient les valeurs admin et client", () => {
     expect(userRoleEnum.enumValues).toEqual(["admin", "client"]);
+  });
+});
+
+describe("schema — table quotes", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(quotes)).toBe("quotes");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(quotes);
+    for (const col of ["id", "clientId", "projectId", "number", "status",
+      "issuedAt", "expiresAt", "acceptedAt", "totalEurCents", "vatRateBps",
+      "notes", "createdAt", "updatedAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table quote_items", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(quoteItems)).toBe("quote_items");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(quoteItems);
+    for (const col of ["id", "quoteId", "prestationId", "description",
+      "quantity", "unitPriceEurCents", "sortOrder"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table invoices", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(invoices)).toBe("invoices");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(invoices);
+    for (const col of ["id", "clientId", "quoteId", "projectId", "number",
+      "status", "issuedAt", "dueAt", "paidAt", "totalEurCents", "vatRateBps",
+      "stripePaymentIntentId", "stripeCheckoutSessionId", "notes",
+      "createdAt", "updatedAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table invoice_items", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(invoiceItems)).toBe("invoice_items");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(invoiceItems);
+    for (const col of ["id", "invoiceId", "description", "quantity",
+      "unitPriceEurCents", "sortOrder"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table payments", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(payments)).toBe("payments");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(payments);
+    for (const col of ["id", "invoiceId", "amountEurCents", "method",
+      "externalRef", "paidAt", "notes", "createdAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — enum quoteStatus", () => {
+  it("a le bon nom d'enum", () => {
+    expect(quoteStatusEnum.enumName).toBe("quote_status");
+  });
+  it("contient les 5 statuts", () => {
+    expect(quoteStatusEnum.enumValues).toEqual(
+      ["draft", "sent", "accepted", "declined", "expired"]
+    );
+  });
+});
+
+describe("schema — enum invoiceStatus", () => {
+  it("a le bon nom d'enum", () => {
+    expect(invoiceStatusEnum.enumName).toBe("invoice_status");
+  });
+  it("contient les 5 statuts", () => {
+    expect(invoiceStatusEnum.enumValues).toEqual(
+      ["draft", "sent", "paid", "overdue", "cancelled"]
+    );
+  });
+});
+
+describe("schema — enum paymentMethod", () => {
+  it("a le bon nom d'enum", () => {
+    expect(paymentMethodEnum.enumName).toBe("payment_method");
+  });
+  it("contient les 3 méthodes", () => {
+    expect(paymentMethodEnum.enumValues).toEqual(
+      ["stripe_card", "bank_transfer", "other"]
+    );
   });
 });

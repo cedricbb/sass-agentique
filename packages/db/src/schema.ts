@@ -9,6 +9,7 @@ import {
   boolean,
   uniqueIndex,
   index,
+  integer,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -164,3 +165,105 @@ export type ClientContact = typeof clientContacts.$inferSelect;
 export type NewClientContact = typeof clientContacts.$inferInsert;
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
+
+// Commercial enums
+export const quoteStatusEnum = pgEnum("quote_status",
+  ["draft", "sent", "accepted", "declined", "expired"]);
+export const invoiceStatusEnum = pgEnum("invoice_status",
+  ["draft", "sent", "paid", "overdue", "cancelled"]);
+export const paymentMethodEnum = pgEnum("payment_method",
+  ["stripe_card", "bank_transfer", "other"]);
+
+// Commercial tables
+export const quotes = pgTable("quotes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id").notNull()
+    .references(() => clients.id, { onDelete: "restrict" }),
+  projectId: uuid("project_id")
+    .references(() => projects.id, { onDelete: "set null" }),
+  number: text("number").notNull(),
+  status: quoteStatusEnum("status").notNull().default("draft"),
+  issuedAt: timestamp("issued_at"),
+  expiresAt: timestamp("expires_at"),
+  acceptedAt: timestamp("accepted_at"),
+  totalEurCents: integer("total_eur_cents").notNull().default(0),
+  vatRateBps: integer("vat_rate_bps").notNull().default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("quotes_number_unique").on(table.number),
+  index("quotes_client_id_idx").on(table.clientId),
+]);
+
+export const quoteItems = pgTable("quote_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  quoteId: uuid("quote_id").notNull()
+    .references(() => quotes.id, { onDelete: "cascade" }),
+  prestationId: uuid("prestation_id"),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPriceEurCents: integer("unit_price_eur_cents").notNull().default(0),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const invoices = pgTable("invoices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id").notNull()
+    .references(() => clients.id, { onDelete: "restrict" }),
+  quoteId: uuid("quote_id")
+    .references(() => quotes.id, { onDelete: "set null" }),
+  projectId: uuid("project_id")
+    .references(() => projects.id, { onDelete: "set null" }),
+  number: text("number").notNull(),
+  status: invoiceStatusEnum("status").notNull().default("draft"),
+  issuedAt: timestamp("issued_at"),
+  dueAt: timestamp("due_at"),
+  paidAt: timestamp("paid_at"),
+  totalEurCents: integer("total_eur_cents").notNull().default(0),
+  vatRateBps: integer("vat_rate_bps").notNull().default(0),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("invoices_number_unique").on(table.number),
+  uniqueIndex("invoices_stripe_pi_unique").on(table.stripePaymentIntentId),
+  index("invoices_client_id_idx").on(table.clientId),
+]);
+
+export const invoiceItems = pgTable("invoice_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  invoiceId: uuid("invoice_id").notNull()
+    .references(() => invoices.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPriceEurCents: integer("unit_price_eur_cents").notNull().default(0),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const payments = pgTable("payments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  invoiceId: uuid("invoice_id").notNull()
+    .references(() => invoices.id, { onDelete: "cascade" }),
+  amountEurCents: integer("amount_eur_cents").notNull(),
+  method: paymentMethodEnum("method").notNull(),
+  externalRef: text("external_ref"),
+  paidAt: timestamp("paid_at").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("payments_invoice_id_idx").on(table.invoiceId),
+]);
+
+export type Quote = typeof quotes.$inferSelect;
+export type NewQuote = typeof quotes.$inferInsert;
+export type QuoteItem = typeof quoteItems.$inferSelect;
+export type NewQuoteItem = typeof quoteItems.$inferInsert;
+export type Invoice = typeof invoices.$inferSelect;
+export type NewInvoice = typeof invoices.$inferInsert;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type NewInvoiceItem = typeof invoiceItems.$inferInsert;
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
