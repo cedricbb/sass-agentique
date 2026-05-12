@@ -29,8 +29,6 @@ export type AdminUser = {
 
 export type AdminAgentTask = {
   id: string;
-  tenantId: string;
-  tenantName: string;
   agentType: string;
   status: string;
   createdAt: Date;
@@ -168,7 +166,6 @@ export async function listAdminAgentTasks(
     db
       .select({
         id: agentTasks.id,
-        tenantId: agentTasks.tenantId,
         agentType: agentTasks.agentType,
         status: agentTasks.status,
         createdAt: agentTasks.createdAt,
@@ -183,10 +180,7 @@ export async function listAdminAgentTasks(
   ]);
 
   return {
-    tasks: rows.map((r) => ({
-      ...r,
-      tenantName: r.tenantName ?? "—",
-    })),
+    tasks: rows,
     total: totalRes[0]?.count ?? 0,
   };
 }
