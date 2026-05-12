@@ -65,7 +65,7 @@ function buildStripeClient(): Stripe {
   return new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
 }
 
-function wrapStripeError(err: unknown, method: string): StripeServiceError {
+function wrapStripeError(err: unknown): StripeServiceError {
   if (err instanceof Stripe.errors.StripeError) {
     return new StripeServiceError(
       err.message,
@@ -104,7 +104,7 @@ export class StripeService {
         name: customer.name ?? name,
       };
     } catch (err) {
-      const wrapped = wrapStripeError(err, "createCustomer");
+      const wrapped = wrapStripeError(err);
       console.error("[StripeService.createCustomer] error", {
         tenantId,
         error: wrapped.message,
@@ -143,7 +143,7 @@ export class StripeService {
         });
         return null;
       }
-      const wrapped = wrapStripeError(err, "getCustomer");
+      const wrapped = wrapStripeError(err);
       console.error("[StripeService.getCustomer] error", {
         tenantId,
         error: wrapped.message,
@@ -199,7 +199,7 @@ export class StripeService {
       return { sessionId: session.id, url: session.url };
     } catch (err) {
       if (err instanceof StripeServiceError) throw err;
-      const wrapped = wrapStripeError(err, "createCheckoutSession");
+      const wrapped = wrapStripeError(err);
       console.error("[StripeService.createCheckoutSession] error", {
         tenantId,
         error: wrapped.message,
@@ -222,7 +222,7 @@ export class StripeService {
       console.info("[StripeService.createPortalSession] done", { tenantId });
       return { url: session.url };
     } catch (err) {
-      const wrapped = wrapStripeError(err, "createPortalSession");
+      const wrapped = wrapStripeError(err);
       console.error("[StripeService.createPortalSession] error", {
         tenantId,
         error: wrapped.message,
@@ -248,7 +248,7 @@ export class StripeService {
         currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       };
     } catch (err) {
-      const wrapped = wrapStripeError(err, "cancelSubscription");
+      const wrapped = wrapStripeError(err);
       console.error("[StripeService.cancelSubscription] error", {
         tenantId,
         error: wrapped.message,
