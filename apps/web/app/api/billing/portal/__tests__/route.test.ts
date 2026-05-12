@@ -43,12 +43,6 @@ function setupDbChain(results: unknown[]) {
   mockSelect.mockReturnValue({ from: mockFrom });
 }
 
-function setupDbChainNoLimit(results: unknown[]) {
-  mockWhere.mockResolvedValue(results);
-  mockFrom.mockReturnValue({ where: mockWhere });
-  mockSelect.mockReturnValue({ from: mockFrom });
-}
-
 describe("POST /api/billing/portal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,7 +53,7 @@ describe("POST /api/billing/portal", () => {
     const { cookies } = await import("next/headers");
     vi.mocked(cookies).mockResolvedValueOnce({
       get: vi.fn(() => undefined),
-    } as any);
+    } as unknown);
 
     const { POST } = await import("../route");
     const res = await POST(new Request("http://localhost/api/billing/portal", { method: "POST" }));
