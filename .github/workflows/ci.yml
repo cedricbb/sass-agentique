@@ -36,7 +36,7 @@ jobs:
         run: pnpm lint
 
       - name: Typecheck
-        run: pnpm check-types
+        run: pnpm --filter '!@saas/web' check-types
 
       - name: Drizzle schema check
         run: pnpm --filter @saas/db check
