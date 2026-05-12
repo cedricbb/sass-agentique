@@ -1,44 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { getTableName } from "drizzle-orm";
 import {
-  tenants,
   users,
-  memberships,
   sessions,
   agentTasks,
   agentLogs,
-  membershipRoleEnum,
+  userRoleEnum,
 } from "../schema";
 
 describe("schema — exports", () => {
   it("exporte toutes les tables attendues", () => {
-    expect(tenants).toBeDefined();
     expect(users).toBeDefined();
-    expect(memberships).toBeDefined();
     expect(sessions).toBeDefined();
     expect(agentTasks).toBeDefined();
     expect(agentLogs).toBeDefined();
   });
 
-  it("exporte l'enum membershipRole", () => {
-    expect(membershipRoleEnum).toBeDefined();
-  });
-});
-
-describe("schema — table tenants", () => {
-  it("a le bon nom de table", () => {
-    expect(getTableName(tenants)).toBe("tenants");
-  });
-
-  it("contient les colonnes attendues", () => {
-    const cols = Object.keys(tenants);
-    expect(cols).toContain("id");
-    expect(cols).toContain("slug");
-    expect(cols).toContain("name");
-    expect(cols).toContain("plan");
-    expect(cols).toContain("stripeCustomerId");
-    expect(cols).toContain("createdAt");
-    expect(cols).toContain("updatedAt");
+  it("exporte l'enum userRole", () => {
+    expect(userRoleEnum).toBeDefined();
   });
 });
 
@@ -53,19 +32,6 @@ describe("schema — table users", () => {
     expect(cols).toContain("email");
     expect(cols).toContain("hashedPassword");
     expect(cols).toContain("totpSecret");
-    expect(cols).toContain("role");
-  });
-});
-
-describe("schema — table memberships", () => {
-  it("a le bon nom de table", () => {
-    expect(getTableName(memberships)).toBe("memberships");
-  });
-
-  it("contient userId, tenantId et role", () => {
-    const cols = Object.keys(memberships);
-    expect(cols).toContain("userId");
-    expect(cols).toContain("tenantId");
     expect(cols).toContain("role");
   });
 });
@@ -88,9 +54,8 @@ describe("schema — table agent_tasks", () => {
     expect(getTableName(agentTasks)).toBe("agent_tasks");
   });
 
-  it("contient tenantId, agentType, status, payload, result", () => {
+  it("contient agentType, status, payload, result", () => {
     const cols = Object.keys(agentTasks);
-    expect(cols).toContain("tenantId");
     expect(cols).toContain("agentType");
     expect(cols).toContain("status");
     expect(cols).toContain("payload");
@@ -108,5 +73,15 @@ describe("schema — table agent_logs", () => {
     expect(cols).toContain("taskId");
     expect(cols).toContain("level");
     expect(cols).toContain("message");
+  });
+});
+
+describe("schema — enum userRole", () => {
+  it("a le nom d'enum user_role", () => {
+    expect(userRoleEnum.enumName).toBe("user_role");
+  });
+
+  it("contient les valeurs admin et client", () => {
+    expect(userRoleEnum.enumValues).toEqual(["admin", "client"]);
   });
 });
