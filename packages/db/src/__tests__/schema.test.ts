@@ -19,6 +19,13 @@ import {
   quoteStatusEnum,
   invoiceStatusEnum,
   paymentMethodEnum,
+  reports,
+  prestations,
+  maintenanceContracts,
+  reportKindEnum,
+  prestationKindEnum,
+  billingModeEnum,
+  maintenanceStatusEnum,
 } from "../schema";
 
 describe("schema — exports", () => {
@@ -35,6 +42,16 @@ describe("schema — exports", () => {
     expect(invoices).toBeDefined();
     expect(invoiceItems).toBeDefined();
     expect(payments).toBeDefined();
+    expect(reports).toBeDefined();
+    expect(prestations).toBeDefined();
+    expect(maintenanceContracts).toBeDefined();
+  });
+
+  it("exporte les enums reportKind, prestationKind, billingMode et maintenanceStatus", () => {
+    expect(reportKindEnum).toBeDefined();
+    expect(prestationKindEnum).toBeDefined();
+    expect(billingModeEnum).toBeDefined();
+    expect(maintenanceStatusEnum).toBeDefined();
   });
 
   it("exporte les enums quoteStatus, invoiceStatus et paymentMethod", () => {
@@ -273,6 +290,92 @@ describe("schema — enum paymentMethod", () => {
   it("contient les 3 méthodes", () => {
     expect(paymentMethodEnum.enumValues).toEqual(
       ["stripe_card", "bank_transfer", "other"]
+    );
+  });
+});
+
+describe("schema — table reports", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(reports)).toBe("reports");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(reports);
+    for (const col of ["id", "clientId", "projectId", "title", "kind",
+      "filePath", "summary", "issuedAt", "createdAt", "updatedAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table prestations", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(prestations)).toBe("prestations");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(prestations);
+    for (const col of ["id", "slug", "name", "description", "basePriceEurCents",
+      "kind", "stripeProductId", "stripePriceId", "isActive", "sortOrder",
+      "createdAt", "updatedAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table maintenance_contracts", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(maintenanceContracts)).toBe("maintenance_contracts");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(maintenanceContracts);
+    for (const col of ["id", "clientId", "prestationId", "billingMode",
+      "status", "stripeSubscriptionId", "stripeCustomerId",
+      "monthlyPriceEurCents", "currentPeriodStart", "currentPeriodEnd",
+      "startedAt", "canceledAt", "createdAt", "updatedAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — enum reportKind", () => {
+  it("a le bon nom d'enum", () => {
+    expect(reportKindEnum.enumName).toBe("report_kind");
+  });
+  it("contient les 4 types", () => {
+    expect(reportKindEnum.enumValues).toEqual(
+      ["delivery", "monthly", "audit", "other"]
+    );
+  });
+});
+
+describe("schema — enum prestationKind", () => {
+  it("a le bon nom d'enum", () => {
+    expect(prestationKindEnum.enumName).toBe("prestation_kind");
+  });
+  it("contient les 2 types", () => {
+    expect(prestationKindEnum.enumValues).toEqual(
+      ["one_shot", "recurring"]
+    );
+  });
+});
+
+describe("schema — enum billingMode", () => {
+  it("a le bon nom d'enum", () => {
+    expect(billingModeEnum.enumName).toBe("billing_mode");
+  });
+  it("contient stripe_auto et manual_invoice", () => {
+    expect(billingModeEnum.enumValues).toEqual(
+      ["stripe_auto", "manual_invoice"]
+    );
+  });
+});
+
+describe("schema — enum maintenanceStatus", () => {
+  it("a le bon nom d'enum", () => {
+    expect(maintenanceStatusEnum.enumName).toBe("maintenance_status");
+  });
+  it("contient les 3 statuts", () => {
+    expect(maintenanceStatusEnum.enumValues).toEqual(
+      ["active", "past_due", "canceled"]
     );
   });
 });

@@ -166,6 +166,36 @@ export type NewClientContact = typeof clientContacts.$inferInsert;
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 
+// ST6 enums
+export const reportKindEnum = pgEnum("report_kind",
+  ["delivery", "monthly", "audit", "other"]);
+export const prestationKindEnum = pgEnum("prestation_kind",
+  ["one_shot", "recurring"]);
+export const billingModeEnum = pgEnum("billing_mode",
+  ["stripe_auto", "manual_invoice"]);
+export const maintenanceStatusEnum = pgEnum("maintenance_status",
+  ["active", "past_due", "canceled"]);
+
+// ── Prestations ─────────────────────────────────────────────────────────────
+export const prestations = pgTable("prestations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  basePriceEurCents: integer("base_price_eur_cents").notNull().default(0),
+  kind: prestationKindEnum("kind").notNull().default("one_shot"),
+  stripeProductId: text("stripe_product_id"),
+  stripePriceId: text("stripe_price_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("prestations_slug_unique").on(table.slug),
+  uniqueIndex("prestations_stripe_product_unique").on(table.stripeProductId),
+  uniqueIndex("prestations_stripe_price_unique").on(table.stripePriceId),
+]);
+
 // Commercial enums
 export const quoteStatusEnum = pgEnum("quote_status",
   ["draft", "sent", "accepted", "declined", "expired"]);
@@ -200,7 +230,8 @@ export const quoteItems = pgTable("quote_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   quoteId: uuid("quote_id").notNull()
     .references(() => quotes.id, { onDelete: "cascade" }),
-  prestationId: uuid("prestation_id"),
+  prestationId: uuid("prestation_id")
+    .references(() => prestations.id, { onDelete: "restrict" }),
   description: text("description").notNull(),
   quantity: integer("quantity").notNull().default(1),
   unitPriceEurCents: integer("unit_price_eur_cents").notNull().default(0),
@@ -267,3 +298,52 @@ export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type NewInvoiceItem = typeof invoiceItems.$inferInsert;
 export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
+
+// ── Reports ─────────────────────────────────────────────────────────────────
+export const reports = pgTable("reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id").notNull()
+    .references(() => clients.id, { onDelete: "restrict" }),
+  projectId: uuid("project_id")
+    .references(() => projects.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  kind: reportKindEnum("kind").notNull().default("delivery"),
+  filePath: text("file_path").notNull(),
+  summary: text("summary"),
+  issuedAt: timestamp("issued_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("reports_client_id_idx").on(table.clientId),
+]);
+
+// ── Maintenance Contracts ───────────────────────────────────────────────────
+export const maintenanceContracts = pgTable("maintenance_contracts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id").notNull()
+    .references(() => clients.id, { onDelete: "restrict" }),
+  prestationId: uuid("prestation_id").notNull()
+    .references(() => prestations.id, { onDelete: "restrict" }),
+  billingMode: billingModeEnum("billing_mode").notNull(),
+  status: maintenanceStatusEnum("status").notNull().default("active"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  monthlyPriceEurCents: integer("monthly_price_eur_cents").notNull(),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  startedAt: timestamp("started_at").notNull(),
+  canceledAt: timestamp("canceled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("maintenance_contracts_client_unique").on(table.clientId),
+  uniqueIndex("maintenance_contracts_stripe_sub_unique")
+    .on(table.stripeSubscriptionId),
+]);
+
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
+export type Prestation = typeof prestations.$inferSelect;
+export type NewPrestation = typeof prestations.$inferInsert;
+export type MaintenanceContract = typeof maintenanceContracts.$inferSelect;
+export type NewMaintenanceContract = typeof maintenanceContracts.$inferInsert;
