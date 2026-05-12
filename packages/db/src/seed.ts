@@ -123,8 +123,8 @@ async function main() {
       status: "active",
     })
     .onConflictDoUpdate({
-      target: schema.projects.slug,
-      set: { name: "Site Acme" },
+        target: [schema.projects.clientId, schema.projects.slug],
+        set: { name: "Site Acme" },
     })
     .returning();
 
