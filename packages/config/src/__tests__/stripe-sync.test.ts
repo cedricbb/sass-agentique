@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { StripeClient, StripeProduct, StripePrice, StripeSyncResult } from "../stripe-sync";
+import type { StripeClient, StripeProduct, StripePrice } from "../stripe-sync";
 import { syncPlansToStripe } from "../stripe-sync";
 import type { PlanConfig } from "../plans";
 
