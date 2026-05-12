@@ -6,6 +6,11 @@ import {
   agentTasks,
   agentLogs,
   userRoleEnum,
+  clients,
+  clientContacts,
+  projects,
+  clientTypeEnum,
+  projectStatusEnum,
 } from "../schema";
 
 describe("schema — exports", () => {
@@ -14,10 +19,18 @@ describe("schema — exports", () => {
     expect(sessions).toBeDefined();
     expect(agentTasks).toBeDefined();
     expect(agentLogs).toBeDefined();
+    expect(clients).toBeDefined();
+    expect(clientContacts).toBeDefined();
+    expect(projects).toBeDefined();
   });
 
   it("exporte l'enum userRole", () => {
     expect(userRoleEnum).toBeDefined();
+  });
+
+  it("exporte les enums clientType et projectStatus", () => {
+    expect(clientTypeEnum).toBeDefined();
+    expect(projectStatusEnum).toBeDefined();
   });
 });
 
@@ -73,6 +86,64 @@ describe("schema — table agent_logs", () => {
     expect(cols).toContain("taskId");
     expect(cols).toContain("level");
     expect(cols).toContain("message");
+  });
+});
+
+describe("schema — table clients", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(clients)).toBe("clients");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(clients);
+    for (const col of ["id", "name", "slug", "type", "email", "phone",
+      "billingAddress", "notes", "archivedAt", "createdAt", "updatedAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table client_contacts", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(clientContacts)).toBe("client_contacts");
+  });
+  it("contient clientId, userId, isPrimary, role", () => {
+    const cols = Object.keys(clientContacts);
+    for (const col of ["clientId", "userId", "isPrimary", "role"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — table projects", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(projects)).toBe("projects");
+  });
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(projects);
+    for (const col of ["id", "clientId", "name", "slug", "status",
+      "description", "startedAt", "deliveredAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — enum clientType", () => {
+  it("a le bon nom d'enum", () => {
+    expect(clientTypeEnum.enumName).toBe("client_type");
+  });
+  it("contient company et individual", () => {
+    expect(clientTypeEnum.enumValues).toEqual(["company", "individual"]);
+  });
+});
+
+describe("schema — enum projectStatus", () => {
+  it("a le bon nom d'enum", () => {
+    expect(projectStatusEnum.enumName).toBe("project_status");
+  });
+  it("contient les 5 statuts", () => {
+    expect(projectStatusEnum.enumValues).toEqual(
+      ["draft", "active", "on_hold", "delivered", "cancelled"]
+    );
   });
 });
 
