@@ -38,111 +38,141 @@ async function main() {
 
   console.log(`✅ Admin créé : ${adminEmail} / admin1234`);
 
-  // ── Users de démo ───────────────────────────────────────────────────────────
-  const demoPassword = await bcrypt.hash("demo1234", BCRYPT_ROUNDS);
-  const demoUsersData = [
-    { email: "alice@acme.dev", name: "Alice Martin", role: "client" as const },
-    { email: "bob@globex.dev", name: "Bob Smith", role: "client" as const },
-    { email: "carol@initech.dev", name: "Carol White", role: "client" as const },
-    { email: "dave@umbrella.dev", name: "Dave Black", role: "client" as const },
-    { email: "eve@banned.dev", name: "Eve Banned", role: "client" as const },
-  ];
-
-  const insertedUsers = await Promise.all(
-    demoUsersData.map((u) =>
-      db
-        .insert(schema.users)
-        .values({
-          ...u,
-          hashedPassword: demoPassword,
-          emailVerified: true,
-        })
-        .onConflictDoUpdate({
-          target: schema.users.email,
-          set: { name: u.name },
-        })
-        .returning(),
-    ),
-  );
-
-  // Bannir le dernier user
-  const bannedUser = insertedUsers[insertedUsers.length - 1]?.[0];
-  if (bannedUser) {
-    const { eq } = await import("drizzle-orm");
-    await db
-      .update(schema.users)
-      .set({ bannedAt: new Date() })
-      .where(eq(schema.users.id, bannedUser.id));
-  }
-
-  console.log(`✅ ${insertedUsers.length} utilisateurs de démo créés (mot de passe: demo1234)`);
-
-  // ── Agent Tasks de démo ─────────────────────────────────────────────────────
-  const agentTasksData = [
-    {
-      agentType: "calendar",
-      status: "completed",
-      payload: { action: "findFreeSlot", date: "2026-03-04" },
-      result: { slot: "14:00-15:00" },
-    },
-    {
-      agentType: "mail",
-      status: "running",
-      payload: { action: "checkInbox", mailbox: "alice@acme.dev" },
-      result: null,
-    },
-    {
-      agentType: "calendar",
-      status: "pending",
-      payload: { action: "createEvent", title: "Réunion équipe" },
-      result: null,
-    },
-    {
-      agentType: "mail",
-      status: "failed",
-      payload: { action: "draftReply", threadId: "abc123" },
-      result: { error: "SMTP_ERROR" },
-    },
-  ];
-
-  const insertedTasks = await db
-    .insert(schema.agentTasks)
-    .values(agentTasksData)
+  // ── Clients ─────────────────────────────────────────────────────────────────
+  const [acme] = await db
+    .insert(schema.clients)
+    .values({
+      name: "Acme Studio",
+      slug: "acme-studio",
+      type: "company",
+    })
+    .onConflictDoUpdate({
+      target: schema.clients.slug,
+      set: { name: "Acme Studio" },
+    })
     .returning();
 
-  await db.insert(schema.agentLogs).values([
-    {
-      taskId: insertedTasks[0].id,
-      level: "info",
-      message: "Démarrage de la recherche de créneau",
-    },
-    {
-      taskId: insertedTasks[0].id,
-      level: "info",
-      message: "Calendrier chargé — 3 événements existants",
-    },
-    {
-      taskId: insertedTasks[0].id,
-      level: "info",
-      message: "Créneau trouvé : 14:00-15:00",
-    },
-    {
-      taskId: insertedTasks[1].id,
-      level: "info",
-      message: "Connexion IMAP en cours…",
-    },
-    {
-      taskId: insertedTasks[3].id,
-      level: "error",
-      message: "Échec connexion SMTP : timeout",
-    },
-  ]);
+  const [bob] = await db
+    .insert(schema.clients)
+    .values({
+      name: "Bob Indep",
+      slug: "bob-indep",
+      type: "individual",
+    })
+    .onConflictDoUpdate({
+      target: schema.clients.slug,
+      set: { name: "Bob Indep" },
+    })
+    .returning();
 
-  console.log(`✅ ${insertedTasks.length} agent tasks + logs créés`);
+  const [globex] = await db
+    .insert(schema.clients)
+    .values({
+      name: "Globex",
+      slug: "globex",
+      type: "company",
+    })
+    .onConflictDoUpdate({
+      target: schema.clients.slug,
+      set: { name: "Globex" },
+    })
+    .returning();
+
+  console.log(`✅ 3 clients créés : ${acme.slug}, ${bob.slug}, ${globex.slug}`);
+
+  // ── Prestations ─────────────────────────────────────────────────────────────
+  const [siteVitrine] = await db
+    .insert(schema.prestations)
+    .values({
+      slug: "site-vitrine-5p",
+      name: "Site vitrine 5 pages",
+      kind: "one_shot",
+      basePriceEurCents: 250000,
+      sortOrder: 1,
+    })
+    .onConflictDoUpdate({
+      target: schema.prestations.slug,
+      set: { name: "Site vitrine 5 pages" },
+    })
+    .returning();
+
+  const [maintenanceMensuelle] = await db
+    .insert(schema.prestations)
+    .values({
+      slug: "maintenance-mensuelle",
+      name: "Maintenance mensuelle",
+      kind: "recurring",
+      basePriceEurCents: 5000,
+      sortOrder: 2,
+    })
+    .onConflictDoUpdate({
+      target: schema.prestations.slug,
+      set: { name: "Maintenance mensuelle" },
+    })
+    .returning();
+
+  console.log(`✅ 2 prestations créées : ${siteVitrine.slug}, ${maintenanceMensuelle.slug}`);
+
+  // ── Project ─────────────────────────────────────────────────────────────────
+  const [project] = await db
+    .insert(schema.projects)
+    .values({
+      clientId: acme.id,
+      name: "Site Acme",
+      slug: "site-acme",
+      status: "active",
+    })
+    .onConflictDoUpdate({
+      target: schema.projects.slug,
+      set: { name: "Site Acme" },
+    })
+    .returning();
+
+  console.log(`✅ 1 projet créé : ${project.slug}`);
+
+  // ── Quote ───────────────────────────────────────────────────────────────────
+  const [quote] = await db
+    .insert(schema.quotes)
+    .values({
+      clientId: acme.id,
+      number: "Q-2026-001",
+      status: "draft",
+      totalEurCents: 255000,
+    })
+    .onConflictDoUpdate({
+      target: schema.quotes.number,
+      set: { totalEurCents: 255000 },
+    })
+    .returning();
+
+  console.log(`✅ 1 devis créé : ${quote.number}`);
+
+  // ── Quote Items ─────────────────────────────────────────────────────────────
+  await db
+    .insert(schema.quoteItems)
+    .values([
+      {
+        quoteId: quote.id,
+        prestationId: siteVitrine.id,
+        description: "Site vitrine 5 pages",
+        quantity: 1,
+        unitPriceEurCents: 250000,
+        sortOrder: 1,
+      },
+      {
+        quoteId: quote.id,
+        prestationId: maintenanceMensuelle.id,
+        description: "Maintenance mensuelle",
+        quantity: 1,
+        unitPriceEurCents: 5000,
+        sortOrder: 2,
+      },
+    ]);
+
+  console.log("✅ 2 quote items créés");
 
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin : admin@saas.dev / admin1234");
-  console.log("  Users : alice@acme.dev … / demo1234");
 
   await client.end();
 }
