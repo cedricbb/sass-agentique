@@ -7,3 +7,4 @@ export * from "./profile.service";
 export * from "./stripe.service";
 export * from "./prestation.service";
 export * from "./client.service";
+export * from "./project.service";
