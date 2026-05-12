@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). Les services multi-tenant (tenant, invitation, membership, subscription) ont été supprimés. Le schéma DB sera refactoré en R2. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). Les services multi-tenant (tenant, invitation, membership, subscription) ont été supprimés. Le schéma DB a été simplifié (R1 complété). La migration vers le nouveau domaine métier démarre en R2. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -65,11 +65,25 @@ docker compose -f infra/docker-compose.yml up -d
 # 4. Appliquer les migrations
 pnpm --filter @saas/db push
 
-# 5. Lancer le serveur de développement
+# 5. Peupler la base (optionnel)
+pnpm --filter @saas/db seed
+
+# 6. Lancer le serveur de développement
 pnpm dev
 ```
 
 L'application est disponible sur [http://localhost:3001](http://localhost:3001).
+
+### Seed — données de démonstration
+
+```
+admin@saas.dev   / admin1234   → rôle admin
+alice@acme.dev   / demo1234    → client
+bob@globex.dev   / demo1234    → client
+carol@initech.dev/ demo1234    → client
+dave@umbrella.dev/ demo1234    → client
+eve@banned.dev   / demo1234    → client (banni)
+```
 
 ### Commandes utiles
 
@@ -91,6 +105,7 @@ pnpm test:e2e                     # Playwright (e2e)
 pnpm --filter @saas/db generate   # Générer une migration
 pnpm --filter @saas/db push       # Appliquer les migrations
 pnpm --filter @saas/db studio     # Drizzle Studio (UI DB)
+pnpm --filter @saas/db seed       # Peupler avec données de démonstration
 
 # Scripts Stripe
 pnpm --filter scripts stripe-sync # Synchroniser les plans vers Stripe
@@ -125,9 +140,8 @@ sass-agentique/
 │       │       ├── billing/      # checkout, portail client
 │       │       └── webhooks/stripe/
 │       ├── components/           # Composants React (admin, auth, billing, dashboard…)
-│       ├── contexts/             # TenantContext
 │       ├── hooks/                # useAbility (CASL)
-│       └── middleware.ts         # Auth guard + résolution tenant
+│       └── middleware.ts         # Auth guard
 ├── packages/
 │   ├── config/                   # Zod env + plans (Free/Pro/Business)
 │   ├── db/                       # Drizzle ORM + schéma
@@ -148,23 +162,24 @@ sass-agentique/
     └── workflows/ci.yml          # 3 jobs : lint · unit · e2e
 ```
 
-### Schéma de base de données
+### Schéma de base de données (état post-R1)
 
-> Les tables marquées *(pivot R2)* seront supprimées ou refactorisées lors de la phase R2.
+Les tables multi-tenant (tenants, memberships, invitations, subscriptions, plans) ont été supprimées lors du pivot R1. Le schéma actuel couvre uniquement l'authentification et les tâches agentiques.
 
 ```
-users         — id, email, hashed_password, totp_secret, role
-sessions      — user_id, session_token, expires
-agent_tasks   — tenant_id, agent_type, status, payload, result
-agent_logs    — task_id, level, message
-plans         — slug, features (JSONB), stripe IDs
-
-# Héritage multi-tenant — suppression en R2
-tenants       — id, slug, name, plan, stripe_customer_id        (pivot R2)
-memberships   — user_id, tenant_id, role (OWNER/ADMIN/MEMBER/VIEWER) (pivot R2)
-invitations   — tenant_id, email, role, status                  (pivot R2)
-subscriptions — tenant_id, plan_id, stripe_subscription_id, status (pivot R2)
+users              — id, email, hashed_password, role (admin|client),
+                     totp_secret, totp_enabled, backup_codes,
+                     name, bio, location, website, social_links,
+                     banned_at, created_at, updated_at
+sessions           — id, user_id (FK), session_token, expires
+email_verifications— id, user_id (FK), token, expires_at
+password_resets    — id, user_id (FK), token, expires_at
+totp_challenges    — id, user_id (FK), token, expires_at
+agent_tasks        — id, agent_type, status, payload (JSON), result (JSON)
+agent_logs         — id, task_id (FK), level, message
 ```
+
+> **R2 (à venir)** — Ajout des tables du domaine freelance : clients, projets, devis, factures.
 
 ### Règles d'architecture (voir `CLAUDE.md`)
 
@@ -183,7 +198,7 @@ subscriptions — tenant_id, plan_id, stripe_subscription_id, status (pivot R2)
 |-------|---------|--------|
 | 0 | Fondations (monorepo, DB, CI, Next.js 15) | ✅ Fait |
 | 1 | Auth Core (sessions, emails, reset password) | ✅ Fait |
-| 2 | Multi-tenant (workspaces, invitations) | ✅ Fait |
+| 2 | Multi-tenant (workspaces, invitations) | ✅ Fait → supprimé (pivot) |
 | 3 | RBAC CASL (rôles, guards serveur + client) | ✅ Fait |
 | 4 | 2FA / OTP (TOTP RFC 6238, QR code) | ✅ Fait |
 | 5 | Stripe Billing (plans, webhooks, portail client) | 🔄 En cours |
@@ -200,7 +215,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 | Phase | Objectif | Durée estimée | Statut |
 |-------|---------|---------------|--------|
-| R1 | Suppression multi-tenant (services, UI) | 1 semaine | 🔄 En cours |
+| R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Fait |
 | R2 | Nouveau schéma : clients, projets, devis, factures | 1 semaine | — |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | — |
 | R4 | Modules métier : clients & projets | 1–2 semaines | — |
@@ -208,26 +223,32 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | R6 | Stack agentique IA (pipeline client) | 2 semaines | — |
 | R7 | CI/CD, déploiement, landing | 1 semaine | — |
 
-**R1 — Avancement actuel** : services multi-tenant supprimés (tenant, invitation, membership, subscription), composants UI nettoyés. Schéma DB à migrer en R2.
+**R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés. Le projet est prêt pour R2 (nouveau domaine métier).
 
-### Plans de facturation (pré-pivot)
+### Plans de facturation (pré-pivot — `config/plans.ts`)
 
-| Plan | Membres | Agents IA | Workflows / mois |
-|------|---------|-----------|------------------|
-| Free | 3 | 1 | 10 |
-| Pro | 10 | 5 | 100 |
-| Business | Illimité | Illimité | Illimité |
+| Plan | Prix | Membres | Agents IA | Workflows / mois |
+|------|------|---------|-----------|------------------|
+| Free | — | 3 | 1 | 10 |
+| Pro | €29/mois | 10 | 5 | 100 |
+| Business | €99/mois | Illimité | Illimité | Illimité |
 
-### RBAC — Matrice des permissions
+> Ces plans seront refactorés lors du pivot R3 pour un modèle solo sans membres.
 
-| Rôle | read | invite | remove | update | cancel | manage |
-|------|------|--------|--------|--------|--------|--------|
-| OWNER | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| ADMIN | ✅ | ✅ | ✅ | ✅ | — | — |
-| MEMBER | ✅ | — | — | — | — | — |
-| VIEWER | ✅ | — | — | — | — | — |
+### RBAC — Matrice des permissions (`@saas/permissions`)
 
-Ressources : `Member`, `Invitation`, `Tenant`, `all`
+Le package CASL gère les permissions de workspace (héritage multi-tenant, à migrer en R2).
+
+| Rôle | read | invite | remove | update | cancel |
+|------|------|--------|--------|--------|--------|
+| OWNER | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ADMIN | ✅ | ✅ | ✅ | — | ✅ |
+| MEMBER | ✅ | — | — | — | — |
+| VIEWER | — | — | — | — | — |
+
+Ressources : `Member`, `Invitation`, `Tenant`
+
+> **Rôles DB** : le schéma utilisateur distingue `admin` (propriétaire solo) et `client` (utilisateur final).
 <!-- END:features -->
 
 <!-- SECTION:test-coverage -->
@@ -261,7 +282,7 @@ pnpm test   # Exécute les 10 fichiers via vitest workspace
 | Fichier | Scope |
 |---------|-------|
 | `tests/e2e/smoke.spec.ts` | Smoke test — pages accessibles |
-| `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant |
+| `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant (héritage) |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
@@ -271,12 +292,12 @@ pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
 
 | Fichier | Scope |
 |---------|-------|
-| `tests/pivot-md.spec.sh` | Validation migration schéma (pivot) |
-| `tests/pivot-r2-schema-0.spec.sh` | Validation schéma R2 (clients/projets/devis) |
+| `tests/pivot-md.spec.sh` | Validation structure docs/PIVOT.md |
+| `tests/pivot-r2-schema-0.spec.sh` | Validation nettoyage multi-tenant (R1) |
 
 ### CI/CD — GitHub Actions
 
-Trois jobs sur chaque push et PR :
+Trois jobs sur chaque push et PR vers `main` / `develop` :
 
 | Job | Étapes |
 |-----|--------|
@@ -293,8 +314,8 @@ Aucun répertoire de backlog structuré (`backlog/todo/`, `backlog/in-progress/`
 Le suivi des tâches est géré via :
 
 - `saas-swarm-plan.md` — Plan de développement Swarm détaillé (phases 0–11)
-- `docs/PIVOT.md` — Résumé du pivot (mai 2026)
-- `docs/pivot-document.md` — Analyse complète avec roadmap R1–R7 et critères de décision
+- `docs/PIVOT.md` — Résumé exécutif du pivot (mai 2026), roadmap R1–R7, décisions D1–D5
+- `docs/pivot-document.md` — Analyse complète : diagnostic, domaine cible, décisions d'architecture, stratégie de migration DB, roadmap d'implémentation
 <!-- END:backlog -->
 
 <!-- SECTION:configuration -->
