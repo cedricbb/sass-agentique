@@ -9,3 +9,5 @@ export * from "./prestation.service";
 export * from "./client.service";
 export * from "./project.service";
 export * from "./quote.service";
+export * from "./invoice.service";
+export * as paymentService from "./payment.service";
