@@ -55,3 +55,27 @@ Total : 3-4 semaines focus, ou 8-10 semaines en temps libre.
 - Tag git de sécurité : `pre-pivot-v1`
 - Backlog parqué : `projects/sass-agentique/backlog/parked/`
 - Brief de reprise : tenu hors repo (collé en début de chat pour reprise)
+
+## Dette technique en transition (R2.x → R3-R5)
+
+### Typecheck @saas/web rouge attendu
+
+Pendant la durée du pivot (R2.2, R2.3, R3, R4, R5), `pnpm --filter @saas/web check-types`
+restera rouge. Les erreurs concernent uniquement les fichiers qui seront réécrits ou
+supprimés selon la roadmap :
+
+| Fichier | Erreurs | Résolu en |
+|---|---|---|
+| `app/(app)/onboarding/page.tsx` | listTenantsByUser absent | R3 (suppression) |
+| `app/actions/auth.ts` | acceptInvitation absent | R3 (suppression du flow invitation) |
+| `app/actions/onboarding.ts` | tenants/memberships/getTenantBySlug absents | R3 (suppression) |
+| `app/api/billing/checkout/route.ts` | tenants/memberships/plans + deps non résolues | R5 (réécriture pour invoices one-time) |
+| `app/api/billing/portal/*` | tenants/memberships | R5 (suppression — pas pertinent en single-admin) |
+| `app/api/webhooks/stripe/route.ts` | SubscriptionService + types subscription | R5 (réécriture pour modèle pivot) |
+
+L'auth, le middleware, le layout root, les composants UI génériques restent verts.
+`pnpm dev` démarre, `/login` fonctionne avec `admin@saas.dev` / `admin1234`.
+
+CI : tant que le pivot n'est pas terminé, désactiver le check-types de @saas/web
+dans la pipeline CI (ou marquer le job en `continue-on-error: true`) pour ne pas
+bloquer les merges. À réactiver à la fin de R5.
