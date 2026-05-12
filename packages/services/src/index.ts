@@ -11,3 +11,4 @@ export * from "./project.service";
 export * from "./quote.service";
 export * from "./invoice.service";
 export * as paymentService from "./payment.service";
+export * as reportService from "./report.service";
