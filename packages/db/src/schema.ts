@@ -156,6 +156,7 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("projects_client_id_idx").on(table.clientId),
+  uniqueIndex("projects_client_slug_unique").on(table.clientId, table.slug),
 ]);
 
 // ── Types ────────────────────────────────────────────────────────────────────

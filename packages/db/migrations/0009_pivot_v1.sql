@@ -26,8 +26,9 @@ CREATE TYPE "public"."billing_mode" AS ENUM('stripe_auto', 'manual_invoice');-->
 CREATE TYPE "public"."maintenance_status" AS ENUM('active', 'past_due', 'canceled');--> statement-breakpoint
 
 -- Alter users.role from text to user_role enum
+ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "users" ALTER COLUMN "role" SET DATA TYPE "public"."user_role"
-  USING (CASE "role"
+    USING (CASE "role"
            WHEN 'admin' THEN 'admin'::"public"."user_role"
            ELSE 'client'::"public"."user_role"
          END);--> statement-breakpoint
