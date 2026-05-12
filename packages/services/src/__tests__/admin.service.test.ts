@@ -61,7 +61,7 @@ describe("admin.service", () => {
       });
 
       const selectPromise = Promise.resolve([taskRow]);
-      const countPromise = Promise.resolve([{ count: 1 }]);
+      Promise.resolve([{ count: 1 }]);
       dbMock.select = vi.fn().mockReturnThis();
       dbMock.from = vi.fn().mockReturnThis();
       dbMock.where = vi.fn().mockReturnThis();
@@ -69,11 +69,9 @@ describe("admin.service", () => {
       dbMock.limit = vi.fn().mockReturnThis();
       dbMock.offset = vi.fn()
         .mockReturnValueOnce(selectPromise);
-
-      const mockAll = vi.fn()
-        .mockResolvedValueOnce([taskRow])
-        .mockResolvedValueOnce([{ count: 1 }]);
-
+      vi.fn()
+          .mockResolvedValueOnce([taskRow])
+          .mockResolvedValueOnce([{ count: 1 }]);
       dbMock.select = vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -86,14 +84,12 @@ describe("admin.service", () => {
           }),
         }),
       });
+      vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ count: 1 }]),
+      });
 
-      const countChain = {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ count: 1 }]),
-        }),
-      };
-
-      let callCount = 0;
+      let
+          callCount = 0;
       dbMock.select = vi.fn().mockImplementation(() => {
         callCount++;
         if (callCount === 1) {
