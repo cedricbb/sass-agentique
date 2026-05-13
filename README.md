@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est quasi terminé. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours — les anciennes routes billing multi-tenant ont été supprimées. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -138,11 +138,14 @@ sass-agentique/
 │       ├── app/
 │       │   ├── (marketing)/      # Landing page publique
 │       │   ├── (auth)/           # Login, register, 2FA, reset password
-│       │   ├── (app)/            # Application authentifiée (onboarding)
+│       │   ├── (app)/            # Application authentifiée (paramètres)
 │       │   ├── (admin)/          # Backoffice admin
+│       │   ├── (customer)/       # Portail client (compte, commandes, sécurité)
+│       │   ├── actions/          # Server Actions
+│       │   │   └── __tests__/    # Tests des Server Actions
 │       │   └── api/
-│       │       ├── billing/      # checkout, portail client
-│       │       └── webhooks/stripe/
+│       │       └── admin/
+│       │           └── agent-tasks/  # API tâches agents IA
 │       ├── components/           # Composants React (admin, auth, billing, dashboard…)
 │       ├── hooks/                # useAbility (CASL)
 │       └── middleware.ts         # Auth guard
@@ -241,7 +244,7 @@ maintenance_contracts — id, client_id (FK), prestation_id (FK),
 | 2 | Multi-tenant (workspaces, invitations) | ✅ Fait → supprimé (pivot) |
 | 3 | RBAC CASL (rôles, guards serveur + client) | ✅ Fait |
 | 4 | 2FA / OTP (TOTP RFC 6238, QR code) | ✅ Fait |
-| 5 | Stripe Billing (plans, webhooks, portail client) | 🔄 En cours |
+| 5 | Stripe Billing (plans, webhooks, portail client) | 🔄 En cours (R3) |
 | 6 | Inngest Workflows (events, CRONs) | — |
 | 7 | Admin Backoffice | 🔄 En cours |
 | 8 | Stack Agentique IA (BaseAgent, outils) | — |
@@ -255,9 +258,9 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 | Phase | Objectif | Durée estimée | Statut |
 |-------|---------|---------------|--------|
-| R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Fait |
-| R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Quasi terminé |
-| R3 | Refonte Stripe Billing (solo) | 1 semaine | — |
+| R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Complété |
+| R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Complété |
+| R3 | Refonte Stripe Billing (solo) | 1 semaine | 🔄 En cours |
 | R4 | Modules métier admin : clients & projets | 1–2 semaines | — |
 | R5 | Devis & Factures | 1–2 semaines | — |
 | R6 | Stack agentique IA (pipeline client) | 2 semaines | — |
@@ -265,7 +268,9 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés.
 
-**R2 — Quasi terminé** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports, contrats de maintenance). Ensemble des services domaine implémentés et exposés via `@saas/services`.
+**R2 — Complété** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports, contrats de maintenance). Ensemble des services domaine implémentés et exposés via `@saas/services`.
+
+**R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`). Refonte en cours pour un modèle Stripe solo-admin.
 
 ### Services métier (`@saas/services`)
 
@@ -285,7 +290,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | `payment.service` | Enregistrement des paiements |
 | `report.service` | Rapports de projet et de livraison |
 
-### Plans de facturation (pré-pivot — `config/plans.ts`)
+### Plans de facturation (pré-R3 — `config/plans.ts`)
 
 | Plan | Prix | Membres | Agents IA | Workflows / mois |
 |------|------|---------|-----------|------------------|
@@ -341,8 +346,8 @@ pnpm test   # Exécute les 16 fichiers via vitest workspace
 
 | Fichier | Scope |
 |---------|-------|
-| `tests/e2e/smoke.spec.ts` | Smoke test — pages accessibles |
-| `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant (héritage) |
+| `tests/e2e/smoke.spec.ts` | Smoke test — pages accessibles, erreurs JS, redirections |
+| `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant (héritage R1) |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
