@@ -315,7 +315,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-16 fichiers de tests couvrant les services critiques :
+17 fichiers de tests couvrant les services critiques :
 
 | Fichier | Scope |
 |---------|-------|
@@ -334,10 +334,11 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/invoice.service.test.ts` | Gestion factures |
 | `packages/services/src/__tests__/payment.service.test.ts` | Enregistrement paiements |
 | `packages/services/src/__tests__/report.service.test.ts` | Rapports |
+| `packages/services/src/__tests__/maintenance-contract.service.test.ts` | Contrats de maintenance |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
 
 ```bash
-pnpm test   # Exécute les 16 fichiers via vitest workspace
+pnpm test   # Exécute les 17 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
@@ -359,6 +360,7 @@ pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
 |---------|-------|
 | `tests/pivot-md.spec.sh` | Validation structure docs/PIVOT.md |
 | `tests/pivot-r2-schema-0.spec.sh` | Validation nettoyage multi-tenant (R1) |
+| `tests/turbo-config.spec.sh` | Validation configuration Turbo |
 
 ### CI/CD — GitHub Actions
 
@@ -367,7 +369,7 @@ Trois jobs sur chaque push et PR vers `main` / `develop` :
 | Job | Étapes |
 |-----|--------|
 | `lint-typecheck` | ESLint · TypeScript · drizzle-kit check |
-| `unit-tests` | Vitest (`@saas/config` + `@saas/db`) |
+| `unit-tests` | Vitest (workspace complet) |
 | `e2e-tests` | Service Postgres · migrations · Playwright smoke |
 <!-- END:test-coverage -->
 
