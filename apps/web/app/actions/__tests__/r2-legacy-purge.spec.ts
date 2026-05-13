@@ -55,3 +55,35 @@ describe("R2 legacy purge", () => {
     });
   });
 });
+
+describe("R3 legacy purge", () => {
+  const deleted = [
+    "contexts/TenantContext.tsx",
+    "hooks/useAbility.ts",
+    "components/permissions/Can.tsx",
+    "components/layout/Sidebar.tsx",
+    "components/layout/AppShell.tsx",
+    "components/layout/Header.tsx",
+  ];
+
+  test.each(deleted)("AC1 — %s is deleted", (rel) => {
+    expect(existsSync(resolve(WEB, rel))).toBe(false);
+  });
+
+  describe("AC4 — no R3 legacy symbols in apps/web/", () => {
+    const symbols = [
+      "TenantContext",
+      "TenantProvider",
+      "useTenant",
+      "useAbility",
+    ];
+
+    test.each(symbols)("no %s in apps/web/", (sym) => {
+      const count = execSync(
+        `grep -rn "${sym}" "${WEB}" --include="*.ts" --include="*.tsx" --exclude-dir="__tests__" | wc -l`,
+        { encoding: "utf-8" },
+      ).trim();
+      expect(Number(count)).toBe(0);
+    });
+  });
+});
