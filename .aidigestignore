@@ -1,0 +1,88 @@
+# ==============================
+# .aidigestignore
+# Fichiers exclus de l'analyse AI (aidigest, codebase generators, etc.)
+# ==============================
+
+# --- Dépendances ---
+node_modules/
+.pnpm-store/
+
+# --- Lock files ---
+pnpm-lock.yaml
+package-lock.json
+
+# --- Build outputs ---
+dist/
+build/
+apps/web/.next/
+apps/web/out/
+
+# --- Caches & artefacts de build ---
+.turbo/
+*.tsbuildinfo
+.next/cache/
+
+# --- Fichiers générés ---
+apps/web/next-env.d.ts
+codebase.md
+.readme-cache.json
+
+# --- Migrations Drizzle (SQL auto-généré + snapshots) ---
+packages/db/migrations/
+
+# --- Tests outputs ---
+playwright-report/
+test-results/
+
+# --- Environnement & secrets ---
+.env
+.env.local
+.env.*.local
+
+# --- IDE & éditeurs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- Assets binaires (images, fonts, media) ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.avif
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.otf
+*.mp4
+*.mp3
+*.wav
+*.pdf
+
+# --- Claude Code local settings ---
+.claude/
+
+# --- CI/CD (pas de logique métier) ---
+.github/
+
+# --- Infrastructure (docker configs) ---
+infra/
+
+# --- Config Turbo / tooling racine (peu utile pour analyse AI) ---
+turbo.json
+playwright.config.ts
+vitest.workspace.ts
+postcss.config.mjs
