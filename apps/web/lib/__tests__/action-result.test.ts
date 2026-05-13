@@ -143,20 +143,19 @@ describe("withAdmin", () => {
   });
 
   it("returns ok with data on success", async () => {
-    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin", tenantId: "t1" } as any);
+    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<ReturnType<typeof requireAdmin>>);
     const result = await withAdmin(async (user) => ({ userId: user.id }));
     expect(result).toEqual({ ok: true, data: { userId: "u1" } });
   });
 
   it("re-throws NEXT_REDIRECT errors", async () => {
-    const redirectError = new Error("NEXT_REDIRECT");
-    (redirectError as any).digest = "NEXT_REDIRECT;/dashboard;push";
+    const redirectError = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;/dashboard;push" });
     mockedRequireAdmin.mockRejectedValue(redirectError);
     await expect(withAdmin(async () => "x")).rejects.toThrow(redirectError);
   });
 
   it("catches domain errors via handleActionError", async () => {
-    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin", tenantId: "t1" } as any);
+    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<ReturnType<typeof requireAdmin>>);
     const err = new Error("bad");
     Object.defineProperty(err.constructor, "name", { value: "StripeServiceError", configurable: true });
     const result = await withAdmin(async () => {

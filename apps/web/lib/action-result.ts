@@ -30,12 +30,9 @@ const ERROR_MAP: Record<string, { code: string; status: number }> = {
 };
 
 function isRedirectError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    "digest" in error &&
-    typeof (error as any).digest === "string" &&
-    (error as any).digest.startsWith("NEXT_REDIRECT")
-  );
+  if (!(error instanceof Error) || !("digest" in error)) return false;
+  const digest = (error as { digest: unknown }).digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
 }
 
 export function handleActionError(error: unknown): ActionResult<never> {
