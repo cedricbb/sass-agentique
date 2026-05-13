@@ -71,6 +71,13 @@
       "when": 1747044000000,
       "tag": "0009_pivot_v1",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778707619293,
+      "tag": "0010_sleepy_doctor_faustus",
+      "breakpoints": true
     }
   ]
 }

@@ -43,3 +43,5 @@ Thumbs.db
 # Orchid
 .readme-cache.json
 codebase.md
+.npmrc
+
