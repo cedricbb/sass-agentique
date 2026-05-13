@@ -9,7 +9,7 @@ import {
   getClientById,
 } from "@saas/services";
 import { withAdmin, type ActionResult } from "@/lib/action-result";
-import type { Client } from "@saas/services";
+import type { Client } from "@saas/db";
 
 const createClientSchema = z.object({
   name: z.string().min(1),
