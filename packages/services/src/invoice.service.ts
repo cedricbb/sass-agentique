@@ -174,28 +174,52 @@ export async function deleteInvoice(id: string): Promise<void> {
   await db.delete(invoices).where(eq(invoices.id, id));
 }
 
+async function assertQuoteIsInvoiceable(tx: Tx, quoteId: string) {
+  const [quote] = await tx
+    .select()
+    .from(quotes)
+    .where(eq(quotes.id, quoteId))
+    .limit(1);
+
+  if (!quote) throw new Error(`Quote not found: ${quoteId}`);
+
+  if (quote.status !== "accepted") {
+    throw new InvalidQuoteForInvoicingError(quoteId, quote.status);
+  }
+
+  const [existing] = await tx
+    .select()
+    .from(invoices)
+    .where(eq(invoices.quoteId, quoteId))
+    .limit(1);
+
+  if (existing) throw new QuoteAlreadyInvoicedError(quoteId);
+
+  return quote;
+}
+
+async function copyQuoteItemsToInvoice(tx: Tx, quoteId: string, invoiceId: string) {
+  const items = await tx
+    .select()
+    .from(quoteItems)
+    .where(eq(quoteItems.quoteId, quoteId));
+
+  if (items.length > 0) {
+    await tx.insert(invoiceItems).values(
+      items.map((qi) => ({
+        invoiceId,
+        description: qi.description,
+        quantity: qi.quantity,
+        unitPriceEurCents: qi.unitPriceEurCents,
+        sortOrder: qi.sortOrder,
+      })),
+    );
+  }
+}
+
 export async function createInvoiceFromQuote(quoteId: string): Promise<Invoice> {
   return db.transaction(async (tx) => {
-    const [quote] = await tx
-      .select()
-      .from(quotes)
-      .where(eq(quotes.id, quoteId))
-      .limit(1);
-
-    if (!quote) throw new Error(`Quote not found: ${quoteId}`);
-
-    if (quote.status !== "accepted") {
-      throw new InvalidQuoteForInvoicingError(quoteId, quote.status);
-    }
-
-    const [existing] = await tx
-      .select()
-      .from(invoices)
-      .where(eq(invoices.quoteId, quoteId))
-      .limit(1);
-
-    if (existing) throw new QuoteAlreadyInvoicedError(quoteId);
-
+    const quote = await assertQuoteIsInvoiceable(tx, quoteId);
     const number = await generateInvoiceNumberTx(tx);
 
     const [invoice] = await tx
@@ -211,22 +235,7 @@ export async function createInvoiceFromQuote(quoteId: string): Promise<Invoice> 
       })
       .returning();
 
-    const items = await tx
-      .select()
-      .from(quoteItems)
-      .where(eq(quoteItems.quoteId, quoteId));
-
-    if (items.length > 0) {
-      await tx.insert(invoiceItems).values(
-        items.map((qi) => ({
-          invoiceId: invoice.id,
-          description: qi.description,
-          quantity: qi.quantity,
-          unitPriceEurCents: qi.unitPriceEurCents,
-          sortOrder: qi.sortOrder,
-        })),
-      );
-    }
+    await copyQuoteItemsToInvoice(tx, quoteId, invoice.id);
 
     return invoice;
   });
