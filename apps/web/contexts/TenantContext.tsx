@@ -13,7 +13,7 @@ export type TenantContextValue = {
     id: string;
     name: string | null;
     email: string;
-    role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+    role: "admin" | "client";
     systemRole: string;
     emailVerified: boolean;
   };
