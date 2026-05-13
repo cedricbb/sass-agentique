@@ -63,7 +63,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests
-        run: pnpm --filter @saas/config --filter @saas/db test
+        run: pnpm test
         env:
           STRIPE_SECRET_KEY: sk_test_dummy_for_ci_only
 
