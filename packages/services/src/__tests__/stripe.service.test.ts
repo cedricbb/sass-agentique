@@ -42,7 +42,8 @@ vi.mock("stripe", () => {
 import {
   StripeService,
   StripeServiceError,
-  stripeService,
+  getStripeService,
+  __resetStripeServiceForTests,
 } from "../stripe.service";
 import type { CreateCheckoutSessionParams } from "../stripe.service";
 
@@ -50,6 +51,7 @@ describe("StripeService", () => {
   let service: StripeService;
 
   beforeEach(() => {
+    __resetStripeServiceForTests();
     process.env.STRIPE_SECRET_KEY = "sk_test_mock";
     service = new StripeService();
   });
@@ -70,9 +72,28 @@ describe("StripeService", () => {
     });
   });
 
-  describe("singleton", () => {
-    it("exports stripeService singleton", () => {
-      expect(stripeService).toBeInstanceOf(StripeService);
+  describe("lazy singleton", () => {
+    it("getStripeService() returns a StripeService instance", () => {
+      expect(getStripeService()).toBeInstanceOf(StripeService);
+    });
+
+    it("getStripeService() returns the same instance on subsequent calls", () => {
+      const a = getStripeService();
+      const b = getStripeService();
+      expect(a).toBe(b);
+    });
+
+    it("__resetStripeServiceForTests() clears the cached instance", () => {
+      const a = getStripeService();
+      __resetStripeServiceForTests();
+      const b = getStripeService();
+      expect(a).not.toBe(b);
+    });
+
+    it("getStripeService() throws when STRIPE_SECRET_KEY is missing", () => {
+      delete process.env.STRIPE_SECRET_KEY;
+      __resetStripeServiceForTests();
+      expect(() => getStripeService()).toThrow(StripeServiceError);
     });
   });
 

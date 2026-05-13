@@ -214,4 +214,15 @@ export class StripeService {
   }
 }
 
-export const stripeService = new StripeService();
+let _stripeService: StripeService | null = null;
+
+export function getStripeService(): StripeService {
+  if (_stripeService === null) {
+    _stripeService = new StripeService();
+  }
+  return _stripeService;
+}
+
+export function __resetStripeServiceForTests(): void {
+  _stripeService = null;
+}
