@@ -317,7 +317,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-17 fichiers de tests couvrant les services critiques :
+22 fichiers de tests couvrant les services critiques et les utilitaires web :
 
 | Fichier | Scope |
 |---------|-------|
@@ -338,9 +338,14 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/report.service.test.ts` | Rapports |
 | `packages/services/src/__tests__/maintenance-contract.service.test.ts` | Contrats de maintenance |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
+| `apps/web/lib/__tests__/action-result.test.ts` | Utilitaire action-result |
+| `apps/web/lib/__tests__/auth.test.ts` | Helpers auth (web) |
+| `apps/web/lib/__tests__/format.test.ts` | Utilitaire format (dates, montants) |
+| `apps/web/lib/__tests__/shadcn-imports.test.ts` | Intégrité des imports shadcn/ui |
+| `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
 
 ```bash
-pnpm test   # Exécute les 17 fichiers via vitest workspace
+pnpm test   # Exécute les 22 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
