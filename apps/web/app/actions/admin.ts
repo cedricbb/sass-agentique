@@ -1,29 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import {
-  validateSession,
-  banUser,
-  unbanUser,
-  resetUserTotp,
-} from "@saas/services";
-
-const SESSION_COOKIE = "session-token";
-
-async function requireAdmin() {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!sessionToken) redirect("/login");
-
-  const user = await validateSession(sessionToken);
-  if (!user) redirect("/login");
-  if (user.role !== "admin") {
-    throw new Error("FORBIDDEN");
-  }
-  return user;
-}
+import { banUser, unbanUser, resetUserTotp } from "@saas/services";
+import { requireAdmin } from "@/lib/auth";
 
 export async function banUserAction(userId: string): Promise<{ error?: string }> {
   try {
@@ -31,10 +10,7 @@ export async function banUserAction(userId: string): Promise<{ error?: string }>
     await banUser(userId);
     revalidatePath("/admin/users");
     return {};
-  } catch (err) {
-    if (err instanceof Error && err.message === "FORBIDDEN") {
-      return { error: "Accès refusé." };
-    }
+  } catch {
     return { error: "Une erreur est survenue." };
   }
 }
@@ -45,10 +21,7 @@ export async function unbanUserAction(userId: string): Promise<{ error?: string 
     await unbanUser(userId);
     revalidatePath("/admin/users");
     return {};
-  } catch (err) {
-    if (err instanceof Error && err.message === "FORBIDDEN") {
-      return { error: "Accès refusé." };
-    }
+  } catch {
     return { error: "Une erreur est survenue." };
   }
 }
@@ -59,10 +32,7 @@ export async function resetUserTotpAction(userId: string): Promise<{ error?: str
     await resetUserTotp(userId);
     revalidatePath("/admin/users");
     return {};
-  } catch (err) {
-    if (err instanceof Error && err.message === "FORBIDDEN") {
-      return { error: "Accès refusé." };
-    }
+  } catch {
     return { error: "Une erreur est survenue." };
   }
 }
