@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours — les anciennes routes billing multi-tenant ont été supprimées. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours — les anciennes routes billing multi-tenant et les composants legacy (layout, permission layer, tenant context, ability hook) ont été supprimés. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -31,7 +31,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 |---------|------|
 | `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation |
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
-| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation, projet, devis, facture, paiement, rapport) |
+| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation, projet, devis, facture, paiement, rapport, contrats de maintenance) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
 | `@saas/workflows` | Inngest jobs et CRONs (placeholder) |
 | `@saas/agents` | Stack agentique BaseAgent + tools (placeholder) |
@@ -140,14 +140,14 @@ sass-agentique/
 │       │   ├── (auth)/           # Login, register, 2FA, reset password
 │       │   ├── (app)/            # Application authentifiée (paramètres)
 │       │   ├── (admin)/          # Backoffice admin
-│       │   ├── (customer)/       # Portail client (compte, commandes, sécurité)
+│       │   ├── (customer)/       # Portail client (compte)
 │       │   ├── actions/          # Server Actions
 │       │   │   └── __tests__/    # Tests des Server Actions
 │       │   └── api/
 │       │       └── admin/
 │       │           └── agent-tasks/  # API tâches agents IA
 │       ├── components/           # Composants React (admin, auth, billing, dashboard…)
-│       ├── hooks/                # useAbility (CASL)
+│       ├── lib/                  # Utilitaires (auth, helpers)
 │       └── middleware.ts         # Auth guard
 ├── packages/
 │   ├── config/                   # Zod env + plans (Free/Pro/Business)
@@ -159,7 +159,8 @@ sass-agentique/
 │   └── ui/                       # Design system
 ├── docs/
 │   ├── PIVOT.md                  # Résumé du pivot (TL;DR)
-│   └── pivot-document.md         # Analyse complète + roadmap R1–R7
+│   ├── pivot-document.md         # Analyse complète + roadmap R1–R7
+│   └── pivot-r3-architecture.md  # Architecture Stripe Billing solo (R3)
 ├── scripts/                      # stripe-sync et utilitaires
 ├── tests/
 │   └── e2e/                      # Specs Playwright
@@ -261,16 +262,16 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Complété |
 | R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Complété |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | 🔄 En cours |
-| R4 | Modules métier admin : clients & projets | 1–2 semaines | — |
-| R5 | Devis & Factures | 1–2 semaines | — |
-| R6 | Stack agentique IA (pipeline client) | 2 semaines | — |
-| R7 | CI/CD, déploiement, landing | 1 semaine | — |
+| R4 | Modules admin frontend : clients, projets, devis, factures, rapports | 1–2 semaines | — |
+| R5 | Portail client frontend : compte, devis, factures, rapports | 1–2 semaines | — |
+| R6 | Intégration portfolio (pages marketing) | 1 semaine | — |
+| R7 | Quick wins productivité : PDF, acceptation en ligne, emails auto | 1 semaine | — |
 
-**R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés.
+**R1 — Complété** : services multi-tenant supprimés (tenant, invitation, membership, subscription), schéma DB simplifié, composants UI nettoyés, permission layer et ability hook supprimés.
 
 **R2 — Complété** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports, contrats de maintenance). Ensemble des services domaine implémentés et exposés via `@saas/services`.
 
-**R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`). Refonte en cours pour un modèle Stripe solo-admin.
+**R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`) et des composants layout legacy. Refonte en cours pour un modèle Stripe solo-admin. Architecture documentée dans `docs/pivot-r3-architecture.md`.
 
 ### Services métier (`@saas/services`)
 
@@ -289,6 +290,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | `invoice.service` | CRUD factures |
 | `payment.service` | Enregistrement des paiements |
 | `report.service` | Rapports de projet et de livraison |
+| `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
 
 ### Plans de facturation (pré-R3 — `config/plans.ts`)
 
@@ -383,6 +385,7 @@ Le suivi des tâches est géré via :
 - `saas-swarm-plan.md` — Plan de développement Swarm détaillé (phases 0–11)
 - `docs/PIVOT.md` — Résumé exécutif du pivot (mai 2026), roadmap R1–R7, décisions D1–D5
 - `docs/pivot-document.md` — Analyse complète : diagnostic, domaine cible, décisions d'architecture, stratégie de migration DB, roadmap d'implémentation
+- `docs/pivot-r3-architecture.md` — Architecture détaillée du module Stripe Billing solo (R3)
 <!-- END:backlog -->
 
 <!-- SECTION:configuration -->
