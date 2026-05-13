@@ -22,8 +22,7 @@
         "tsconfig*.json",
         "vitest.config.*",
         "vite.config.*"
-      ],
-      "outputs": ["coverage/**"]
+      ]
     },
     "dev": {
       "cache": false,
