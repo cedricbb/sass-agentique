@@ -1,33 +1,12 @@
-import type { AbilityBuilder } from "@casl/ability";
-import type { AppAbility, MembershipRole } from "./types";
+import { AbilityBuilder, createMongoAbility } from "@casl/ability";
+import type { AppAbility, UserRole } from "./types";
 
-export function definePermissions(
-  builder: AbilityBuilder<AppAbility>,
-  role: MembershipRole,
-): void {
-  const { can } = builder;
+export function definePermissions(role: UserRole): AppAbility {
+  const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
 
-  switch (role) {
-    case "OWNER":
-      can("manage", "all");
-      break;
-
-    case "ADMIN":
-      can("read", "Tenant");
-      can("read", "Member");
-      can("invite", "Member");
-      can("remove", "Member");
-      can("read", "Invitation");
-      can("cancel", "Invitation");
-      break;
-
-    case "MEMBER":
-      can("read", "Tenant");
-      can("read", "Member");
-      break;
-
-    case "VIEWER":
-      can("read", "Tenant");
-      break;
+  if (role === "admin") {
+    can("manage", "all");
   }
+
+  return build();
 }

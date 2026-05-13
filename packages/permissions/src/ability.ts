@@ -1,9 +1,6 @@
-import { AbilityBuilder, createMongoAbility } from "@casl/ability";
-import type { AppAbility, MembershipRole } from "./types";
 import { definePermissions } from "./define-permissions";
+import type { UserRole, AppAbility } from "./types";
 
-export function createAbility(role: MembershipRole): AppAbility {
-  const builder = new AbilityBuilder<AppAbility>(createMongoAbility);
-  definePermissions(builder, role);
-  return builder.build();
+export function createAbility(role: UserRole): AppAbility {
+  return definePermissions(role);
 }
