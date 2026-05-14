@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) a démarré — module clients admin livré (liste, création, détail, suppression). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) a démarré — modules clients et prestations admin livrés (liste clients avec CRUD complet, liste prestations). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -141,7 +141,8 @@ sass-agentique/
 │       │   ├── (app)/            # Application authentifiée (paramètres)
 │       │   ├── (admin)/          # Backoffice admin
 │       │   │   └── admin/
-│       │   │       └── clients/  # Module clients (liste, [id], new)
+│       │   │       ├── clients/      # Module clients (liste, [id], new)
+│       │   │       └── prestations/  # Module prestations (liste)
 │       │   ├── (customer)/       # Portail client (compte)
 │       │   ├── actions/          # Server Actions
 │       │   │   └── __tests__/    # Tests des Server Actions
@@ -151,6 +152,7 @@ sass-agentique/
 │       ├── components/           # Composants React (admin, auth, billing, dashboard…)
 │       ├── lib/
 │       │   ├── hooks/            # Hooks custom (use-data-table-state…)
+│       │   ├── schemas/          # Validation Zod (client.schemas.ts, prestation.schemas.ts)
 │       │   └── __tests__/        # Tests utilitaires
 │       └── middleware.ts         # Auth guard
 ├── packages/
@@ -277,7 +279,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`) et des composants layout legacy. Refonte en cours pour un modèle Stripe solo-admin. Architecture documentée dans `docs/pivot-r3-architecture.md`.
 
-**R4 — En cours** : module clients admin livré — Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`. Hook `use-data-table-state` pour la gestion d'état des tableaux avec pagination, tri et filtres.
+**R4 — En cours** : module clients admin livré — Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`. Module prestations admin livré — Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composant `PrestationsTable`. Hook `use-data-table-state` pour la gestion d'état des tableaux avec pagination, tri et filtres.
 
 ### Services métier (`@saas/services`)
 
@@ -323,7 +325,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-27 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+28 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
 
 | Fichier | Scope |
 |---------|-------|
@@ -351,12 +353,13 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
 | `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
 | `apps/web/app/actions/__tests__/clients.test.ts` | Server Actions clients (CRUD) |
+| `apps/web/app/actions/__tests__/prestations.test.ts` | Server Actions prestations (CRUD) |
 | `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` | Formulaire création/édition client |
 | `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientsTable.test.tsx` | Table clients avec data-table |
 | `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientButton.test.tsx` | Suppression client avec confirmation |
 
 ```bash
-pnpm test   # Exécute les 27 fichiers via vitest workspace
+pnpm test   # Exécute les 28 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
