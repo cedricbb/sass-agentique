@@ -11,14 +11,10 @@ vi.mock("next/navigation", () => ({
 
 const mockCreateClientAction = vi.fn();
 const mockUpdateClientAction = vi.fn();
-vi.mock("@/app/actions/clients", async () => {
-  const actual = await vi.importActual("@/app/actions/clients");
-  return {
-    ...actual,
-    createClientAction: (...args: unknown[]) => mockCreateClientAction(...args),
-    updateClientAction: (...args: unknown[]) => mockUpdateClientAction(...args),
-  };
-});
+vi.mock("@/app/actions/clients", () => ({
+  createClientAction: (...args: unknown[]) => mockCreateClientAction(...args),
+  updateClientAction: (...args: unknown[]) => mockUpdateClientAction(...args),
+}));
 
 vi.mock("@/lib/toast", () => ({
   toastResult: vi.fn((result: { ok: boolean }) => result.ok),
