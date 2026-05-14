@@ -1,7 +1,7 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { createClientSchema, updateClientSchema } from "@/lib/schemas/client.schemas";
 import {
   createClient,
   updateClient,
@@ -11,15 +11,6 @@ import {
 import { withAdmin, type ActionResult } from "@/lib/action-result";
 import type { Client } from "@saas/db";
 
-const createClientSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  slug: z.string().optional(),
-});
-
-const updateClientSchema = createClientSchema.partial();
 
 export async function createClientAction(
   input: unknown,

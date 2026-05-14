@@ -65,13 +65,13 @@ beforeEach(() => {
 });
 
 describe("createClientAction", () => {
-  const validInput = { name: "Acme", email: "a@b.com" };
+  const validInput = { name: "Acme", slug: "acme", email: "a@b.com" };
 
   it("1 — happy path", async () => {
     mockedCreateClient.mockResolvedValue(fakeClient as never);
     const result = await createClientAction(validInput);
     expect(result).toEqual({ ok: true, data: fakeClient });
-    expect(mockedCreateClient).toHaveBeenCalledWith(validInput);
+    expect(mockedCreateClient).toHaveBeenCalledWith({ ...validInput, type: "company" });
   });
 
   it("2 — input invalide (name manquant)", async () => {
