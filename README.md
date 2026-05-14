@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours — les anciennes routes billing multi-tenant et les composants legacy (layout, permission layer, tenant context, ability hook) ont été supprimés. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) a démarré — module clients admin livré (liste, création, détail, suppression). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -140,6 +140,8 @@ sass-agentique/
 │       │   ├── (auth)/           # Login, register, 2FA, reset password
 │       │   ├── (app)/            # Application authentifiée (paramètres)
 │       │   ├── (admin)/          # Backoffice admin
+│       │   │   └── admin/
+│       │   │       └── clients/  # Module clients (liste, [id], new)
 │       │   ├── (customer)/       # Portail client (compte)
 │       │   ├── actions/          # Server Actions
 │       │   │   └── __tests__/    # Tests des Server Actions
@@ -147,7 +149,9 @@ sass-agentique/
 │       │       └── admin/
 │       │           └── agent-tasks/  # API tâches agents IA
 │       ├── components/           # Composants React (admin, auth, billing, dashboard…)
-│       ├── lib/                  # Utilitaires (auth, helpers)
+│       ├── lib/
+│       │   ├── hooks/            # Hooks custom (use-data-table-state…)
+│       │   └── __tests__/        # Tests utilitaires
 │       └── middleware.ts         # Auth guard
 ├── packages/
 │   ├── config/                   # Zod env + plans (Free/Pro/Business)
@@ -247,7 +251,7 @@ maintenance_contracts — id, client_id (FK), prestation_id (FK),
 | 4 | 2FA / OTP (TOTP RFC 6238, QR code) | ✅ Fait |
 | 5 | Stripe Billing (plans, webhooks, portail client) | 🔄 En cours (R3) |
 | 6 | Inngest Workflows (events, CRONs) | — |
-| 7 | Admin Backoffice | 🔄 En cours |
+| 7 | Admin Backoffice | 🔄 En cours (R4) |
 | 8 | Stack Agentique IA (BaseAgent, outils) | — |
 | 9 | Tests & Qualité (coverage 80%+) | — |
 | 10 | CI/CD & Déploiement (Vercel + Railway) | — |
@@ -262,7 +266,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Complété |
 | R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Complété |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | 🔄 En cours |
-| R4 | Modules admin frontend : clients, projets, devis, factures, rapports | 1–2 semaines | — |
+| R4 | Modules admin frontend : clients, projets, devis, factures, rapports | 1–2 semaines | 🔄 En cours |
 | R5 | Portail client frontend : compte, devis, factures, rapports | 1–2 semaines | — |
 | R6 | Intégration portfolio (pages marketing) | 1 semaine | — |
 | R7 | Quick wins productivité : PDF, acceptation en ligne, emails auto | 1 semaine | — |
@@ -272,6 +276,8 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 **R2 — Complété** : schéma du domaine freelance migré (clients, projets, prestations, devis, factures, paiements, rapports, contrats de maintenance). Ensemble des services domaine implémentés et exposés via `@saas/services`.
 
 **R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`) et des composants layout legacy. Refonte en cours pour un modèle Stripe solo-admin. Architecture documentée dans `docs/pivot-r3-architecture.md`.
+
+**R4 — En cours** : module clients admin livré — Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`. Hook `use-data-table-state` pour la gestion d'état des tableaux avec pagination, tri et filtres.
 
 ### Services métier (`@saas/services`)
 
@@ -317,7 +323,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-22 fichiers de tests couvrant les services critiques et les utilitaires web :
+27 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
 
 | Fichier | Scope |
 |---------|-------|
@@ -343,9 +349,14 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/format.test.ts` | Utilitaire format (dates, montants) |
 | `apps/web/lib/__tests__/shadcn-imports.test.ts` | Intégrité des imports shadcn/ui |
 | `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
+| `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
+| `apps/web/app/actions/__tests__/clients.test.ts` | Server Actions clients (CRUD) |
+| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` | Formulaire création/édition client |
+| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientsTable.test.tsx` | Table clients avec data-table |
+| `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientButton.test.tsx` | Suppression client avec confirmation |
 
 ```bash
-pnpm test   # Exécute les 22 fichiers via vitest workspace
+pnpm test   # Exécute les 27 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
