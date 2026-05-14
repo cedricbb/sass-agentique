@@ -1,0 +1,185 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { z } from "zod";
+import type { Client } from "@saas/db";
+import { createClientSchema } from "@/lib/schemas/client.schemas";
+import { createClientAction, updateClientAction } from "@/app/actions/clients";
+import { toastResult } from "@/lib/toast";
+import { DeleteClientButton } from "./DeleteClientButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type FormValues = z.infer<typeof createClientSchema>;
+
+interface ClientFormProps {
+  initialData?: Client;
+}
+
+export function ClientForm({ initialData }: ClientFormProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(createClientSchema) as Resolver<FormValues>,
+    defaultValues: {
+      name: initialData?.name ?? "",
+      slug: initialData?.slug ?? "",
+      type: initialData?.type ?? "company",
+      email: initialData?.email ?? "",
+      phone: initialData?.phone ?? "",
+      address: typeof initialData?.billingAddress === "string" ? initialData.billingAddress : "",
+      notes: initialData?.notes ?? "",
+    },
+  });
+
+  const onSubmit = (data: FormValues) => {
+    startTransition(async () => {
+      const result = initialData
+        ? await updateClientAction(initialData.id, data)
+        : await createClientAction(data);
+      if (toastResult(result, initialData ? "Client mis à jour" : "Client créé")) {
+        router.push("/admin/clients");
+      }
+    });
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nom</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="slug"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Slug</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Type</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="company">Entreprise</SelectItem>
+                  <SelectItem value="individual">Particulier</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Téléphone</FormLabel>
+              <FormControl>
+                <Input type="tel" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Adresse de facturation</FormLabel>
+              <FormControl>
+                <Textarea {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes</FormLabel>
+              <FormControl>
+                <Textarea {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex items-center gap-3">
+          <Button type="submit" disabled={isPending}>
+            {initialData ? "Mettre à jour" : "Créer"}
+          </Button>
+          {initialData && <DeleteClientButton clientId={initialData.id} clientName={initialData.name} />}
+        </div>
+      </form>
+    </Form>
+  );
+}
