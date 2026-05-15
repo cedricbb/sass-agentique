@@ -370,15 +370,6 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/app/actions/__tests__/prestations.test.ts` | Server Actions prestations (CRUD) |
 | `apps/web/app/actions/__tests__/projects.test.ts` | Server Actions projets (CRUD) |
 | `apps/web/app/actions/__tests__/r2-legacy-purge.spec.ts` | Vérification nettoyage R2 |
-| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` | Formulaire création/édition client |
-| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientsTable.test.tsx` | Table clients avec data-table |
-| `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientButton.test.tsx` | Suppression client avec confirmation |
-| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationForm.test.tsx` | Formulaire création/édition prestation |
-| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationsTable.test.tsx` | Table prestations avec data-table |
-| `apps/web/app/(admin)/admin/prestations/_components/__tests__/ArchivePrestationButton.test.tsx` | Archivage prestation avec confirmation |
-| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectForm.test.tsx` | Formulaire création/édition projet |
-| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectStatusActions.test.tsx` | Actions de transition de statut projet |
-| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectsTable.test.tsx` | Table projets avec data-table |
 
 ```bash
 pnpm test   # Exécute les 40 fichiers via vitest workspace
@@ -398,8 +389,6 @@ Helpers E2E (`tests/e2e/helpers/`) :
 
 | Fichier | Rôle |
 |---------|------|
-| `auth.ts` | Utilitaires d'authentification (login programmatique) |
-| `data.ts` | Fixtures et données de test réutilisables |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
