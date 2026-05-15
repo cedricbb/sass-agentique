@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDataTableState } from "@/lib/hooks/use-data-table-state";
 import { formatDate } from "@/lib/format";
-import type { Project } from "@saas/services";
+import type { Project } from "@saas/db";
 
 interface ProjectsTableProps {
   data: Project[];

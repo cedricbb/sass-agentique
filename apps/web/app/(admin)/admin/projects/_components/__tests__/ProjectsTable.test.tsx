@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ProjectsTable } from "../ProjectsTable";
-import type { Project } from "@saas/services";
+import type { Project } from "@saas/db";
 
 afterEach(() => cleanup());
 
