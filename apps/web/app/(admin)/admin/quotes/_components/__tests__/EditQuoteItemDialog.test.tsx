@@ -14,7 +14,7 @@ vi.mock("@/app/actions/quote-items", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  toastResult: vi.fn((result: { ok: boolean }) => result.ok),
+  toastResult: vi.fn((result: { ok: boolean }, _msg: string) => result.ok),
 }));
 
 beforeEach(() => vi.clearAllMocks());
@@ -28,11 +28,15 @@ const fakePrestations: Prestation[] = [
     name: "Dev frontend",
     slug: "dev-frontend",
     description: null,
-    unitPriceEurCents: 75000,
-    archivedAt: null,
+    basePriceEurCents: 75000,
+    kind: "one_shot",
+    stripeProductId: null,
+    stripePriceId: null,
+    isActive: true,
+    sortOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as Prestation,
+  },
 ];
 
 const fakeItem: QuoteItem = {

@@ -37,7 +37,7 @@ export function EditQuoteItemDialog({
   const schema = isEdit ? updateQuoteItemSchema : addQuoteItemSchema;
 
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<QuoteItemAddValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
     defaultValues: initialData
       ? {
           description: initialData.description,
@@ -54,7 +54,7 @@ export function EditQuoteItemDialog({
     if (!p) return;
     setValue("prestationId", prestationId);
     setValue("description", p.name);
-    setValue("unitPriceEurCents", p.unitPriceEurCents ?? 0);
+    setValue("unitPriceEurCents", p.basePriceEurCents);
   }
 
   async function onSubmit(values: QuoteItemAddValues) {
@@ -65,7 +65,7 @@ export function EditQuoteItemDialog({
     const result = isEdit
       ? await updateQuoteItemAction(initialData!.id, payload)
       : await addQuoteItemAction(quoteId, payload);
-    const ok = toastResult(result);
+    const ok = toastResult(result, isEdit ? "Ligne modifiée" : "Ligne ajoutée");
     if (ok) onOpenChange(false);
   }
 

@@ -40,7 +40,7 @@ export function QuoteItemsEditor({ quoteId, items, prestations, canEdit }: Quote
   async function handleRemove(itemId: string) {
     setRemoving(itemId);
     const result = await removeQuoteItemAction(itemId, quoteId);
-    toastResult(result);
+    toastResult(result, "Ligne supprimée");
     setRemoving(null);
   }
 
