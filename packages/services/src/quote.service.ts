@@ -9,16 +9,11 @@ import {
   type NewQuoteItem,
 } from "@saas/db";
 import { eq, and, inArray, desc } from "drizzle-orm";
+export { computeQuoteTtc, type QuoteAmounts } from "./quote.shared";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type QuoteStatus = (typeof quoteStatusEnum.enumValues)[number];
-
-export type QuoteAmounts = {
-  totalHtCents: number;
-  vatCents: number;
-  totalTtcCents: number;
-};
 
 export type ListQuotesOptions = {
   clientId?: string;
@@ -61,21 +56,6 @@ export function canTransitionQuote(
   to: QuoteStatus,
 ): boolean {
   return VALID_QUOTE_TRANSITIONS[from].includes(to);
-}
-
-export function computeQuoteTtc(quote: {
-  totalEurCents: number;
-  vatRateBps: number;
-}): QuoteAmounts {
-  const totalHtCents = quote.totalEurCents;
-  const vatCents = Math.round(
-    (totalHtCents * quote.vatRateBps) / 10000,
-  );
-  return {
-    totalHtCents,
-    vatCents,
-    totalTtcCents: totalHtCents + vatCents,
-  };
 }
 
 export async function generateQuoteNumber(
