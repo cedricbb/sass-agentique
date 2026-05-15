@@ -8,7 +8,7 @@ import {
   type QuoteItem,
   type NewQuoteItem,
 } from "@saas/db";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, like } from "drizzle-orm";
 export { computeQuoteTtc, type QuoteAmounts } from "./quote.shared";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -67,7 +67,7 @@ export async function generateQuoteNumber(
   const [last] = await db
     .select()
     .from(quotes)
-    .where(eq(quotes.number, prefix))
+    .where(like(quotes.number, `${prefix}%`))
     .orderBy(desc(quotes.number))
     .limit(1);
 
@@ -124,15 +124,26 @@ export async function getQuoteByNumber(
   return row ?? null;
 }
 
+const POSTGRES_UNIQUE_VIOLATION = "23505";
+
 export async function createQuote(
   input: CreateQuoteInput,
 ): Promise<Quote> {
-  const number = input.number ?? (await generateQuoteNumber());
-  const [row] = await db
-    .insert(quotes)
-    .values({ ...input, number })
-    .returning();
-  return row;
+  const MAX_RETRIES = 3;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const number = input.number ?? (await generateQuoteNumber());
+    try {
+      const [row] = await db.insert(quotes).values({ ...input, number }).returning();
+      return row;
+    } catch (err: unknown) {
+      if (
+        input.number !== undefined ||
+        attempt === MAX_RETRIES - 1 ||
+        (err as { code?: string }).code !== POSTGRES_UNIQUE_VIOLATION
+      ) throw err;
+    }
+  }
+  throw new Error("unreachable");
 }
 
 export async function updateQuote(

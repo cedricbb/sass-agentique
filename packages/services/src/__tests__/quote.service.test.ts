@@ -30,6 +30,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: unknown[]) => ({ op: "and", args })),
   inArray: vi.fn((...args: unknown[]) => ({ op: "inArray", args })),
   desc: vi.fn((...args: unknown[]) => ({ op: "desc", args })),
+  like: vi.fn((...args: unknown[]) => ({ op: "like", args })),
   sql: vi.fn((...args: unknown[]) => ({ op: "sql", args })),
   sum: vi.fn((...args: unknown[]) => ({ op: "sum", args })),
 }));
@@ -218,6 +219,34 @@ describe("createQuote", () => {
     dbMock.returning.mockResolvedValueOnce([QUOTE_FIXTURE]);
     const result = await createQuote({ clientId: "c1", number: "Q-CUSTOM-001" });
     expect(result).toEqual(QUOTE_FIXTURE);
+  });
+
+  it("retries on 23505 when number is auto-generated", async () => {
+    const collision = Object.assign(new Error("unique violation"), { code: "23505" });
+    dbMock.limit
+      .mockResolvedValueOnce([{ number: "Q-2026-001" }])
+      .mockResolvedValueOnce([{ number: "Q-2026-002" }]);
+    dbMock.returning
+      .mockRejectedValueOnce(collision)
+      .mockResolvedValueOnce([{ ...QUOTE_FIXTURE, number: "Q-2026-003" }]);
+    const result = await createQuote({ clientId: "c1" });
+    expect(result.number).toBe("Q-2026-003");
+    expect(dbMock.returning).toHaveBeenCalledTimes(2);
+  });
+
+  it("propagates 23505 immediately when number is provided explicitly", async () => {
+    const collision = Object.assign(new Error("unique violation"), { code: "23505" });
+    dbMock.returning.mockRejectedValueOnce(collision);
+    await expect(createQuote({ clientId: "c1", number: "Q-2026-001" })).rejects.toThrow("unique violation");
+    expect(dbMock.returning).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates error after 3 retries exhausted", async () => {
+    const collision = Object.assign(new Error("unique violation"), { code: "23505" });
+    dbMock.limit.mockResolvedValue([{ number: "Q-2026-001" }]);
+    dbMock.returning.mockRejectedValue(collision);
+    await expect(createQuote({ clientId: "c1" })).rejects.toThrow("unique violation");
+    expect(dbMock.returning).toHaveBeenCalledTimes(3);
   });
 });
 
