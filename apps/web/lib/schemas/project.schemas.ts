@@ -1,18 +1,29 @@
 import { z } from "zod";
 
+export const projectStatusSchema = z.enum([
+  "draft",
+  "active",
+  "on_hold",
+  "delivered",
+  "cancelled",
+]);
+
 export const createProjectSchema = z.object({
-  name: z.string().min(1),
+  clientId: z.string().uuid("Client invalide."),
+  name: z.string().min(1, "Le nom est requis."),
   slug: z.string().optional(),
+  status: projectStatusSchema.optional(),
   description: z.string().optional(),
-  clientId: z.string().uuid(),
 });
 
-export const updateProjectSchema = createProjectSchema.partial();
+export const updateProjectSchema = createProjectSchema
+  .omit({ status: true })
+  .partial();
 
 export const transitionStatusSchema = z.object({
-  id: z.string().uuid(),
-  newStatus: z.enum(["draft", "active", "on_hold", "delivered", "cancelled"]),
+  status: projectStatusSchema,
 });
 
 export type ProjectCreateValues = z.infer<typeof createProjectSchema>;
 export type ProjectUpdateValues = z.infer<typeof updateProjectSchema>;
+export type ProjectStatus = z.infer<typeof projectStatusSchema>;
