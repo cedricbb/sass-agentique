@@ -1,13 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@saas/services", async () => {
-  const actual = await vi.importActual<typeof import("@saas/services")>("@saas/services");
+vi.mock("@saas/services", () => {
+  const InvalidProjectTransitionError = class extends Error {
+    constructor(from: string, to: string) {
+      super(`Invalid transition from "${from}" to "${to}"`);
+      this.name = "InvalidProjectTransitionError";
+    }
+  };
+  Object.defineProperty(InvalidProjectTransitionError, "name", {
+    value: "InvalidProjectTransitionError",
+  });
   return {
-    ...actual,
     createProject: vi.fn(),
     updateProject: vi.fn(),
     transitionStatus: vi.fn(),
     getProjectById: vi.fn(),
+    InvalidProjectTransitionError,
   };
 });
 
