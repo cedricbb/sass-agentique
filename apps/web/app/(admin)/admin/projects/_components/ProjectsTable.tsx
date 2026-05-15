@@ -43,6 +43,12 @@ export function ProjectsTable({ data, clientNames }: ProjectsTableProps) {
   const { pagination, sorting, search, setPagination, setSorting, setSearch } =
     useDataTableState({ defaultPageSize: 10 });
 
+  const filteredData = search
+    ? data.filter((p) =>
+        p.name.toLowerCase().includes(search.toLowerCase()),
+      )
+    : data;
+
   const toolbar = (
     <div className="flex items-center py-4">
       <Input
@@ -58,7 +64,7 @@ export function ProjectsTable({ data, clientNames }: ProjectsTableProps) {
   return (
     <DataTable
       columns={buildColumns(clientNames)}
-      data={data}
+      data={filteredData}
       state={{ pagination, sorting }}
       onPaginationChange={setPagination}
       onSortingChange={setSorting}
