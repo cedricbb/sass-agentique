@@ -96,6 +96,14 @@ describe("ProjectsTable", () => {
     expect(dashes.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("renders delivered status with success badge variant", () => {
+    renderWithNuqs(
+      <ProjectsTable data={mockProjects} clientNames={CLIENT_NAMES} />,
+    );
+    const badge = screen.getByText("Livré");
+    expect(badge).toHaveAttribute("data-variant", "success");
+  });
+
   it("has search input with correct placeholder and testid", () => {
     renderWithNuqs(
       <ProjectsTable data={mockProjects} clientNames={CLIENT_NAMES} />,

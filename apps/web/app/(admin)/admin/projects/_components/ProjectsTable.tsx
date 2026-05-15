@@ -30,12 +30,12 @@ const STATUS_LABELS: Record<Project["status"], string> = {
 
 const STATUS_BADGE_VARIANT: Record<
   Project["status"],
-  "default" | "secondary" | "destructive" | "outline"
+  "default" | "secondary" | "destructive" | "outline" | "success"
 > = {
   draft: "secondary",
   active: "default",
   on_hold: "outline",
-  delivered: "secondary",
+  delivered: "success",
   cancelled: "destructive",
 };
 
