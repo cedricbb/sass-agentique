@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) a démarré — modules clients (CRUD complet), prestations et **projets** livrés (liste, détail, création, formulaire, composants status). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) a démarré — modules clients (CRUD complet), prestations (CRUD complet avec archivage) et **projets** livrés (liste, détail, création, formulaire, actions de statut). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -150,7 +150,9 @@ sass-agentique/
 │       │   └── api/
 │       │       └── admin/
 │       │           └── agent-tasks/  # API tâches agents IA
-│       ├── components/           # Composants React (admin, auth, billing, dashboard…)
+│       ├── components/
+│       │   ├── billing/          # Composants billing (+ tests)
+│       │   └── ui/               # Composants UI partagés (badge, data-table, + tests)
 │       ├── lib/
 │       │   ├── hooks/            # Hooks custom (use-data-table-state…)
 │       │   ├── schemas/          # Validation Zod (client, prestation, project)
@@ -171,6 +173,7 @@ sass-agentique/
 ├── scripts/                      # stripe-sync et utilitaires
 ├── tests/
 │   └── e2e/                      # Specs Playwright
+│       └── helpers/              # Utilitaires E2E (auth, data)
 ├── infra/
 │   └── docker-compose.yml        # PostgreSQL 15 (port 5466)
 └── .github/
@@ -283,8 +286,8 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 **R4 — En cours** : trois modules admin livrés —
 
 - **Clients** : Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`.
-- **Prestations** : Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composant `PrestationsTable`.
-- **Projets** : Server Actions (`actions/projects.ts`), schémas Zod (`lib/schemas/project.schemas.ts`), pages liste (`/admin/projects`), création (`/admin/projects/new`), détail/édition (`/admin/projects/[id]`), composants `ProjectsTable`, `ProjectForm`, composants de statut. Error boundary dédié.
+- **Prestations** : Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composants `PrestationForm`, `PrestationsTable`, `ArchivePrestationButton`.
+- **Projets** : Server Actions (`actions/projects.ts`), schémas Zod (`lib/schemas/project.schemas.ts`), pages liste (`/admin/projects`), création (`/admin/projects/new`), détail/édition (`/admin/projects/[id]`), composants `ProjectsTable`, `ProjectForm`, `ProjectStatusActions`. Error boundary dédié.
 
 Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec pagination, tri et filtres.
 
@@ -332,7 +335,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-29 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+43 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
 
 | Fichier | Scope |
 |---------|-------|
@@ -359,25 +362,44 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/shadcn-imports.test.ts` | Intégrité des imports shadcn/ui |
 | `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
 | `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
+| `apps/web/lib/schemas/__tests__/client.schemas.test.ts` | Validation schémas Zod client |
+| `apps/web/components/ui/__tests__/badge.test.tsx` | Composant Badge (variantes, rendu) |
+| `apps/web/components/ui/data-table/__tests__/data-table.test.tsx` | Composant DataTable |
+| `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
 | `apps/web/app/actions/__tests__/clients.test.ts` | Server Actions clients (CRUD) |
 | `apps/web/app/actions/__tests__/prestations.test.ts` | Server Actions prestations (CRUD) |
+| `apps/web/app/actions/__tests__/projects.test.ts` | Server Actions projets (CRUD) |
+| `apps/web/app/actions/__tests__/r2-legacy-purge.spec.ts` | Vérification nettoyage R2 |
 | `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` | Formulaire création/édition client |
 | `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientsTable.test.tsx` | Table clients avec data-table |
 | `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientButton.test.tsx` | Suppression client avec confirmation |
+| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationForm.test.tsx` | Formulaire création/édition prestation |
+| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationsTable.test.tsx` | Table prestations avec data-table |
+| `apps/web/app/(admin)/admin/prestations/_components/__tests__/ArchivePrestationButton.test.tsx` | Archivage prestation avec confirmation |
+| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectForm.test.tsx` | Formulaire création/édition projet |
+| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectStatusActions.test.tsx` | Actions de transition de statut projet |
 | `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectsTable.test.tsx` | Table projets avec data-table |
 
 ```bash
-pnpm test   # Exécute les 29 fichiers via vitest workspace
+pnpm test   # Exécute les 40 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
 
-2 specs Playwright sur Chromium :
+3 specs Playwright sur Chromium avec helpers partagés :
 
 | Fichier | Scope |
 |---------|-------|
 | `tests/e2e/smoke.spec.ts` | Smoke test — pages accessibles, erreurs JS, redirections |
 | `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant (héritage R1) |
+| `tests/e2e/projects.spec.ts` | Workflows CRUD projets admin |
+
+Helpers E2E (`tests/e2e/helpers/`) :
+
+| Fichier | Rôle |
+|---------|------|
+| `auth.ts` | Utilitaires d'authentification (login programmatique) |
+| `data.ts` | Fixtures et données de test réutilisables |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
