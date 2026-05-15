@@ -31,7 +31,7 @@ const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const QUOTE_ID = "550e8400-e29b-41d4-a716-446655440000";
 const ITEM_ID = "660e8400-e29b-41d4-a716-446655440000";
-const PRESTATION_ID = "770e8400-e29b-41d4-a716-446655440000";
+const _PRESTATION_ID = "770e8400-e29b-41d4-a716-446655440000";
 
 const fakeAdmin = { id: "admin-1", role: "admin" };
 
