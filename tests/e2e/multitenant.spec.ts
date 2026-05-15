@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Multi-tenant — Routing", () => {
-  test("accès /{slug}/dashboard sans auth → redirect /login", async ({ page }) => {
+  test("accès /{slug}/dashboard sans auth → redirect /login", async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
     const response = await page.goto("/some-tenant/dashboard");
     const url = page.url();
     const status = response?.status() ?? 0;
@@ -12,6 +14,7 @@ test.describe("Multi-tenant — Routing", () => {
 
     expect(isOkOrRedirect).toBe(true);
     expect(isRedirectedToLogin).toBe(true);
+    await context.close();
   });
 
   test("accès /unknown-xyz-tenant/dashboard → pas de 500", async ({

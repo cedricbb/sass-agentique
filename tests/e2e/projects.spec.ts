@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin } from "./helpers/auth";
 import { uniqueProjectName, SEED_CLIENT_NAME } from "./helpers/data";
 
 async function createProjectViaUI(page: import("@playwright/test").Page, projectName: string): Promise<void> {
@@ -21,7 +20,6 @@ async function searchProject(page: import("@playwright/test").Page, projectName:
 test.describe("Projects Admin — E2E", () => {
   test.describe.configure({ timeout: 60_000 });
   test("liste affiche les projets seed avec badges", async ({ page }) => {
-    await loginAsAdmin(page);
     await page.goto("/admin/projects");
 
     await expect(page.getByRole("heading", { name: "Projets" })).toBeVisible();
@@ -32,14 +30,16 @@ test.describe("Projects Admin — E2E", () => {
     await expect(page.getByText(/Brouillon|Livré|En pause|Annulé/i).first()).toBeVisible();
   });
 
-  test("redirect vers /login si non-authentifié", async ({ page }) => {
+  test("redirect vers /login si non-authentifié", async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
     await page.goto("/admin/projects");
 
     await expect(page).toHaveURL(/\/login/);
+    await context.close();
   });
 
   test("créer un projet via formulaire", async ({ page }) => {
-    await loginAsAdmin(page);
     const projectName = uniqueProjectName();
 
     await createProjectViaUI(page, projectName);
@@ -49,7 +49,6 @@ test.describe("Projects Admin — E2E", () => {
   });
 
   test("validation form vide affiche erreur", async ({ page }) => {
-    await loginAsAdmin(page);
     await page.goto("/admin/projects/new");
 
     await page.click('[data-testid="project-form-submit"]');
@@ -59,7 +58,6 @@ test.describe("Projects Admin — E2E", () => {
   });
 
   test("éditer un projet et vérifier en liste", async ({ page }) => {
-    await loginAsAdmin(page);
     const originalName = uniqueProjectName();
     await createProjectViaUI(page, originalName);
 
@@ -78,7 +76,6 @@ test.describe("Projects Admin — E2E", () => {
   });
 
   test("transition draft → active sans confirm", async ({ page }) => {
-    await loginAsAdmin(page);
     const projectName = uniqueProjectName();
     await createProjectViaUI(page, projectName);
 
@@ -95,7 +92,6 @@ test.describe("Projects Admin — E2E", () => {
   });
 
   test("transition active → delivered avec AlertDialog + badge Livré vert", async ({ page }) => {
-    await loginAsAdmin(page);
     const projectName = uniqueProjectName();
     await createProjectViaUI(page, projectName);
 

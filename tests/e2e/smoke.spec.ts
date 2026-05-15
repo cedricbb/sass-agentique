@@ -51,8 +51,11 @@ test.describe("Smoke — Routes statiques", () => {
 
 test.describe("Smoke — Sécurité de base", () => {
   test("une route protégée redirige vers /login si non authentifié", async ({
-    page,
+    browser,
   }) => {
+    // On utilise un contexte vierge sans authentification pour ce test
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
     // /some-tenant/dashboard est une route de l'app protégée par le middleware
     const response = await page.goto("/some-tenant/dashboard");
     // Soit redirect vers /login, soit page de login rendue
@@ -65,5 +68,6 @@ test.describe("Smoke — Sécurité de base", () => {
 
     expect(isOkOrRedirect).toBe(true);
     expect(isRedirectedToLogin).toBe(true);
+    await context.close();
   });
 });
