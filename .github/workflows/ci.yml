@@ -110,7 +110,10 @@ jobs:
       - name: Apply DB migrations
         run: pnpm --filter @saas/db push
 
-      - name: Run Playwright smoke tests
+      - name: Seed test data
+        run: pnpm --filter @saas/db seed
+
+      - name: Run Playwright e2e tests
         run: pnpm test:e2e
         env:
           STRIPE_SECRET_KEY: sk_test_dummy_for_ci_only
