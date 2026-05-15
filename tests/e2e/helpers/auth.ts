@@ -5,5 +5,5 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.fill('input[name="email"]', "admin@saas.dev");
   await page.fill('input[name="password"]', "admin1234");
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**");
+  await page.waitForURL(/\/admin/);
 }
