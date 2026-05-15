@@ -128,7 +128,63 @@ async function main() {
     })
     .returning();
 
-  console.log(`✅ 1 projet créé : ${project.slug}`);
+  const [brouillonDemo] = await db
+    .insert(schema.projects)
+    .values({
+      clientId: bob.id,
+      name: "Brouillon démo",
+      slug: "brouillon-demo",
+      status: "draft",
+    })
+    .onConflictDoUpdate({
+      target: [schema.projects.clientId, schema.projects.slug],
+      set: { name: "Brouillon démo" },
+    })
+    .returning();
+
+  const [refonteEcommerce] = await db
+    .insert(schema.projects)
+    .values({
+      clientId: globex.id,
+      name: "Refonte e-commerce",
+      slug: "refonte-ecommerce",
+      status: "on_hold",
+    })
+    .onConflictDoUpdate({
+      target: [schema.projects.clientId, schema.projects.slug],
+      set: { name: "Refonte e-commerce" },
+    })
+    .returning();
+
+  const [auditSeoAcme] = await db
+    .insert(schema.projects)
+    .values({
+      clientId: acme.id,
+      name: "Audit SEO Acme",
+      slug: "audit-seo-acme",
+      status: "delivered",
+    })
+    .onConflictDoUpdate({
+      target: [schema.projects.clientId, schema.projects.slug],
+      set: { name: "Audit SEO Acme" },
+    })
+    .returning();
+
+  const [pocAbandonne] = await db
+    .insert(schema.projects)
+    .values({
+      clientId: bob.id,
+      name: "POC abandonné",
+      slug: "poc-abandonne",
+      status: "cancelled",
+    })
+    .onConflictDoUpdate({
+      target: [schema.projects.clientId, schema.projects.slug],
+      set: { name: "POC abandonné" },
+    })
+    .returning();
+
+  console.log("✅ 5 projets créés (1 par statut : active, draft, on_hold, delivered, cancelled)");
 
   // ── Quote ───────────────────────────────────────────────────────────────────
   const [quote] = await db
