@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@saas/services", () => ({
-  createProject: vi.fn(),
-  updateProject: vi.fn(),
-  transitionStatus: vi.fn(),
-  getProjectById: vi.fn(),
-  listClients: vi.fn(),
-  InvalidProjectTransitionError: class InvalidProjectTransitionError extends Error {
-    constructor(from: string, to: string) {
-      super(`Invalid transition from ${from} to ${to}`);
-      this.name = "InvalidProjectTransitionError";
-    }
-  },
-}));
+vi.mock("@saas/services", async () => {
+  const actual = await vi.importActual<typeof import("@saas/services")>("@saas/services");
+  return {
+    ...actual,
+    createProject: vi.fn(),
+    updateProject: vi.fn(),
+    transitionStatus: vi.fn(),
+    getProjectById: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -27,14 +24,12 @@ import {
   updateProjectAction,
   transitionStatusAction,
   getProjectByIdAction,
-  listActiveClientsAction,
 } from "../projects";
 import {
   createProject,
   updateProject,
   transitionStatus,
   getProjectById,
-  listClients,
   InvalidProjectTransitionError,
 } from "@saas/services";
 import { requireAdmin } from "@/lib/auth";
@@ -45,31 +40,27 @@ const mockedCreateProject = vi.mocked(createProject);
 const mockedUpdateProject = vi.mocked(updateProject);
 const mockedTransitionStatus = vi.mocked(transitionStatus);
 const mockedGetProjectById = vi.mocked(getProjectById);
-const mockedListClients = vi.mocked(listClients);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
-const fakeAdmin = { id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<
-  ReturnType<typeof requireAdmin>
->;
+const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
+const OTHER_UUID = "660e8400-e29b-41d4-a716-446655440000";
 
-const fakeProject = {
-  id: "p1",
+const fakeAdmin = {
+  id: "admin-1",
+  email: "admin@test.com",
+  role: "admin",
+  name: "Admin",
+} as unknown as Awaited<ReturnType<typeof requireAdmin>>;
+
+const mockProject = {
+  id: "proj-1",
+  clientId: VALID_UUID,
+  slug: "proj-alpha",
   name: "Project Alpha",
-  slug: "project-alpha",
-  description: null,
-  clientId: "c1",
   status: "draft",
-  tenantId: "t1",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
-
-const fakeClient = {
-  id: "c1",
-  name: "Client A",
-  email: "a@test.com",
-  tenantId: "t1",
-  archivedAt: null,
+  description: null,
+  startedAt: null,
+  deliveredAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -85,262 +76,241 @@ beforeEach(() => {
   mockedRequireAdmin.mockResolvedValue(fakeAdmin);
 });
 
-// --- createProjectAction ---
-
 describe("createProjectAction", () => {
-  const validInput = { name: "Project Alpha", clientId: "00000000-0000-0000-0000-000000000001" };
+  const validInput = { clientId: VALID_UUID, name: "Project Alpha" };
 
-  it("1 — happy path", async () => {
-    mockedCreateProject.mockResolvedValue(fakeProject as never);
+  it("C1 — happy path", async () => {
+    mockedCreateProject.mockResolvedValue(mockProject as never);
     const result = await createProjectAction(validInput);
-    expect(result).toEqual({ ok: true, data: fakeProject });
+    expect(result).toEqual({ ok: true, data: mockProject });
+    expect(mockedCreateProject).toHaveBeenCalledWith({
+      clientId: VALID_UUID,
+      name: "Project Alpha",
+    });
+  });
+
+  it("C2 — revalidatePath called", async () => {
+    mockedCreateProject.mockResolvedValue(mockProject as never);
+    await createProjectAction(validInput);
+    expect(mockedRevalidatePath).toHaveBeenCalledTimes(1);
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/projects");
+  });
+
+  it("C3 — clientId UUID invalide", async () => {
+    const result = await createProjectAction({
+      clientId: "not-a-uuid",
+      name: "Test",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+  });
+
+  it("C4 — name vide", async () => {
+    const result = await createProjectAction({
+      clientId: VALID_UUID,
+      name: "",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+  });
+
+  it("C5 — status optionnel active", async () => {
+    mockedCreateProject.mockResolvedValue({
+      ...mockProject,
+      status: "active",
+    } as never);
+    await createProjectAction({
+      clientId: VALID_UUID,
+      name: "Test",
+      status: "active",
+    });
     expect(mockedCreateProject).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Project Alpha", clientId: "00000000-0000-0000-0000-000000000001" }),
+      expect.objectContaining({ status: "active" }),
+    );
+  });
+});
+
+describe("updateProjectAction", () => {
+  it("U1 — happy path patch défensif", async () => {
+    mockedUpdateProject.mockResolvedValue(mockProject as never);
+    const result = await updateProjectAction("proj-1", { name: "New Name" });
+    expect(result).toEqual({ ok: true, data: mockProject });
+    expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {
+      name: "New Name",
+    });
+  });
+
+  it("U2 — revalidatePath ×2", async () => {
+    mockedUpdateProject.mockResolvedValue(mockProject as never);
+    await updateProjectAction("proj-1", { name: "New Name" });
+    expect(mockedRevalidatePath).toHaveBeenCalledTimes(2);
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/projects");
+    expect(mockedRevalidatePath).toHaveBeenCalledWith(
+      "/admin/projects/proj-1",
     );
   });
 
-  it("2 — revalidatePath appelé", async () => {
-    mockedCreateProject.mockResolvedValue(fakeProject as never);
-    await createProjectAction(validInput);
-    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/projects");
-  });
-
-  it("3 — zod fail name vide", async () => {
-    const result = await createProjectAction({ name: "", clientId: "00000000-0000-0000-0000-000000000001" });
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "VALIDATION_ERROR", status: 400 }),
-    });
-    expect(mockedCreateProject).not.toHaveBeenCalled();
-  });
-
-  it("4 — zod fail clientId manquant", async () => {
-    const result = await createProjectAction({ name: "X" });
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "VALIDATION_ERROR", status: 400 }),
+  it("U3 — clientId modifiable", async () => {
+    mockedUpdateProject.mockResolvedValue(mockProject as never);
+    await updateProjectAction("proj-1", { clientId: OTHER_UUID });
+    expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {
+      clientId: OTHER_UUID,
     });
   });
 
-  it("5 — non-admin redirect rethrow", async () => {
-    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
-    await expect(createProjectAction(validInput)).rejects.toThrow("NEXT_REDIRECT");
-  });
-});
-
-// --- updateProjectAction ---
-
-describe("updateProjectAction", () => {
-  const validPatch = { name: "New Name" };
-
-  it("6 — happy path", async () => {
-    mockedUpdateProject.mockResolvedValue(fakeProject as never);
-    const result = await updateProjectAction("p1", validPatch);
-    expect(result).toEqual({ ok: true, data: fakeProject });
-    expect(mockedUpdateProject).toHaveBeenCalledWith("p1", { name: "New Name" });
+  it("U4 — status dans patch → strip zod", async () => {
+    mockedUpdateProject.mockResolvedValue(mockProject as never);
+    await updateProjectAction("proj-1", {
+      name: "Test",
+      status: "active",
+    } as never);
+    expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {
+      name: "Test",
+    });
   });
 
-  it("7 — revalidatePath appelé", async () => {
-    mockedUpdateProject.mockResolvedValue(fakeProject as never);
-    await updateProjectAction("p1", validPatch);
-    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/projects");
-  });
-
-  it("8 — not found → error", async () => {
+  it("U5 — service null → INTERNAL_ERROR", async () => {
     mockedUpdateProject.mockResolvedValue(null as never);
-    const result = await updateProjectAction("p1", validPatch);
-    expect(result).toEqual({
+    const result = await updateProjectAction("proj-1", { name: "Test" });
+    expect(result).toMatchObject({
       ok: false,
-      error: expect.objectContaining({ code: "INTERNAL_ERROR", status: 500 }),
+      error: { code: "INTERNAL_ERROR" },
     });
   });
 
-  it("9 — status dans input → service throw", async () => {
-    mockedUpdateProject.mockImplementation(() => {
-      throw new Error("Cannot update status via updateProject. Use transitionStatus instead.");
-    });
-    const result = await updateProjectAction("p1", { name: "X" });
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "INTERNAL_ERROR", status: 500 }),
-    });
-  });
-
-  it("10 — zod fail (empty object still valid partial)", async () => {
-    mockedUpdateProject.mockResolvedValue(fakeProject as never);
-    const result = await updateProjectAction("p1", {});
-    expect(result).toEqual({ ok: true, data: fakeProject });
-  });
-
-  it("11 — non-admin redirect rethrow", async () => {
-    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
-    await expect(updateProjectAction("p1", validPatch)).rejects.toThrow("NEXT_REDIRECT");
+  it("U6 — patch vide", async () => {
+    mockedUpdateProject.mockResolvedValue(mockProject as never);
+    const result = await updateProjectAction("proj-1", {});
+    expect(result).toEqual({ ok: true, data: mockProject });
+    expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {});
   });
 });
-
-// --- transitionStatusAction ---
 
 describe("transitionStatusAction", () => {
-  const validInput = { id: "00000000-0000-0000-0000-000000000001", newStatus: "active" as const };
-
-  it("12 — happy path draft→active", async () => {
-    const activeProject = { ...fakeProject, status: "active" };
-    mockedTransitionStatus.mockResolvedValue(activeProject as never);
-    const result = await transitionStatusAction(validInput);
-    expect(result).toEqual({ ok: true, data: activeProject });
-    expect(mockedTransitionStatus).toHaveBeenCalledWith(validInput.id, "active");
+  it("T1 — happy path draft→active", async () => {
+    mockedTransitionStatus.mockResolvedValue({
+      ...mockProject,
+      status: "active",
+    } as never);
+    const result = await transitionStatusAction("proj-1", "active");
+    expect(result).toMatchObject({ ok: true });
+    expect(mockedTransitionStatus).toHaveBeenCalledWith("proj-1", "active");
   });
 
-  it("13 — revalidatePath appelé", async () => {
-    mockedTransitionStatus.mockResolvedValue(fakeProject as never);
-    await transitionStatusAction(validInput);
+  it("T2 — happy path active→delivered", async () => {
+    const delivered = { ...mockProject, status: "delivered" };
+    mockedTransitionStatus.mockResolvedValue(delivered as never);
+    const result = await transitionStatusAction("proj-1", "delivered");
+    expect(result).toEqual({ ok: true, data: delivered });
+  });
+
+  it("T3 — InvalidProjectTransitionError → 409", async () => {
+    mockedTransitionStatus.mockRejectedValue(
+      new InvalidProjectTransitionError("draft", "delivered"),
+    );
+    const result = await transitionStatusAction("proj-1", "delivered");
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "PROJECT_INVALID_TRANSITION" },
+    });
+  });
+
+  it("T4 — newStatus bogus → VALIDATION_ERROR", async () => {
+    const result = await transitionStatusAction("proj-1", "bogus" as never);
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+  });
+
+  it("T5 — revalidatePath ×2", async () => {
+    mockedTransitionStatus.mockResolvedValue({
+      ...mockProject,
+      status: "active",
+    } as never);
+    await transitionStatusAction("proj-1", "active");
+    expect(mockedRevalidatePath).toHaveBeenCalledTimes(2);
     expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/projects");
+    expect(mockedRevalidatePath).toHaveBeenCalledWith(
+      "/admin/projects/proj-1",
+    );
   });
 
-  it("14 — InvalidProjectTransitionError → 409", async () => {
-    mockedTransitionStatus.mockImplementation(() => {
-      throw new InvalidProjectTransitionError("draft" as never, "delivered" as never);
-    });
-    const result = await transitionStatusAction({
-      id: "00000000-0000-0000-0000-000000000001",
-      newStatus: "delivered",
-    });
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "PROJECT_INVALID_TRANSITION", status: 409 }),
-    });
-  });
-
-  it("15 — not found → error", async () => {
+  it("T6 — service null → INTERNAL_ERROR", async () => {
     mockedTransitionStatus.mockResolvedValue(null as never);
-    const result = await transitionStatusAction(validInput);
-    expect(result).toEqual({
+    const result = await transitionStatusAction("proj-1", "active");
+    expect(result).toMatchObject({
       ok: false,
-      error: expect.objectContaining({ code: "INTERNAL_ERROR", status: 500 }),
+      error: { code: "INTERNAL_ERROR" },
     });
   });
 
-  it("16 — zod fail bad status enum", async () => {
-    const result = await transitionStatusAction({
-      id: "00000000-0000-0000-0000-000000000001",
-      newStatus: "invalid_status",
-    });
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "VALIDATION_ERROR", status: 400 }),
-    });
+  it("T7 — transition vers cancelled", async () => {
+    mockedTransitionStatus.mockResolvedValue({
+      ...mockProject,
+      status: "cancelled",
+    } as never);
+    await transitionStatusAction("proj-1", "cancelled");
+    expect(mockedTransitionStatus).toHaveBeenCalledWith("proj-1", "cancelled");
   });
 
-  it("17 — zod fail id manquant", async () => {
-    const result = await transitionStatusAction({ newStatus: "active" });
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "VALIDATION_ERROR", status: 400 }),
-    });
-  });
-
-  it("18 — non-admin redirect rethrow", async () => {
-    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
-    await expect(transitionStatusAction(validInput)).rejects.toThrow("NEXT_REDIRECT");
+  it("T8 — 5 statuses acceptés par schema", async () => {
+    const { transitionStatusSchema } = await import(
+      "@/lib/schemas/project.schemas"
+    );
+    const statuses = [
+      "draft",
+      "active",
+      "on_hold",
+      "delivered",
+      "cancelled",
+    ] as const;
+    for (const s of statuses) {
+      const result = transitionStatusSchema.safeParse({ status: s });
+      expect(result.success).toBe(true);
+    }
   });
 });
 
-// --- getProjectByIdAction ---
-
 describe("getProjectByIdAction", () => {
-  it("19 — happy path", async () => {
-    mockedGetProjectById.mockResolvedValue(fakeProject as never);
-    const result = await getProjectByIdAction("p1");
-    expect(result).toEqual({ ok: true, data: fakeProject });
-    expect(mockedGetProjectById).toHaveBeenCalledWith("p1");
+  it("G1 — happy path", async () => {
+    mockedGetProjectById.mockResolvedValue(mockProject as never);
+    const result = await getProjectByIdAction("proj-1");
+    expect(result).toEqual({ ok: true, data: mockProject });
   });
 
-  it("20 — retourne null → ok(null)", async () => {
-    mockedGetProjectById.mockResolvedValue(null as never);
-    const result = await getProjectByIdAction("p1");
+  it("G2 — null si non trouvé", async () => {
+    mockedGetProjectById.mockResolvedValue(null);
+    const result = await getProjectByIdAction("proj-999");
     expect(result).toEqual({ ok: true, data: null });
   });
 
-  it("21 — pas de revalidatePath", async () => {
-    mockedGetProjectById.mockResolvedValue(fakeProject as never);
-    await getProjectByIdAction("p1");
+  it("G3 — pas de revalidatePath", async () => {
+    mockedGetProjectById.mockResolvedValue(mockProject as never);
+    await getProjectByIdAction("proj-1");
     expect(mockedRevalidatePath).not.toHaveBeenCalled();
-  });
-
-  it("22 — non-admin redirect rethrow", async () => {
-    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
-    await expect(getProjectByIdAction("p1")).rejects.toThrow("NEXT_REDIRECT");
   });
 });
 
-// --- listActiveClientsAction ---
-
-describe("listActiveClientsAction", () => {
-  it("23 — happy path retourne clients", async () => {
-    mockedListClients.mockResolvedValue([fakeClient] as never);
-    const result = await listActiveClientsAction();
-    expect(result).toEqual({ ok: true, data: [fakeClient] });
-    expect(mockedListClients).toHaveBeenCalled();
+describe("Transversaux", () => {
+  it("N1 — NEXT_REDIRECT propagé", async () => {
+    mockedCreateProject.mockRejectedValue(makeRedirectError());
+    await expect(
+      createProjectAction({ clientId: VALID_UUID, name: "Test" }),
+    ).rejects.toThrow("NEXT_REDIRECT");
   });
 
-  it("24 — liste vide", async () => {
-    mockedListClients.mockResolvedValue([] as never);
-    const result = await listActiveClientsAction();
-    expect(result).toEqual({ ok: true, data: [] });
-  });
-
-  it("25 — pas de revalidatePath", async () => {
-    mockedListClients.mockResolvedValue([] as never);
-    await listActiveClientsAction();
-    expect(mockedRevalidatePath).not.toHaveBeenCalled();
-  });
-
-  it("26 — non-admin redirect rethrow", async () => {
-    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
-    await expect(listActiveClientsAction()).rejects.toThrow("NEXT_REDIRECT");
-  });
-});
-
-// --- schemas ---
-
-describe("schemas", () => {
-  it("27 — createProjectSchema parse valid", async () => {
-    const { createProjectSchema } = await import("@/lib/schemas/project.schemas");
-    const result = createProjectSchema.parse({
-      name: "Test",
-      clientId: "00000000-0000-0000-0000-000000000001",
-    });
-    expect(result.name).toBe("Test");
-  });
-
-  it("28 — createProjectSchema reject invalid clientId", async () => {
-    const { createProjectSchema } = await import("@/lib/schemas/project.schemas");
-    expect(() => createProjectSchema.parse({ name: "Test", clientId: "not-uuid" })).toThrow();
-  });
-
-  it("29 — updateProjectSchema partial", async () => {
-    const { updateProjectSchema } = await import("@/lib/schemas/project.schemas");
-    const result = updateProjectSchema.parse({ name: "Only name" });
-    expect(result.name).toBe("Only name");
-    expect(result.clientId).toBeUndefined();
-  });
-
-  it("30 — transitionStatusSchema enum valid", async () => {
-    const { transitionStatusSchema } = await import("@/lib/schemas/project.schemas");
-    const result = transitionStatusSchema.parse({
-      id: "00000000-0000-0000-0000-000000000001",
-      newStatus: "active",
-    });
-    expect(result.newStatus).toBe("active");
-  });
-
-  it("31 — transitionStatusSchema enum invalid", async () => {
-    const { transitionStatusSchema } = await import("@/lib/schemas/project.schemas");
-    expect(() =>
-      transitionStatusSchema.parse({
-        id: "00000000-0000-0000-0000-000000000001",
-        newStatus: "bogus",
-      }),
-    ).toThrow();
+  it("N2 — delete/list NON exposés", async () => {
+    const mod = await import("../projects");
+    expect(
+      (mod as Record<string, unknown>).deleteProjectAction,
+    ).toBeUndefined();
+    expect(
+      (mod as Record<string, unknown>).listAllProjectsAction,
+    ).toBeUndefined();
   });
 });

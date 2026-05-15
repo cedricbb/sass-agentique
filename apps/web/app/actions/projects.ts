@@ -1,23 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createProjectSchema, updateProjectSchema, transitionStatusSchema } from "@/lib/schemas/project.schemas";
 import {
+  createProjectSchema,
+  updateProjectSchema,
+  transitionStatusSchema,
+  type ProjectCreateValues,
+  type ProjectUpdateValues,
+  type ProjectStatus,
+} from "@/lib/schemas/project.schemas";
+import {
+  getProjectById,
   createProject,
   updateProject,
   transitionStatus,
-  getProjectById,
-  listClients,
 } from "@saas/services";
 import { withAdmin, type ActionResult } from "@/lib/action-result";
-import type { Project, Client } from "@saas/db";
+import type { Project } from "@saas/db";
 
 export async function createProjectAction(
-  input: unknown,
+  input: ProjectCreateValues,
 ): Promise<ActionResult<Project>> {
   return withAdmin(async () => {
     const data = createProjectSchema.parse(input);
-    const project = await createProject(data as never);
+    const payload: Record<string, unknown> = {
+      clientId: data.clientId,
+      name: data.name,
+    };
+    if (data.slug !== undefined) payload.slug = data.slug;
+    if (data.status !== undefined) payload.status = data.status;
+    if (data.description !== undefined) payload.description = data.description;
+    const project = await createProject(payload as never);
     revalidatePath("/admin/projects");
     return project;
   });
@@ -25,29 +38,37 @@ export async function createProjectAction(
 
 export async function updateProjectAction(
   id: string,
-  input: unknown,
-): Promise<ActionResult<Project | null>> {
+  input: ProjectUpdateValues,
+): Promise<ActionResult<Project>> {
   return withAdmin(async () => {
     const data = updateProjectSchema.parse(input);
-    const project = await updateProject(id, data as never);
+    const patch: Record<string, unknown> = {};
+    if (data.clientId !== undefined) patch.clientId = data.clientId;
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.slug !== undefined) patch.slug = data.slug;
+    if (data.description !== undefined) patch.description = data.description;
+    const project = await updateProject(id, patch as never);
     if (project === null) {
       throw new Error("PROJECT_NOT_FOUND");
     }
     revalidatePath("/admin/projects");
+    revalidatePath(`/admin/projects/${id}`);
     return project;
   });
 }
 
 export async function transitionStatusAction(
-  input: unknown,
+  id: string,
+  newStatus: ProjectStatus,
 ): Promise<ActionResult<Project>> {
   return withAdmin(async () => {
-    const { id, newStatus } = transitionStatusSchema.parse(input);
-    const project = await transitionStatus(id, newStatus as never);
+    const data = transitionStatusSchema.parse({ status: newStatus });
+    const project = await transitionStatus(id, data.status);
     if (project === null) {
       throw new Error("PROJECT_NOT_FOUND");
     }
     revalidatePath("/admin/projects");
+    revalidatePath(`/admin/projects/${id}`);
     return project;
   });
 }
@@ -57,11 +78,5 @@ export async function getProjectByIdAction(
 ): Promise<ActionResult<Project | null>> {
   return withAdmin(async () => {
     return getProjectById(id);
-  });
-}
-
-export async function listActiveClientsAction(): Promise<ActionResult<Client[]>> {
-  return withAdmin(async () => {
-    return listClients();
   });
 }
