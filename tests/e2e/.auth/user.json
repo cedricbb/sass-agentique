@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "session-token",
-      "value": "cd5565c131cefc322acb5eb0ecef64f304729a664ff24575dd9e8075d6f3416a",
+      "value": "2ffd9fc24c992f9c1a0d7822422fbf3c29fe82cd6aa6717d1cc97707b31e3c9b",
       "domain": "localhost",
       "path": "/",
-      "expires": 1781514205.22202,
+      "expires": 1781531458.992076,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
