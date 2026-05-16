@@ -4,6 +4,7 @@
  */
 
 import { drizzle } from "drizzle-orm/postgres-js";
+import { eq } from "drizzle-orm";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema";
@@ -201,7 +202,63 @@ async function main() {
     })
     .returning();
 
-  console.log(`✅ 1 devis créé : ${quote.number}`);
+  const [quote2] = await db
+    .insert(schema.quotes)
+    .values({
+      clientId: bob.id,
+      number: "Q-2026-002",
+      status: "sent",
+      totalEurCents: 250000,
+    })
+    .onConflictDoUpdate({
+      target: schema.quotes.number,
+      set: { totalEurCents: 250000, status: "sent" },
+    })
+    .returning();
+
+  const [quote3] = await db
+    .insert(schema.quotes)
+    .values({
+      clientId: globex.id,
+      number: "Q-2026-003",
+      status: "accepted",
+      totalEurCents: 5000,
+    })
+    .onConflictDoUpdate({
+      target: schema.quotes.number,
+      set: { totalEurCents: 5000, status: "accepted" },
+    })
+    .returning();
+
+  const [quote4] = await db
+    .insert(schema.quotes)
+    .values({
+      clientId: acme.id,
+      number: "Q-2026-004",
+      status: "declined",
+      totalEurCents: 250000,
+    })
+    .onConflictDoUpdate({
+      target: schema.quotes.number,
+      set: { totalEurCents: 250000, status: "declined" },
+    })
+    .returning();
+
+  const [quote5] = await db
+    .insert(schema.quotes)
+    .values({
+      clientId: bob.id,
+      number: "Q-2026-005",
+      status: "expired",
+      totalEurCents: 5000,
+    })
+    .onConflictDoUpdate({
+      target: schema.quotes.number,
+      set: { totalEurCents: 5000, status: "expired" },
+    })
+    .returning();
+
+  console.log("✅ 5 devis créés (1 par statut : draft, sent, accepted, declined, expired)");
 
   // ── Quote Items ─────────────────────────────────────────────────────────────
   await db
@@ -225,7 +282,47 @@ async function main() {
       },
     ]);
 
-  console.log("✅ 2 quote items créés");
+  await db.delete(schema.quoteItems).where(eq(schema.quoteItems.quoteId, quote2.id));
+  await db.insert(schema.quoteItems).values({
+    quoteId: quote2.id,
+    prestationId: siteVitrine.id,
+    description: "Site vitrine 5 pages",
+    quantity: 1,
+    unitPriceEurCents: 250000,
+    sortOrder: 1,
+  });
+
+  await db.delete(schema.quoteItems).where(eq(schema.quoteItems.quoteId, quote3.id));
+  await db.insert(schema.quoteItems).values({
+    quoteId: quote3.id,
+    prestationId: maintenanceMensuelle.id,
+    description: "Maintenance mensuelle",
+    quantity: 1,
+    unitPriceEurCents: 5000,
+    sortOrder: 1,
+  });
+
+  await db.delete(schema.quoteItems).where(eq(schema.quoteItems.quoteId, quote4.id));
+  await db.insert(schema.quoteItems).values({
+    quoteId: quote4.id,
+    prestationId: siteVitrine.id,
+    description: "Site vitrine 5 pages",
+    quantity: 1,
+    unitPriceEurCents: 250000,
+    sortOrder: 1,
+  });
+
+  await db.delete(schema.quoteItems).where(eq(schema.quoteItems.quoteId, quote5.id));
+  await db.insert(schema.quoteItems).values({
+    quoteId: quote5.id,
+    prestationId: maintenanceMensuelle.id,
+    description: "Maintenance mensuelle",
+    quantity: 1,
+    unitPriceEurCents: 5000,
+    sortOrder: 1,
+  });
+
+  console.log("✅ Quote items créés pour les 5 devis");
 
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin : admin@saas.dev / admin1234");
