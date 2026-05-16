@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { SEED_CLIENT_NAME, SEED_QUOTE_NUMBER, uniqueItemDescription } from "./helpers/data";
+import { SEED_CLIENT_NAME, SEED_CLIENT_WITHOUT_DRAFT_QUOTE, SEED_QUOTE_NUMBER, uniqueItemDescription } from "./helpers/data";
 
-async function createDraftQuoteViaUI(page: import("@playwright/test").Page): Promise<void> {
+async function createDraftQuoteViaUI(page: import("@playwright/test").Page, clientName: string = SEED_CLIENT_WITHOUT_DRAFT_QUOTE): Promise<void> {
   await page.goto("/admin/quotes/new");
   await page.click('[data-testid="quote-clientId-select"]');
-  await page.getByRole("option", { name: SEED_CLIENT_NAME }).click();
+  await page.getByRole("option", { name: clientName }).click();
   await page.click('[data-testid="quote-submit-button"]');
   await page.waitForURL("**/admin/quotes");
 }
@@ -38,7 +38,7 @@ test.describe("Quotes Admin — E2E", () => {
 
   test("T3 — créer un devis via formulaire", async ({ page }) => {
     await createDraftQuoteViaUI(page);
-    await expect(page.getByRole("row", { name: SEED_CLIENT_NAME }).first()).toBeVisible();
+    await expect(page.getByRole("row", { name: SEED_CLIENT_WITHOUT_DRAFT_QUOTE }).first()).toBeVisible();
   });
 
   test("T4 — validation form vide → erreur", async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe("Quotes Admin — E2E", () => {
 
   test("T5 — ajouter un item à un devis brouillon", async ({ page }) => {
     await createDraftQuoteViaUI(page);
-    await openLatestQuoteForClient(page, SEED_CLIENT_NAME);
+    await openLatestQuoteForClient(page, SEED_CLIENT_WITHOUT_DRAFT_QUOTE);
 
     const desc = uniqueItemDescription();
     await page.getByRole("button", { name: "Ajouter une ligne" }).click();
@@ -66,21 +66,21 @@ test.describe("Quotes Admin — E2E", () => {
 
   test("T6 — transitions draft→sent→accepted", async ({ page }) => {
     await createDraftQuoteViaUI(page);
-    await openLatestQuoteForClient(page, SEED_CLIENT_NAME);
+    await openLatestQuoteForClient(page, SEED_CLIENT_WITHOUT_DRAFT_QUOTE);
 
     await page.click('[data-testid="transition-sent-trigger"]');
     await page.click('[data-testid="transition-sent-confirm"]');
     await expect(page.getByText("Envoyé")).toBeVisible();
 
     await page.goto("/admin/quotes");
-    await expect(page.getByRole("row", { name: SEED_CLIENT_NAME }).first().getByText("Envoyé")).toBeVisible();
+    await expect(page.getByRole("row", { name: SEED_CLIENT_WITHOUT_DRAFT_QUOTE }).first().getByText("Envoyé")).toBeVisible();
 
-    await openLatestQuoteForClient(page, SEED_CLIENT_NAME);
+    await openLatestQuoteForClient(page, SEED_CLIENT_WITHOUT_DRAFT_QUOTE);
     await page.click('[data-testid="transition-accepted-trigger"]');
     await page.click('[data-testid="transition-accepted-confirm"]');
     await expect(page.getByText("Accepté")).toBeVisible();
 
     await page.goto("/admin/quotes");
-    await expect(page.getByRole("row", { name: SEED_CLIENT_NAME }).first().getByText("Accepté")).toBeVisible();
+    await expect(page.getByRole("row", { name: SEED_CLIENT_WITHOUT_DRAFT_QUOTE }).first().getByText("Accepté")).toBeVisible();
   });
 });

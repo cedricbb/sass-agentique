@@ -1,4 +1,5 @@
 export const SEED_CLIENT_NAME = "Acme Studio";
+export const SEED_CLIENT_WITHOUT_DRAFT_QUOTE = "Globex";
 export const SEED_QUOTE_NUMBER = "Q-2026-001";
 export const SEED_QUOTE_TTC_FR = "2 550,00 €";
 
