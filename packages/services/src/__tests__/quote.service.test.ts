@@ -167,21 +167,24 @@ describe("generateQuoteNumber", () => {
 
 describe("listQuotes", () => {
   it("lists all quotes without filters", async () => {
-    dbMock.from.mockResolvedValueOnce([QUOTE_FIXTURE]);
+    dbMock.orderBy.mockResolvedValueOnce([QUOTE_FIXTURE]);
     const result = await listQuotes();
     expect(result).toEqual([QUOTE_FIXTURE]);
+    expect(dbMock.orderBy).toHaveBeenCalled();
   });
 
   it("filters by clientId", async () => {
-    dbMock.where.mockResolvedValueOnce([QUOTE_FIXTURE]);
+    dbMock.orderBy.mockResolvedValueOnce([QUOTE_FIXTURE]);
     await listQuotes({ clientId: "c1" });
     expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
   });
 
   it("filters by status array", async () => {
-    dbMock.where.mockResolvedValueOnce([]);
+    dbMock.orderBy.mockResolvedValueOnce([]);
     await listQuotes({ status: ["draft", "sent"] });
     expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
   });
 });
 

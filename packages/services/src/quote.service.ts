@@ -96,12 +96,13 @@ export async function listQuotes(
     }
   }
   if (conditions.length === 0) {
-    return db.select().from(quotes);
+    return db.select().from(quotes).orderBy(desc(quotes.createdAt));
   }
   return db
     .select()
     .from(quotes)
-    .where(conditions.length === 1 ? conditions[0] : and(...conditions));
+    .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+    .orderBy(desc(quotes.createdAt));
 }
 
 export async function getQuoteById(id: string): Promise<Quote | null> {
