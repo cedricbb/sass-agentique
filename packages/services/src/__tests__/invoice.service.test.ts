@@ -175,21 +175,24 @@ describe("generateInvoiceNumber", () => {
 
 describe("listInvoices", () => {
   it("returns all invoices when no opts", async () => {
-    dbMock.from!.mockReturnValueOnce([INV_FIXTURE]);
+    dbMock.orderBy!.mockResolvedValueOnce([INV_FIXTURE]);
     const result = await listInvoices();
     expect(result).toEqual([INV_FIXTURE]);
+    expect(dbMock.orderBy).toHaveBeenCalled();
   });
 
   it("filters by clientId", async () => {
-    dbMock.where!.mockResolvedValueOnce([INV_FIXTURE]);
+    dbMock.orderBy!.mockResolvedValueOnce([INV_FIXTURE]);
     await listInvoices({ clientId: "c1" });
     expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
   });
 
   it("filters by status array via inArray", async () => {
-    dbMock.where!.mockResolvedValueOnce([]);
+    dbMock.orderBy!.mockResolvedValueOnce([]);
     await listInvoices({ status: ["draft", "sent"] });
     expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
   });
 });
 

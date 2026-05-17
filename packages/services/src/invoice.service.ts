@@ -45,13 +45,7 @@ export function canTransitionInvoice(from: InvoiceStatus, to: InvoiceStatus): bo
   return VALID_INVOICE_TRANSITIONS[from].includes(to);
 }
 
-export type InvoiceAmounts = { totalHtCents: number; vatCents: number; totalTtcCents: number };
-
-export function computeInvoiceTtc(invoice: Pick<Invoice, "totalEurCents" | "vatRateBps">): InvoiceAmounts {
-  const totalHtCents = invoice.totalEurCents;
-  const vatCents = Math.round((totalHtCents * invoice.vatRateBps) / 10000);
-  return { totalHtCents, vatCents, totalTtcCents: totalHtCents + vatCents };
-}
+export { computeInvoiceTtc, type InvoiceAmounts } from "./invoice.shared";
 
 async function generateInvoiceNumberTx(dbOrTx: DbOrTx, year?: number): Promise<string> {
   const y = year ?? new Date().getFullYear();
@@ -95,12 +89,13 @@ export async function listInvoices(opts?: ListInvoicesOptions): Promise<Invoice[
     }
   }
   if (conditions.length === 0) {
-    return db.select().from(invoices);
+    return db.select().from(invoices).orderBy(desc(invoices.createdAt));
   }
   return db
     .select()
     .from(invoices)
-    .where(conditions.length === 1 ? conditions[0] : and(...conditions));
+    .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+    .orderBy(desc(invoices.createdAt));
 }
 
 export async function getInvoiceById(id: string): Promise<Invoice | null> {

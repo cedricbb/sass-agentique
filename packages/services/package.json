@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./quote.shared": "./src/quote.shared.ts",
+    "./invoice.shared": "./src/invoice.shared.ts",
     "./quote.service": "./src/quote.service.ts",
     "./prestation.service": "./src/prestation.service.ts",
     "./client.service": "./src/client.service.ts",
