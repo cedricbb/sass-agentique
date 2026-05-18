@@ -21,6 +21,16 @@ export const paymentIdSchema = z.object({
 
 export const deletePaymentSchema = paymentIdSchema;
 
+export const listAllPaymentsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  perPage: z.coerce.number().int().min(1).max(200).default(50),
+  sort: z.enum(["paidAt", "amountEurCents"]).default("paidAt"),
+  order: z.enum(["asc", "desc"]).default("desc"),
+  search: z.string().optional(),
+  method: paymentMethodSchema.optional(),
+});
+
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 export type PaymentCreateValues = z.infer<typeof createPaymentSchema>;
 export type ListPaymentsByInvoiceValues = z.infer<typeof listPaymentsByInvoiceSchema>;
+export type ListAllPaymentsValues = z.infer<typeof listAllPaymentsSchema>;
