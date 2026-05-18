@@ -335,7 +335,9 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-43 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+57 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+
+**Packages**
 
 | Fichier | Scope |
 |---------|-------|
@@ -356,6 +358,11 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/report.service.test.ts` | Rapports |
 | `packages/services/src/__tests__/maintenance-contract.service.test.ts` | Contrats de maintenance |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
+
+**Web — lib & utilitaires**
+
+| Fichier | Scope |
+|---------|-------|
 | `apps/web/lib/__tests__/action-result.test.ts` | Utilitaire action-result |
 | `apps/web/lib/__tests__/auth.test.ts` | Helpers auth (web) |
 | `apps/web/lib/__tests__/format.test.ts` | Utilitaire format (dates, montants) |
@@ -363,32 +370,75 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
 | `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
 | `apps/web/lib/schemas/__tests__/client.schemas.test.ts` | Validation schémas Zod client |
+
+**Web — composants UI**
+
+| Fichier | Scope |
+|---------|-------|
 | `apps/web/components/ui/__tests__/badge.test.tsx` | Composant Badge (variantes, rendu) |
 | `apps/web/components/ui/data-table/__tests__/data-table.test.tsx` | Composant DataTable |
 | `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
+
+**Web — composants admin clients**
+
+| Fichier | Scope |
+|---------|-------|
+
+**Web — composants admin prestations**
+
+| Fichier | Scope |
+|---------|-------|
+
+**Web — composants admin projets**
+
+| Fichier | Scope |
+|---------|-------|
+
+**Web — composants admin devis**
+
+| Fichier | Scope |
+|---------|-------|
+
+**Web — composants admin factures**
+
+| Fichier | Scope |
+|---------|-------|
+
+**Web — Server Actions**
+
+| Fichier | Scope |
+|---------|-------|
 | `apps/web/app/actions/__tests__/clients.test.ts` | Server Actions clients (CRUD) |
 | `apps/web/app/actions/__tests__/prestations.test.ts` | Server Actions prestations (CRUD) |
 | `apps/web/app/actions/__tests__/projects.test.ts` | Server Actions projets (CRUD) |
-| `apps/web/app/actions/__tests__/r2-legacy-purge.spec.ts` | Vérification nettoyage R2 |
+| `apps/web/app/actions/__tests__/quotes.test.ts` | Server Actions devis (CRUD) |
+| `apps/web/app/actions/__tests__/quote-items.test.ts` | Server Actions lignes de devis |
+| `apps/web/app/actions/__tests__/invoices.test.ts` | Server Actions factures (CRUD) |
+| `apps/web/app/actions/__tests__/invoice-items.test.ts` | Server Actions lignes de facture |
+| `apps/web/app/actions/__tests__/payments.test.ts` | Server Actions paiements |
 
 ```bash
-pnpm test   # Exécute les 40 fichiers via vitest workspace
+pnpm test   # Exécute les 57 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
 
-3 specs Playwright sur Chromium avec helpers partagés :
+5 specs Playwright sur Chromium avec helpers partagés :
 
 | Fichier | Scope |
 |---------|-------|
 | `tests/e2e/smoke.spec.ts` | Smoke test — pages accessibles, erreurs JS, redirections |
 | `tests/e2e/multitenant.spec.ts` | Isolation multi-tenant (héritage R1) |
 | `tests/e2e/projects.spec.ts` | Workflows CRUD projets admin |
+| `tests/e2e/quotes.spec.ts` | Workflows devis — création, statuts, lignes |
+| `tests/e2e/invoices.spec.ts` | Workflows factures — conversion, paiements, statuts |
 
 Helpers E2E (`tests/e2e/helpers/`) :
 
 | Fichier | Rôle |
 |---------|------|
+| `tests/e2e/helpers/auth.ts` | Authentification et session de test |
+| `tests/e2e/helpers/data.ts` | Fixtures et création de données de test |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
@@ -411,6 +461,7 @@ Trois jobs sur chaque push et PR vers `main` / `develop` :
 | `lint-typecheck` | ESLint · TypeScript · drizzle-kit check |
 | `unit-tests` | Vitest (workspace complet) |
 | `e2e-tests` | Service Postgres · migrations · Playwright smoke |
+<!-- /SECTION:test-coverage -->
 <!-- END:test-coverage -->
 
 <!-- SECTION:backlog -->
