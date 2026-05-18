@@ -30,6 +30,9 @@ export const listAllPaymentsSchema = z.object({
   method: paymentMethodSchema.optional(),
 });
 
+export const recordPaymentFormSchema = createPaymentSchema.omit({ invoiceId: true });
+export type RecordPaymentFormValues = z.infer<typeof recordPaymentFormSchema>;
+
 export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
 export type PaymentCreateValues = z.infer<typeof createPaymentSchema>;
 export type ListPaymentsByInvoiceValues = z.infer<typeof listPaymentsByInvoiceSchema>;
