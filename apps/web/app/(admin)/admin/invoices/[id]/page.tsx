@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getInvoiceById, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations } from "@saas/services";
+import { getInvoiceById, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations, paymentService } from "@saas/services";
+import { computeInvoiceTtc } from "@saas/services/invoice.shared";
 import { InvoiceStatusActions } from "../_components/InvoiceStatusActions";
 import { InvoiceForm } from "../_components/InvoiceForm";
 import { InvoiceItemsEditor } from "../_components/InvoiceItemsEditor";
+import { InvoiceAmountsCard } from "../_components/InvoiceAmountsCard";
+import { InvoiceBalanceCard } from "../_components/InvoiceBalanceCard";
 
 export const metadata: Metadata = { title: "Modifier la facture — Admin" };
 
@@ -21,7 +24,11 @@ export default async function EditInvoicePage({
   ]);
   if (!invoice) notFound();
 
-  const items = await listInvoiceItems(id);
+  const [items, balance] = await Promise.all([
+    listInvoiceItems(id),
+    paymentService.computeInvoiceBalance(id),
+  ]);
+  const amounts = computeInvoiceTtc(invoice);
   const canEdit = invoice.status === "draft";
 
   const sourceQuote = invoice.quoteId ? await getQuoteById(invoice.quoteId) : null;
@@ -55,6 +62,20 @@ export default async function EditInvoicePage({
           canEdit={canEdit}
         />
       </section>
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Montants</h2>
+        <InvoiceAmountsCard amounts={amounts} />
+      </section>
+      {["sent", "overdue", "paid"].includes(invoice.status) && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Solde</h2>
+          <InvoiceBalanceCard
+            totalTtcCents={amounts.totalTtcCents}
+            paidCents={balance.paidCents}
+            status={invoice.status}
+          />
+        </section>
+      )}
     </div>
   );
 }
