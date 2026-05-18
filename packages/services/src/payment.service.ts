@@ -1,6 +1,36 @@
 import { db, type Payment, type NewPayment, payments, invoices } from "@saas/db";
-import { eq, sql, asc } from "drizzle-orm";
+import { eq, sql, asc, desc, ilike, and } from "drizzle-orm";
 import * as invoiceService from "./invoice.service";
+
+export interface ListAllPaymentsParams {
+  limit?: number;
+  offset?: number;
+  method?: "stripe_card" | "bank_transfer" | "other";
+  search?: string;
+}
+
+export async function listAllPayments(params?: ListAllPaymentsParams): Promise<Payment[]> {
+  const limit = Math.max(1, Math.min(params?.limit ?? 50, 200));
+  const offset = Math.max(0, params?.offset ?? 0);
+
+  const conditions = [];
+  if (params?.method) {
+    conditions.push(eq(payments.method, params.method));
+  }
+  if (params?.search) {
+    conditions.push(ilike(payments.externalRef, `%${params.search}%`));
+  }
+
+  const query = db.select().from(payments);
+  const withWhere = conditions.length > 0
+    ? query.where(conditions.length === 1 ? conditions[0]! : and(...conditions))
+    : query;
+
+  return withWhere
+    .orderBy(desc(payments.paidAt))
+    .limit(limit)
+    .offset(offset);
+}
 
 type Db = typeof db;
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

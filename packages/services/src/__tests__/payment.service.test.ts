@@ -8,6 +8,7 @@ const makeDrizzleMock = () => {
     "update", "set",
     "delete",
     "orderBy",
+    "offset",
   ];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnThis();
@@ -20,7 +21,7 @@ let dbMock = makeDrizzleMock();
 
 vi.mock("@saas/db", () => ({
   get db() { return dbMock; },
-  payments: { id: "id", invoiceId: "invoiceId", amountEurCents: "amountEurCents", paidAt: "paidAt" },
+  payments: { id: "id", invoiceId: "invoiceId", amountEurCents: "amountEurCents", paidAt: "paidAt", method: "method", externalRef: "externalRef" },
   invoices: { id: "id", status: "status", totalEurCents: "totalEurCents" },
 }));
 
@@ -28,6 +29,9 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: unknown[]) => ({ op: "eq", args })),
   sql: vi.fn((...args: unknown[]) => ({ op: "sql", args })),
   asc: vi.fn((...args: unknown[]) => ({ op: "asc", args })),
+  desc: vi.fn((...args: unknown[]) => ({ op: "desc", args })),
+  ilike: vi.fn((...args: unknown[]) => ({ op: "ilike", args })),
+  and: vi.fn((...args: unknown[]) => ({ op: "and", args })),
 }));
 
 vi.mock("../invoice.service", () => ({
@@ -36,6 +40,7 @@ vi.mock("../invoice.service", () => ({
 
 import {
   listPaymentsByInvoice,
+  listAllPayments,
   getPaymentById,
   createPayment,
   deletePayment,
@@ -256,5 +261,51 @@ describe("recomputePaidAtForInvoice", () => {
     const result2 = await recomputePaidAtForInvoice("inv-1");
     expect(result2).toEqual({ wasMarkedAsPaid: false });
     expect(invoiceService.transitionInvoiceStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe("listAllPayments", () => {
+  it("returns empty array when no payments", async () => {
+    dbMock.offset.mockResolvedValueOnce([]);
+    const result = await listAllPayments();
+    expect(result).toEqual([]);
+  });
+
+  it("returns payments sorted desc paidAt", async () => {
+    const data = [
+      { id: "p1", paidAt: new Date("2026-02-01") },
+      { id: "p2", paidAt: new Date("2026-01-01") },
+    ];
+    dbMock.offset.mockResolvedValueOnce(data);
+    const result = await listAllPayments();
+    expect(result).toEqual(data);
+    expect(dbMock.orderBy).toHaveBeenCalled();
+  });
+
+  it("returns Payment[] with all fields present", async () => {
+    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 5000, method: "bank_transfer", paidAt: new Date() };
+    dbMock.offset.mockResolvedValueOnce([payment]);
+    const result = await listAllPayments();
+    expect(result[0]).toHaveProperty("id");
+    expect(result[0]).toHaveProperty("invoiceId");
+    expect(result[0]).toHaveProperty("amountEurCents");
+    expect(result[0]).toHaveProperty("method");
+    expect(result[0]).toHaveProperty("paidAt");
+  });
+
+  it("filters by method", async () => {
+    const data = [{ id: "p1", method: "stripe_card" }];
+    dbMock.offset.mockResolvedValueOnce(data);
+    const result = await listAllPayments({ method: "stripe_card" });
+    expect(result).toEqual(data);
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+
+  it("filters by search on externalRef", async () => {
+    const data = [{ id: "p1", externalRef: "pi_123" }];
+    dbMock.offset.mockResolvedValueOnce(data);
+    const result = await listAllPayments({ search: "pi_123" });
+    expect(result).toEqual(data);
+    expect(dbMock.where).toHaveBeenCalled();
   });
 });
