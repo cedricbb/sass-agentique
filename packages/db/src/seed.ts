@@ -324,6 +324,71 @@ async function main() {
 
   console.log("✅ Quote items créés pour les 5 devis");
 
+  // ── Invoices ────────────────────────────────────────────────────────────────
+  const [inv1] = await db
+    .insert(schema.invoices)
+    .values({
+      clientId: acme.id,
+      number: "INV-2026-001",
+      status: "draft",
+      totalEurCents: 25000,
+      vatRateBps: 2000,
+    })
+    .onConflictDoUpdate({
+      target: schema.invoices.number,
+      set: { totalEurCents: 25000, status: "draft" },
+    })
+    .returning();
+
+  const [inv2] = await db
+    .insert(schema.invoices)
+    .values({
+      clientId: bob.id,
+      number: "INV-2026-002",
+      status: "sent",
+      totalEurCents: 25000,
+      vatRateBps: 2000,
+      issuedAt: new Date("2026-03-15T00:00:00Z"),
+      dueAt: new Date("2026-04-15T00:00:00Z"),
+    })
+    .onConflictDoUpdate({
+      target: schema.invoices.number,
+      set: { totalEurCents: 25000, status: "sent" },
+    })
+    .returning();
+
+  const [inv3] = await db
+    .insert(schema.invoices)
+    .values({
+      clientId: globex.id,
+      quoteId: quote3.id,
+      number: "INV-2026-003",
+      status: "paid",
+      totalEurCents: 5000,
+      vatRateBps: 2000,
+      issuedAt: new Date("2026-02-01T00:00:00Z"),
+      dueAt: new Date("2026-03-01T00:00:00Z"),
+      paidAt: new Date("2026-02-20T00:00:00Z"),
+    })
+    .onConflictDoUpdate({
+      target: schema.invoices.number,
+      set: { totalEurCents: 5000, status: "paid" },
+    })
+    .returning();
+
+  console.log("✅ 3 factures créées");
+
+  // ── Payment partiel sur INV-2026-002 ────────────────────────────────────────
+  await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv2.id));
+  await db.insert(schema.payments).values({
+    invoiceId: inv2.id,
+    amountEurCents: 5000,
+    method: "bank_transfer",
+    paidAt: new Date("2026-03-20T00:00:00Z"),
+  });
+
+  console.log("✅ 1 paiement partiel créé");
+
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin : admin@saas.dev / admin1234");
 
