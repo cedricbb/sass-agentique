@@ -7,6 +7,7 @@ import { InvoiceForm } from "../_components/InvoiceForm";
 import { InvoiceItemsEditor } from "../_components/InvoiceItemsEditor";
 import { InvoiceAmountsCard } from "../_components/InvoiceAmountsCard";
 import { InvoiceBalanceCard } from "../_components/InvoiceBalanceCard";
+import { RecordPaymentDialog } from "../_components/RecordPaymentDialog";
 
 export const metadata: Metadata = { title: "Modifier la facture — Admin" };
 
@@ -66,6 +67,13 @@ export default async function EditInvoicePage({
         <h2 className="text-xl font-semibold mb-4">Montants</h2>
         <InvoiceAmountsCard amounts={amounts} />
       </section>
+      {invoice.status === "sent" && (
+        <RecordPaymentDialog
+          invoiceId={invoice.id}
+          invoiceNumber={invoice.number}
+          remainingTtcCents={Math.max(0, amounts.totalTtcCents - balance.paidCents)}
+        />
+      )}
       {["sent", "overdue", "paid"].includes(invoice.status) && (
         <section>
           <h2 className="text-xl font-semibold mb-4">Solde</h2>
