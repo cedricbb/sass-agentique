@@ -8,6 +8,8 @@ import { eq, inArray } from "drizzle-orm";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema";
+
+export const SEED_PAYMENT_REFS = ["pi_seed_002", "vir_seed_003", "chk_seed_004"];
 import { env } from "@saas/config";
 
 const BCRYPT_ROUNDS = 12;
@@ -387,16 +389,42 @@ async function main() {
   ]);
   console.log("✅ Invoice items créés : 2 sur INV-2026-002, 1 sur INV-2026-003 (INV-2026-001 reste vide)");
 
-  // ── Payment partiel sur INV-2026-002 ────────────────────────────────────────
+  // ── Payments ────────────────────────────────────────────────────────────────
   await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv2.id));
-  await db.insert(schema.payments).values({
-    invoiceId: inv2.id,
-    amountEurCents: 5000,
-    method: "bank_transfer",
-    paidAt: new Date("2026-03-20T00:00:00Z"),
-  });
+  await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv1.id));
+  await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv3.id));
 
-  console.log("✅ 1 paiement partiel créé");
+  await db.insert(schema.payments).values([
+    {
+      invoiceId: inv2.id,
+      amountEurCents: 5000,
+      method: "bank_transfer",
+      paidAt: new Date("2026-03-20T00:00:00Z"),
+    },
+    {
+      invoiceId: inv2.id,
+      amountEurCents: 10000,
+      method: "stripe_card",
+      externalRef: "pi_seed_002",
+      paidAt: new Date("2026-04-15T00:00:00Z"),
+    },
+    {
+      invoiceId: inv3.id,
+      amountEurCents: 5000,
+      method: "bank_transfer",
+      externalRef: "vir_seed_003",
+      paidAt: new Date("2026-02-20T00:00:00Z"),
+    },
+    {
+      invoiceId: inv1.id,
+      amountEurCents: 8000,
+      method: "other",
+      externalRef: "chk_seed_004",
+      paidAt: new Date("2026-05-01T00:00:00Z"),
+    },
+  ]);
+
+  console.log("✅ 4 paiements créés (3 méthodes, multi-invoices)");
 
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin : admin@saas.dev / admin1234");
