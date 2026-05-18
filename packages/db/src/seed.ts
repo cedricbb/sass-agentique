@@ -4,7 +4,7 @@
  */
 
 import { drizzle } from "drizzle-orm/postgres-js";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema";
@@ -377,6 +377,15 @@ async function main() {
     .returning();
 
   console.log("✅ 3 factures créées");
+
+  // ── Invoice Items ──────────────────────────────────────────────────────────
+  await db.delete(schema.invoiceItems).where(inArray(schema.invoiceItems.invoiceId, [inv2.id, inv3.id]));
+  await db.insert(schema.invoiceItems).values([
+    { invoiceId: inv2.id, description: "Développement API", quantity: 2, unitPriceEurCents: 10000, sortOrder: 0 },
+    { invoiceId: inv2.id, description: "Intégration frontend", quantity: 1, unitPriceEurCents: 5000, sortOrder: 1 },
+    { invoiceId: inv3.id, description: "Audit sécurité", quantity: 1, unitPriceEurCents: 5000, sortOrder: 0 },
+  ]);
+  console.log("✅ Invoice items créés : 2 sur INV-2026-002, 1 sur INV-2026-003 (INV-2026-001 reste vide)");
 
   // ── Payment partiel sur INV-2026-002 ────────────────────────────────────────
   await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv2.id));
