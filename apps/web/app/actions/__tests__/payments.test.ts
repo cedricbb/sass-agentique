@@ -15,6 +15,7 @@ vi.mock("@saas/services", () => {
       createPayment: vi.fn(),
       deletePayment: vi.fn(),
       listPaymentsByInvoice: vi.fn(),
+      listAllPayments: vi.fn(),
       getPaymentById: vi.fn(),
       computeInvoiceBalance: vi.fn(),
       PaymentDeletionOnPaidInvoiceError,
@@ -36,6 +37,7 @@ import {
   createPaymentAction,
   deletePaymentAction,
   listPaymentsByInvoiceAction,
+  listAllPaymentsAction,
   getPaymentByIdAction,
 } from "../payments";
 import { paymentService, getInvoiceById } from "@saas/services";
@@ -46,6 +48,7 @@ const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedCreatePayment = vi.mocked(paymentService.createPayment);
 const mockedDeletePayment = vi.mocked(paymentService.deletePayment);
 const mockedListPayments = vi.mocked(paymentService.listPaymentsByInvoice);
+const mockedListAllPayments = vi.mocked(paymentService.listAllPayments);
 const mockedGetPaymentById = vi.mocked(paymentService.getPaymentById);
 const mockedComputeBalance = vi.mocked(paymentService.computeInvoiceBalance);
 const mockedGetInvoiceById = vi.mocked(getInvoiceById);
@@ -235,5 +238,25 @@ describe("getPaymentByIdAction", () => {
     mockedGetPaymentById.mockResolvedValue(null);
     const result = await getPaymentByIdAction(PAYMENT_ID);
     expect(result).toEqual({ ok: true, data: null });
+  });
+});
+
+describe("listAllPaymentsAction", () => {
+  it("happy path returns success + data", async () => {
+    const data = [mockPayment];
+    mockedListAllPayments.mockResolvedValue(data as never);
+    const result = await listAllPaymentsAction({ page: 1, perPage: 50, sort: "paidAt", order: "desc" });
+    expect(result).toEqual({ ok: true, data });
+  });
+
+  it("invalid params (page=-1) returns error", async () => {
+    const result = await listAllPaymentsAction({ page: -1, perPage: 50, sort: "paidAt", order: "desc" });
+    expect(result).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  });
+
+  it("non-admin user redirected", async () => {
+    const err = makeRedirectError();
+    mockedRequireAdmin.mockRejectedValue(err);
+    await expect(listAllPaymentsAction({ page: 1, perPage: 50, sort: "paidAt", order: "desc" })).rejects.toThrow();
   });
 });

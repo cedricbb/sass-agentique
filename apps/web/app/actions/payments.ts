@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import {
   createPaymentSchema,
   paymentIdSchema,
+  listAllPaymentsSchema,
   type PaymentCreateValues,
+  type ListAllPaymentsValues,
 } from "@/lib/schemas/payment.schemas";
 import { paymentService, getInvoiceById } from "@saas/services";
 import {
@@ -88,5 +90,21 @@ export async function getPaymentByIdAction(
 ): Promise<ActionResult<Payment | null>> {
   return withAdmin(async () => {
     return paymentService.getPaymentById(id);
+  });
+}
+
+export async function listAllPaymentsAction(
+  input: ListAllPaymentsValues,
+): Promise<ActionResult<Payment[]>> {
+  return withAdmin(async () => {
+    const parsed = listAllPaymentsSchema.parse(input);
+    const limit = parsed.perPage;
+    const offset = (parsed.page - 1) * parsed.perPage;
+    return paymentService.listAllPayments({
+      limit,
+      offset,
+      method: parsed.method,
+      search: parsed.search,
+    });
   });
 }
