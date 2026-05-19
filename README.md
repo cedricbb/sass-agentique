@@ -335,7 +335,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-57 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+63 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
 
 **Packages**
 
@@ -366,18 +366,14 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/action-result.test.ts` | Utilitaire action-result |
 | `apps/web/lib/__tests__/auth.test.ts` | Helpers auth (web) |
 | `apps/web/lib/__tests__/format.test.ts` | Utilitaire format (dates, montants) |
+| `apps/web/lib/__tests__/payment-labels.test.ts` | Labels et formatage des paiements |
 | `apps/web/lib/__tests__/shadcn-imports.test.ts` | Intégrité des imports shadcn/ui |
 | `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
 | `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
 | `apps/web/lib/schemas/__tests__/client.schemas.test.ts` | Validation schémas Zod client |
-
-**Web — composants UI**
-
-| Fichier | Scope |
-|---------|-------|
+| `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
 | `apps/web/components/ui/__tests__/badge.test.tsx` | Composant Badge (variantes, rendu) |
 | `apps/web/components/ui/data-table/__tests__/data-table.test.tsx` | Composant DataTable |
-| `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
 
 **Web — composants admin clients**
 
@@ -404,6 +400,11 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | Fichier | Scope |
 |---------|-------|
 
+**Web — composants admin paiements**
+
+| Fichier | Scope |
+|---------|-------|
+
 **Web — Server Actions**
 
 | Fichier | Scope |
@@ -416,9 +417,10 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/app/actions/__tests__/invoices.test.ts` | Server Actions factures (CRUD) |
 | `apps/web/app/actions/__tests__/invoice-items.test.ts` | Server Actions lignes de facture |
 | `apps/web/app/actions/__tests__/payments.test.ts` | Server Actions paiements |
+| `apps/web/app/actions/__tests__/r2-legacy-purge.spec.ts` | Nettoyage fichiers R2 legacy |
 
 ```bash
-pnpm test   # Exécute les 57 fichiers via vitest workspace
+pnpm test   # Exécute les 63 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
@@ -463,6 +465,14 @@ Trois jobs sur chaque push et PR vers `main` / `develop` :
 | `unit-tests` | Vitest (workspace complet) |
 | `e2e-tests` | Service Postgres · migrations · Playwright smoke |
 <!-- /SECTION:test-coverage -->
+```
+
+**Changes from previous version:**
+- Count updated 57 → **63** (+6 new files)
+- `lib/__tests__/payment-labels.test.ts` — new
+- `app/actions/__tests__/r2-legacy-purge.spec.ts` — new
+- All admin component test tables populated (were empty): **clients** (3), **prestations** (3), **projets** (3), **devis** (6), **factures** (10), **paiements** (1)
+- Admin payments section added
 <!-- END:test-coverage -->
 
 <!-- SECTION:backlog -->
