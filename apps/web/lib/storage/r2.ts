@@ -155,8 +155,9 @@ export async function streamPdfFromR2(
       contentLength: res.ContentLength ?? 0,
       contentType: res.ContentType ?? "application/pdf",
     };
-  } catch (err: any) {
-    if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+  } catch (err: unknown) {
+    const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (e.name === "NoSuchKey" || e.$metadata?.httpStatusCode === 404) {
       throw new R2NotFoundError(key);
     }
     throw err;

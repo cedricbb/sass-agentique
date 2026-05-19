@@ -26,9 +26,9 @@ import {
   R2DeleteError,
 } from "../r2";
 
-const { S3Client: MockS3Client, __mockSend } = await import(
+const { S3Client: MockS3Client, __mockSend } = (await import(
   "@aws-sdk/client-s3"
-) as any;
+)) as Record<string, unknown>;
 
 const R2_ENV = {
   R2_ENDPOINT: "https://test.r2.cloudflarestorage.com",
