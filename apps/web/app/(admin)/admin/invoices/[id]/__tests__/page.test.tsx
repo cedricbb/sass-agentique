@@ -16,7 +16,10 @@ vi.mock("@saas/services", () => ({
   listPrestations: vi.fn().mockResolvedValue([]),
   getQuoteById: vi.fn().mockResolvedValue(null),
   listInvoiceItems: vi.fn().mockResolvedValue([]),
-  paymentService: { computeInvoiceBalance: vi.fn().mockResolvedValue({ paidCents: 5000 }) },
+  paymentService: {
+    computeInvoiceBalance: vi.fn().mockResolvedValue({ paidCents: 5000 }),
+    listPaymentsByInvoice: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 vi.mock("@saas/services/invoice.shared", () => ({
@@ -51,6 +54,9 @@ vi.mock("../../_components/RecordPaymentDialog", () => ({
     <div data-testid="record-payment-button" data-invoice-id={props.invoiceId} />
   ),
 }));
+vi.mock("../../_components/InvoicePaymentsList", () => ({
+  InvoicePaymentsList: () => <div data-testid="mock-payments-list" />,
+}));
 
 import { getInvoiceById } from "@saas/services";
 
@@ -77,5 +83,32 @@ describe("EditInvoicePage — RecordPaymentDialog integration", () => {
   it("Page-T3 — hides RecordPaymentDialog when invoice status is paid", async () => {
     await renderPage({ ...MOCK_INVOICE_BASE, status: "paid" });
     expect(screen.queryByTestId("record-payment-button")).not.toBeInTheDocument();
+  });
+});
+
+describe("EditInvoicePage — InvoicePaymentsList integration", () => {
+  it("P1 — renders InvoicePaymentsList when status is sent", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "sent" });
+    expect(screen.getByTestId("mock-payments-list")).toBeInTheDocument();
+  });
+
+  it("P2 — renders InvoicePaymentsList when status is overdue", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "overdue" });
+    expect(screen.getByTestId("mock-payments-list")).toBeInTheDocument();
+  });
+
+  it("P3 — renders InvoicePaymentsList when status is paid", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "paid" });
+    expect(screen.getByTestId("mock-payments-list")).toBeInTheDocument();
+  });
+
+  it("P4 — does NOT render InvoicePaymentsList when status is draft", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "draft" });
+    expect(screen.queryByTestId("mock-payments-list")).not.toBeInTheDocument();
+  });
+
+  it("P5 — does NOT render InvoicePaymentsList when status is cancelled", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "cancelled" });
+    expect(screen.queryByTestId("mock-payments-list")).not.toBeInTheDocument();
   });
 });

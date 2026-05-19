@@ -7,6 +7,7 @@ import { InvoiceForm } from "../_components/InvoiceForm";
 import { InvoiceItemsEditor } from "../_components/InvoiceItemsEditor";
 import { InvoiceAmountsCard } from "../_components/InvoiceAmountsCard";
 import { InvoiceBalanceCard } from "../_components/InvoiceBalanceCard";
+import { InvoicePaymentsList } from "../_components/InvoicePaymentsList";
 import { RecordPaymentDialog } from "../_components/RecordPaymentDialog";
 
 export const metadata: Metadata = { title: "Modifier la facture — Admin" };
@@ -25,9 +26,10 @@ export default async function EditInvoicePage({
   ]);
   if (!invoice) notFound();
 
-  const [items, balance] = await Promise.all([
+  const [items, balance, payments] = await Promise.all([
     listInvoiceItems(id),
     paymentService.computeInvoiceBalance(id),
+    paymentService.listPaymentsByInvoice(id),
   ]);
   const amounts = computeInvoiceTtc(invoice);
   const canEdit = invoice.status === "draft";
@@ -81,6 +83,11 @@ export default async function EditInvoicePage({
             totalTtcCents={amounts.totalTtcCents}
             paidCents={balance.paidCents}
             status={invoice.status}
+          />
+          <InvoicePaymentsList
+            invoiceId={invoice.id}
+            invoiceStatus={invoice.status}
+            payments={payments}
           />
         </section>
       )}
