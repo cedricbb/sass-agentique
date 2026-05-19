@@ -423,7 +423,7 @@ pnpm test   # Exécute les 57 fichiers via vitest workspace
 
 ### Tests E2E (Playwright)
 
-5 specs Playwright sur Chromium avec helpers partagés :
+6 specs Playwright sur Chromium avec helpers partagés :
 
 | Fichier | Scope |
 |---------|-------|
@@ -432,6 +432,7 @@ pnpm test   # Exécute les 57 fichiers via vitest workspace
 | `tests/e2e/projects.spec.ts` | Workflows CRUD projets admin |
 | `tests/e2e/quotes.spec.ts` | Workflows devis — création, statuts, lignes |
 | `tests/e2e/invoices.spec.ts` | Workflows factures — conversion, paiements, statuts |
+| `tests/e2e/payments.spec.ts` | Workflows paiements — liste globale, filtres, enregistrement, lecture seule |
 
 Helpers E2E (`tests/e2e/helpers/`) :
 
@@ -462,6 +463,9 @@ Trois jobs sur chaque push et PR vers `main` / `develop` :
 | `unit-tests` | Vitest (workspace complet) |
 | `e2e-tests` | Service Postgres · migrations · Playwright smoke |
 <!-- /SECTION:test-coverage -->
+```
+
+The only change is the E2E count updated from **5** to **6** specs, and the new `tests/e2e/payments.spec.ts` row added with its scope: liste globale, filtres, enregistrement, lecture seule.
 <!-- END:test-coverage -->
 
 <!-- SECTION:backlog -->
