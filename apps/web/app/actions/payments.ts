@@ -9,6 +9,7 @@ import {
   type ListAllPaymentsValues,
 } from "@/lib/schemas/payment.schemas";
 import { paymentService, getInvoiceById } from "@saas/services";
+import { computeInvoiceTtc } from "@saas/services/invoice.shared";
 import {
   withAdmin,
   ok,
@@ -39,7 +40,11 @@ export async function createPaymentAction(
     }
 
     const balance = await paymentService.computeInvoiceBalance(data.invoiceId);
-    if (data.amountEurCents + balance.paidCents > balance.totalCents) {
+    const { totalTtcCents } = computeInvoiceTtc({
+      totalEurCents: invoice.totalEurCents,
+      vatRateBps: invoice.vatRateBps,
+    });
+    if (data.amountEurCents + balance.paidCents > totalTtcCents) {
       return fail(
         "PAYMENT_OVERPAYMENT",
         "Le montant dépasse le solde restant.",

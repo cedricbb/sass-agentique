@@ -159,9 +159,17 @@ describe("createPaymentAction", () => {
 
   it("T8 — over-payment", async () => {
     mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
-    mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 8000, balanceCents: 2000, isFullyPaid: false });
+    mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 10000, balanceCents: 0, isFullyPaid: false });
     const result = await createPaymentAction({ ...validInput, amountEurCents: 3000 });
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_OVERPAYMENT", status: 400 } });
+  });
+
+  it("T8bis — accepts exact TTC payment (no overpayment)", async () => {
+    mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+    mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 0, balanceCents: 10000, isFullyPaid: false });
+    mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: false });
+    const result = await createPaymentAction({ ...validInput, amountEurCents: 12000 });
+    expect(result).toMatchObject({ ok: true });
   });
 
   it("T9 — zod fail negative amount", async () => {
