@@ -149,7 +149,7 @@ test.describe("Payments Admin — E2E", () => {
       await page.getByTestId("record-payment-submit").click();
 
       await expect(page.getByTestId("record-payment-dialog")).toBeHidden({ timeout: 10_000 });
-      await expect(page.getByTestId("invoice-balance-badge")).toHaveText(/Soldée/, { timeout: 10_000 });
+      await expect(page.getByTestId("invoice-balance-badge")).toHaveText(/Payée/, { timeout: 10_000 });
       await expect(page.getByTestId("record-payment-button")).toBeHidden({ timeout: 5_000 });
     });
   });
