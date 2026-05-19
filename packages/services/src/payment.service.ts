@@ -1,6 +1,7 @@
 import { db, type Payment, type NewPayment, payments, invoices } from "@saas/db";
 import { eq, sql, asc, desc, ilike, and } from "drizzle-orm";
 import * as invoiceService from "./invoice.service";
+import { computeInvoiceTtc } from "./invoice.shared";
 
 export interface ListAllPaymentsParams {
   limit?: number;
@@ -67,7 +68,7 @@ export async function computeInvoiceBalance(
   const runner = tx ?? db;
 
   const [inv] = await runner
-    .select({ totalEurCents: invoices.totalEurCents })
+    .select({ totalEurCents: invoices.totalEurCents, vatRateBps: invoices.vatRateBps })
     .from(invoices)
     .where(eq(invoices.id, invoiceId))
     .limit(1);
@@ -75,6 +76,10 @@ export async function computeInvoiceBalance(
   if (!inv) return { totalCents: 0, paidCents: 0, balanceCents: 0, isFullyPaid: false };
 
   const totalCents = inv.totalEurCents;
+  const { totalTtcCents } = computeInvoiceTtc({
+    totalEurCents: inv.totalEurCents,
+    vatRateBps: inv.vatRateBps ?? 0,
+  });
 
   const [row] = await runner
     .select({ sum: sql<number>`COALESCE(SUM(${payments.amountEurCents}), 0)::int` })
@@ -83,11 +88,12 @@ export async function computeInvoiceBalance(
 
   const paidCents = row?.sum ?? 0;
 
+  /** isFullyPaid: true quand paidCents >= totalTtcCents. Sémantique trésorerie (TTC). balanceCents reste en HT. */
   return {
     totalCents,
     paidCents,
     balanceCents: totalCents - paidCents,
-    isFullyPaid: paidCents >= totalCents,
+    isFullyPaid: paidCents >= totalTtcCents,
   };
 }
 
