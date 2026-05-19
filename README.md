@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) a démarré — modules clients (CRUD complet), prestations (CRUD complet avec archivage) et **projets** livrés (liste, détail, création, formulaire, actions de statut). Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) est en cours — modules clients, prestations, projets, devis, factures et paiements livrés. Un spike R2/Cloudflare (stockage PDF) est en cours de validation. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -17,6 +17,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 | RBAC | CASL v6 |
 | ORM | Drizzle ORM v0.38 |
 | Base de données | PostgreSQL 15 |
+| Stockage fichiers | Cloudflare R2 (S3-compatible) via AWS SDK v3 |
 | Paiements | Stripe (abonnements + webhooks + portail client) |
 | Workflows | Inngest v3 |
 | Agents IA | Vercel AI SDK v4 + Anthropic Claude API |
@@ -127,6 +128,8 @@ UI (Next.js 15 App Router)
 Services (@saas/services)
     ↓  Drizzle queries
 DB (@saas/db) — PostgreSQL 15
+
+Stockage fichiers : R2 (Cloudflare) via lib/storage/r2.ts
 ```
 
 ### Structure du monorepo
@@ -141,9 +144,13 @@ sass-agentique/
 │       │   ├── (app)/            # Application authentifiée (paramètres)
 │       │   ├── (admin)/          # Backoffice admin
 │       │   │   └── admin/
-│       │   │       ├── clients/      # Module clients (liste, [id], new)
-│       │   │       ├── prestations/  # Module prestations (liste, [id], new)
-│       │   │       └── projects/     # Module projets (liste, [id], new)
+│       │   │       ├── clients/        # Module clients (liste, [id], new)
+│       │   │       ├── prestations/    # Module prestations (liste, [id], new)
+│       │   │       ├── projects/       # Module projets (liste, [id], new)
+│       │   │       ├── quotes/         # Module devis (liste, [id], new)
+│       │   │       ├── invoices/       # Module factures (liste, [id])
+│       │   │       ├── payments/       # Module paiements (liste globale, lecture seule)
+│       │   │       └── _spike-upload/  # Spike R2 — upload/lecture PDF (expérimental)
 │       │   ├── (customer)/       # Portail client (compte)
 │       │   ├── actions/          # Server Actions
 │       │   │   └── __tests__/    # Tests des Server Actions
@@ -156,6 +163,7 @@ sass-agentique/
 │       ├── lib/
 │       │   ├── hooks/            # Hooks custom (use-data-table-state…)
 │       │   ├── schemas/          # Validation Zod (client, prestation, project)
+│       │   ├── storage/          # Client R2/Cloudflare (upload, delete, stream PDF)
 │       │   └── __tests__/        # Tests utilitaires
 │       └── middleware.ts         # Auth guard
 ├── packages/
@@ -283,13 +291,27 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`) et des composants layout legacy. Refonte en cours pour un modèle Stripe solo-admin. Architecture documentée dans `docs/pivot-r3-architecture.md`.
 
-**R4 — En cours** : trois modules admin livrés —
+**R4 — En cours** : six modules admin livrés —
 
 - **Clients** : Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`.
 - **Prestations** : Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composants `PrestationForm`, `PrestationsTable`, `ArchivePrestationButton`.
 - **Projets** : Server Actions (`actions/projects.ts`), schémas Zod (`lib/schemas/project.schemas.ts`), pages liste (`/admin/projects`), création (`/admin/projects/new`), détail/édition (`/admin/projects/[id]`), composants `ProjectsTable`, `ProjectForm`, `ProjectStatusActions`. Error boundary dédié.
+- **Devis** : Server Actions (`actions/quotes.ts`, `actions/quote-items.ts`), pages liste et détail, composants `QuotesTable`, `QuoteForm`, `QuoteItemsEditor`, `EditQuoteItemDialog`, `QuoteStatusActions`, `QuoteToInvoiceButton`.
+- **Factures** : Server Actions (`actions/invoices.ts`, `actions/invoice-items.ts`), pages liste et détail, composants `InvoicesTable`, `InvoiceForm`, `InvoiceItemsEditor`, `EditInvoiceItemDialog`, `InvoiceStatusActions`, `InvoiceAmountsCard`, `InvoiceBalanceCard`, `InvoicePaymentsList`, `RecordPaymentDialog`.
+- **Paiements** : Server Actions (`actions/payments.ts`), liste globale avec filtres (`/admin/payments`), composant `PaymentsTable` (lecture seule).
 
 Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec pagination, tri et filtres.
+
+### Spike R2 — Stockage PDF (expérimental)
+
+Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/(admin)/admin/_spike-upload/`). Il démontre :
+
+- Upload PDF via Server Action avec validation des magic bytes (`%PDF`) et limite de taille (10 Mo)
+- Stockage R2 sous le chemin `reports/YYYY/MM/<uuid>.pdf`
+- Lecture en streaming via route handler authentifiée (`/admin/_spike-upload/file?key=…`)
+- Client R2 centralisé dans `apps/web/lib/storage/r2.ts` avec classes d'erreurs typées
+
+> Le préfixe `_` indique que cette page n'est pas visible dans la navigation principale et reste expérimentale jusqu'à intégration dans le module rapports.
 
 ### Services métier (`@saas/services`)
 
@@ -335,7 +357,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-63 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+47 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
 
 **Packages**
 
@@ -359,7 +381,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/maintenance-contract.service.test.ts` | Contrats de maintenance |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
 
-**Web — lib & utilitaires**
+**Web — lib, hooks & utilitaires**
 
 | Fichier | Scope |
 |---------|-------|
@@ -371,6 +393,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/toast.test.ts` | Utilitaire toast (notifications) |
 | `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
 | `apps/web/lib/schemas/__tests__/client.schemas.test.ts` | Validation schémas Zod client |
+| `apps/web/lib/storage/__tests__/r2.test.ts` | Client R2 — upload, delete, stream PDF |
 | `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
 | `apps/web/components/ui/__tests__/badge.test.tsx` | Composant Badge (variantes, rendu) |
 | `apps/web/components/ui/data-table/__tests__/data-table.test.tsx` | Composant DataTable |
@@ -379,31 +402,57 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` | Formulaire client (création, édition) |
+| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientsTable.test.tsx` | Table clients (rendu, pagination) |
+| `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientButton.test.tsx` | Bouton suppression avec confirmation |
 
 **Web — composants admin prestations**
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationForm.test.tsx` | Formulaire prestation |
+| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationsTable.test.tsx` | Table prestations |
+| `apps/web/app/(admin)/admin/prestations/_components/__tests__/ArchivePrestationButton.test.tsx` | Bouton archivage |
 
 **Web — composants admin projets**
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectForm.test.tsx` | Formulaire projet |
+| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectsTable.test.tsx` | Table projets |
+| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectStatusActions.test.tsx` | Actions de changement de statut |
 
 **Web — composants admin devis**
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteForm.test.tsx` | Formulaire devis |
+| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuotesTable.test.tsx` | Table devis |
+| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteItemsEditor.test.tsx` | Éditeur de lignes de devis |
+| `apps/web/app/(admin)/admin/quotes/_components/__tests__/EditQuoteItemDialog.test.tsx` | Dialogue édition de ligne |
+| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteStatusActions.test.tsx` | Actions de statut devis |
+| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteToInvoiceButton.test.tsx` | Conversion devis → facture |
 
 **Web — composants admin factures**
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceForm.test.tsx` | Formulaire facture |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicesTable.test.tsx` | Table factures |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceItemsEditor.test.tsx` | Éditeur de lignes de facture |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/EditInvoiceItemDialog.test.tsx` | Dialogue édition de ligne |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceStatusActions.test.tsx` | Actions de statut facture |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceAmountsCard.test.tsx` | Carte montants (HT, TVA, TTC) |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceBalanceCard.test.tsx` | Carte solde et reste à payer |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicePaymentsList.test.tsx` | Liste des paiements liés |
+| `apps/web/app/(admin)/admin/invoices/_components/__tests__/RecordPaymentDialog.test.tsx` | Dialogue enregistrement de paiement |
+| `apps/web/app/(admin)/admin/invoices/[id]/__tests__/page.test.tsx` | Page détail facture |
 
 **Web — composants admin paiements**
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/app/(admin)/admin/payments/_components/__tests__/PaymentsTable.test.tsx` | Table paiements globale (lecture seule) |
 
 **Web — Server Actions**
 
@@ -420,7 +469,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/app/actions/__tests__/r2-legacy-purge.spec.ts` | Nettoyage fichiers R2 legacy |
 
 ```bash
-pnpm test   # Exécute les 63 fichiers via vitest workspace
+pnpm test   # Exécute les 47 fichiers via vitest workspace
 ```
 
 ### Tests E2E (Playwright)
@@ -464,15 +513,6 @@ Trois jobs sur chaque push et PR vers `main` / `develop` :
 | `lint-typecheck` | ESLint · TypeScript · drizzle-kit check |
 | `unit-tests` | Vitest (workspace complet) |
 | `e2e-tests` | Service Postgres · migrations · Playwright smoke |
-<!-- /SECTION:test-coverage -->
-```
-
-**Changes from previous version:**
-- Count updated 57 → **63** (+6 new files)
-- `lib/__tests__/payment-labels.test.ts` — new
-- `app/actions/__tests__/r2-legacy-purge.spec.ts` — new
-- All admin component test tables populated (were empty): **clients** (3), **prestations** (3), **projets** (3), **devis** (6), **factures** (10), **paiements** (1)
-- Admin payments section added
 <!-- END:test-coverage -->
 
 <!-- SECTION:backlog -->
@@ -482,10 +522,10 @@ Aucun répertoire de backlog structuré (`backlog/todo/`, `backlog/in-progress/`
 
 Le suivi des tâches est géré via :
 
-- `saas-swarm-plan.md` — Plan de développement Swarm détaillé (phases 0–11)
 - `docs/PIVOT.md` — Résumé exécutif du pivot (mai 2026), roadmap R1–R7, décisions D1–D5
 - `docs/pivot-document.md` — Analyse complète : diagnostic, domaine cible, décisions d'architecture, stratégie de migration DB, roadmap d'implémentation
 - `docs/pivot-r3-architecture.md` — Architecture détaillée du module Stripe Billing solo (R3)
+- `docs/roadmap-r3.md` — Décomposition en sous-tâches (ST1–ST11) avec phases détaillées
 <!-- END:backlog -->
 
 <!-- SECTION:configuration -->
@@ -521,6 +561,12 @@ STRIPE_WEBHOOK_SECRET="whsec_..."
 
 # 2FA
 TOTP_ISSUER="SaaS Agentique"
+
+# Stockage R2 / Cloudflare (requis pour le module rapports)
+R2_ENDPOINT="https://<account-id>.r2.cloudflarestorage.com"
+R2_ACCESS_KEY_ID="<r2-access-key>"
+R2_SECRET_ACCESS_KEY="<r2-secret-key>"
+R2_BUCKET_NAME="<nom-du-bucket>"
 ```
 
 ### Infrastructure locale
@@ -549,5 +595,17 @@ docker compose -f infra/docker-compose.yml up -d
   "test":        { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
   "dev":         { "cache": false, "persistent": true }
 }
+```
+
+### Next.js — limites Server Actions
+
+`next.config.ts` configure une limite de 10 Mo pour les Server Actions afin de permettre l'upload de fichiers PDF :
+
+```typescript
+experimental: {
+  serverActions: {
+    bodySizeLimit: "10mb",
+  },
+},
 ```
 <!-- END:configuration -->
