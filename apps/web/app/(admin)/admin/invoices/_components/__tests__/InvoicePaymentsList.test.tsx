@@ -198,7 +198,7 @@ describe("InvoicePaymentsList", () => {
 
   it("T12 — handles null/undefined payments as empty", () => {
     render(
-      <InvoicePaymentsList invoiceId="inv-1" invoiceStatus="sent" payments={undefined as any} />,
+      <InvoicePaymentsList invoiceId="inv-1" invoiceStatus="sent" payments={undefined} />,
     );
     expect(screen.getByTestId("invoice-payments-empty")).toBeInTheDocument();
   });
