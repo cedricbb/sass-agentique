@@ -40,11 +40,11 @@ export function InvoiceBalanceCard({ totalTtcCents, paidCents, status }: Invoice
           <span className="text-sm text-muted-foreground">Déjà payé</span>
           <span>{formatCurrency(paidCents / 100)}</span>
         </div>
-        <div className="flex justify-between font-semibold">
-          <span className="text-sm" data-testid="invoice-balance-remaining">
+        <div className="flex justify-between font-semibold" data-testid="invoice-balance-remaining">
+          <span className="text-sm">
             Reste dû
           </span>
-          <span>{formatCurrency(remainingCents / 100)}</span>
+          <span data-testid="invoice-balance-remaining-amount">{formatCurrency(remainingCents / 100)}</span>
         </div>
         <div className="pt-2">
           <Badge variant={badge.variant} data-testid="invoice-balance-badge">

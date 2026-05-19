@@ -134,7 +134,7 @@ test.describe("Payments Admin — E2E", () => {
     test("T6 — solde exact déclenche auto-paid", async ({ page }) => {
       await navigateToInvoice(page, SEED_INVOICE_SENT_NUMBER);
 
-      const remainingText = await page.getByTestId("invoice-balance-remaining").textContent();
+      const remainingText = await page.getByTestId("invoice-balance-remaining-amount").textContent();
       const remainingMatch = remainingText!.match(/([\d\s]+[,.][\d]+)/);
       const remainingValue = remainingMatch
         ? remainingMatch[1].replace(/\s/g, "").replace(",", ".")

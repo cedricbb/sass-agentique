@@ -38,6 +38,7 @@ export default async function EditInvoicePage({
 
   return (
     <div className="space-y-6">
+      <h1 className="text-2xl font-semibold tracking-tight">{invoice.number}</h1>
       <section>
         <h2 className="text-xl font-semibold mb-4">Cycle de vie</h2>
         <InvoiceStatusActions
