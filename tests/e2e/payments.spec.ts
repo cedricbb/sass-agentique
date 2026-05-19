@@ -14,6 +14,7 @@ async function navigateToInvoice(
 ): Promise<void> {
   await page.goto("/admin/invoices");
   await page.getByTestId("invoices-search").fill(invoiceNumber);
+  await expect(page).toHaveURL(/[?&]q=/);
   const row = page.getByRole("row", { name: invoiceNumber });
   await expect(row).toBeVisible();
   await row.locator("a").first().click();
