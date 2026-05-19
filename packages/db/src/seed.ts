@@ -410,7 +410,7 @@ async function main() {
     },
     {
       invoiceId: inv3.id,
-      amountEurCents: 5000,
+      amountEurCents: 6000,
       method: "bank_transfer",
       externalRef: "vir_seed_003",
       paidAt: new Date("2026-02-20T00:00:00Z"),
