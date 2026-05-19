@@ -66,7 +66,7 @@ export default async function SpikeUploadPage() {
           <h2>Spike actions</h2>
           <p>
             <a
-              href={`/admin/_spike-upload/file?key=${encodeURIComponent(uploadedKey)}`}
+              href={`/admin/spike-upload/file?key=${encodeURIComponent(uploadedKey)}`}
               target="_blank"
               rel="noopener noreferrer"
             >
