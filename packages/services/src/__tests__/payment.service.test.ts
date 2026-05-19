@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const makeDrizzleMock = () => {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
   const methods = [
-    "select", "from", "where", "limit",
+    "select", "from", "innerJoin", "where", "limit",
     "insert", "values", "returning",
     "update", "set",
     "delete",

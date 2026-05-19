@@ -129,6 +129,7 @@ export async function deletePayment(id: string): Promise<boolean> {
       invoiceStatus: invoices.status,
     })
     .from(payments)
+    .innerJoin(invoices, eq(payments.invoiceId, invoices.id))
     .where(eq(payments.id, id))
     .limit(1);
 

@@ -55,10 +55,8 @@ test.describe("Payments Admin — E2E", () => {
     const rows = page.locator("tbody tr");
     await expect(rows).toHaveCount(1);
     const viewLink = rows.first().locator("[data-testid^='payment-view-']");
-    await Promise.all([
-      page.waitForURL("**/admin/invoices/**"),
-      viewLink.click(),
-    ]);
+    await viewLink.click();
+    await expect(page).toHaveURL(/\/admin\/invoices\/[a-zA-Z0-9-]+/);
     await expect(page.getByRole("heading", { name: SEED_INVOICE_SENT_NUMBER })).toBeVisible();
   });
 
