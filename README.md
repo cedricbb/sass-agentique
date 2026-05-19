@@ -150,7 +150,7 @@ sass-agentique/
 │       │   │       ├── quotes/         # Module devis (liste, [id], new)
 │       │   │       ├── invoices/       # Module factures (liste, [id])
 │       │   │       ├── payments/       # Module paiements (liste globale, lecture seule)
-│       │   │       └── _spike-upload/  # Spike R2 — upload/lecture PDF (expérimental)
+│       │   │       └── spike-upload/   # Spike R2 — upload/lecture PDF (expérimental)
 │       │   ├── (customer)/       # Portail client (compte)
 │       │   ├── actions/          # Server Actions
 │       │   │   └── __tests__/    # Tests des Server Actions
@@ -304,14 +304,14 @@ Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec p
 
 ### Spike R2 — Stockage PDF (expérimental)
 
-Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/(admin)/admin/_spike-upload/`). Il démontre :
+Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/(admin)/admin/spike-upload/`). Il démontre :
 
 - Upload PDF via Server Action avec validation des magic bytes (`%PDF`) et limite de taille (10 Mo)
 - Stockage R2 sous le chemin `reports/YYYY/MM/<uuid>.pdf`
-- Lecture en streaming via route handler authentifiée (`/admin/_spike-upload/file?key=…`)
+- Lecture en streaming via route handler authentifiée (`/admin/spike-upload/file?key=…`)
 - Client R2 centralisé dans `apps/web/lib/storage/r2.ts` avec classes d'erreurs typées
 
-> Le préfixe `_` indique que cette page n'est pas visible dans la navigation principale et reste expérimentale jusqu'à intégration dans le module rapports.
+> La route est accessible mais reste expérimentale jusqu'à intégration dans le module rapports.
 
 ### Services métier (`@saas/services`)
 
