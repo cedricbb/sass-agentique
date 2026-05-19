@@ -463,9 +463,6 @@ Trois jobs sur chaque push et PR vers `main` / `develop` :
 | `unit-tests` | Vitest (workspace complet) |
 | `e2e-tests` | Service Postgres · migrations · Playwright smoke |
 <!-- /SECTION:test-coverage -->
-```
-
-The only change is the E2E count updated from **5** to **6** specs, and the new `tests/e2e/payments.spec.ts` row added with its scope: liste globale, filtres, enregistrement, lecture seule.
 <!-- END:test-coverage -->
 
 <!-- SECTION:backlog -->
