@@ -14,22 +14,16 @@ async function uploadAction(formData: FormData) {
   await requireAdmin();
 
   const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) {
-    return { error: "Aucun fichier sélectionné" };
-  }
+  if (!file || file.size === 0) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  if (!isPdfMagicBytes(buffer)) {
-    return { error: "Le fichier n'est pas un PDF valide" };
-  }
+  if (!isPdfMagicBytes(buffer)) return;
 
   try {
     assertPdfSize(buffer);
   } catch (e) {
-    if (e instanceof FileTooLargeError) {
-      return { error: e.message };
-    }
+    if (e instanceof FileTooLargeError) return;
     throw e;
   }
 
@@ -38,8 +32,6 @@ async function uploadAction(formData: FormData) {
 
   const jar = await cookies();
   jar.set("spike-upload-key", key, { httpOnly: true, path: "/" });
-
-  return { success: true, key };
 }
 
 async function deleteAction() {
@@ -48,12 +40,10 @@ async function deleteAction() {
 
   const jar = await cookies();
   const key = jar.get("spike-upload-key")?.value;
-  if (!key) return { error: "Aucun fichier uploadé" };
+  if (!key) return;
 
   await deletePdfFromR2(key);
   jar.delete("spike-upload-key");
-
-  return { success: true };
 }
 
 export default async function SpikeUploadPage() {

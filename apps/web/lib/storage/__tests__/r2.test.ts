@@ -28,7 +28,7 @@ import {
 
 const { S3Client: MockS3Client, __mockSend } = (await import(
   "@aws-sdk/client-s3"
-)) as Record<string, unknown>;
+)) as Record<string, unknown> as { S3Client: unknown; __mockSend: ReturnType<typeof vi.fn> };
 
 const R2_ENV = {
   R2_ENDPOINT: "https://test.r2.cloudflarestorage.com",
