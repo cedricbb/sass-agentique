@@ -5,12 +5,17 @@ import {
   createReportSchema,
   updateReportSchema,
   listReportsParamsSchema,
+  transitionReportSchema,
+  deleteReportSchema,
   type CreateReportInput,
   type UpdateReportInput,
   type ListReportsParams,
+  type TransitionReportInput,
 } from "@/lib/schemas/report.schemas";
 import { reportService } from "@saas/services";
-import { withAdmin, type ActionResult } from "@/lib/action-result";
+import { withAdmin, ok, fail, handleActionError, type ActionResult } from "@/lib/action-result";
+import { requireAdmin } from "@/lib/auth";
+import { deletePdfFromR2 } from "@/lib/storage/r2";
 import type { Report } from "@saas/db";
 
 export async function createReport(
@@ -51,4 +56,53 @@ export async function listReports(
     const items = all.slice(offset, offset + pageSize);
     return { items, total, page, pageSize };
   });
+}
+
+export async function markReportIssuedAction(
+  id: string,
+  input?: TransitionReportInput,
+): Promise<ActionResult<Report>> {
+  return withAdmin(async () => {
+    const data = transitionReportSchema.parse(input ?? {});
+    const report = await reportService.markReportIssued(id, data.issuedAt);
+    if (report === null) throw new Error("REPORT_NOT_FOUND");
+    revalidatePath("/admin/reports");
+    revalidatePath(`/admin/reports/${id}`);
+    return report;
+  });
+}
+
+export async function deleteReportAction(
+  id: string,
+): Promise<ActionResult<{ deleted: boolean; fileCleanupAttempted: boolean }>> {
+  try {
+    await requireAdmin();
+    deleteReportSchema.parse({ id });
+
+    const existing = await reportService.getReportById(id);
+    if (existing === null) {
+      return fail("REPORT_NOT_FOUND", "Rapport introuvable.", 404);
+    }
+    if (existing.issuedAt !== null) {
+      return fail("REPORT_DELETE_LOCKED", "Un rapport émis ne peut pas être supprimé.", 409);
+    }
+
+    const result = await reportService.deleteReport(id);
+    if (result.deletedReport === null) {
+      return fail("REPORT_NOT_FOUND", "Rapport introuvable.", 404);
+    }
+
+    let fileCleanupAttempted = true;
+    try {
+      await deletePdfFromR2(result.deletedReport.filePath);
+    } catch (e) {
+      console.error("[deleteReportAction] R2 cleanup failed", id, e);
+      fileCleanupAttempted = false;
+    }
+
+    revalidatePath("/admin/reports");
+    return ok({ deleted: true, fileCleanupAttempted });
+  } catch (error) {
+    return handleActionError(error);
+  }
 }

@@ -5,8 +5,21 @@ vi.mock("@saas/services", () => ({
     createReport: vi.fn(),
     updateReport: vi.fn(),
     listAllReports: vi.fn(),
+    markReportIssued: vi.fn(),
+    deleteReport: vi.fn(),
+    getReportById: vi.fn(),
   },
 }));
+
+vi.mock("@/lib/storage/r2", () => {
+  class R2DeleteError extends Error {
+    constructor(msg) {
+      super(msg);
+      this.name = "R2DeleteError";
+    }
+  }
+  return { deletePdfFromR2: vi.fn(), R2DeleteError };
+});
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -16,7 +29,14 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
-import { createReport, updateReport, listReports } from "../reports";
+import {
+  createReport,
+  updateReport,
+  listReports,
+  markReportIssuedAction,
+  deleteReportAction,
+} from "../reports";
+import { deletePdfFromR2, R2DeleteError } from "@/lib/storage/r2";
 import { reportService } from "@saas/services";
 import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -29,7 +49,11 @@ const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedCreateReport = vi.mocked(reportService.createReport);
 const mockedUpdateReport = vi.mocked(reportService.updateReport);
 const mockedListAllReports = vi.mocked(reportService.listAllReports);
+const mockedMarkReportIssued = vi.mocked(reportService.markReportIssued);
+const mockedDeleteReport = vi.mocked(reportService.deleteReport);
+const mockedGetReportById = vi.mocked(reportService.getReportById);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
+const mockedDeletePdfFromR2 = vi.mocked(deletePdfFromR2);
 
 const fakeAdmin = { id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<
   ReturnType<typeof requireAdmin>
@@ -233,5 +257,121 @@ describe("listReports", () => {
       expect(result.data.page).toBe(2);
       expect(result.data.pageSize).toBe(5);
     }
+  });
+});
+
+describe("markReportIssuedAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedRequireAdmin.mockResolvedValue(fakeAdmin);
+  });
+
+  it("T19: marks draft as issued", async () => {
+    const issued = { ...fakeReport, issuedAt: new Date() };
+    mockedMarkReportIssued.mockResolvedValue(issued);
+    const result = await markReportIssuedAction("r1");
+    expect(result.ok).toBe(true);
+    expect(mockedMarkReportIssued).toHaveBeenCalledWith("r1", undefined);
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/reports");
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/reports/r1");
+  });
+
+  it("T20: passes explicit issuedAt to service", async () => {
+    const explicitDate = new Date("2026-01-15T00:00:00Z");
+    const issued = { ...fakeReport, issuedAt: explicitDate };
+    mockedMarkReportIssued.mockResolvedValue(issued);
+    const result = await markReportIssuedAction("r1", { issuedAt: explicitDate });
+    expect(result.ok).toBe(true);
+    expect(mockedMarkReportIssued).toHaveBeenCalledWith("r1", explicitDate);
+  });
+
+  it("T21: idempotent when already issued", async () => {
+    const alreadyIssued = { ...fakeReport, issuedAt: new Date("2026-01-01") };
+    mockedMarkReportIssued.mockResolvedValue(alreadyIssued);
+    const result = await markReportIssuedAction("r1");
+    expect(result.ok).toBe(true);
+  });
+
+  it("T22: service returns null → INTERNAL_ERROR", async () => {
+    mockedMarkReportIssued.mockResolvedValue(null);
+    const result = await markReportIssuedAction("r1");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("INTERNAL_ERROR");
+  });
+
+  it("T23: invalid date string → VALIDATION_ERROR", async () => {
+    const result = await markReportIssuedAction("r1", {
+      issuedAt: "not-a-date" as unknown as Date,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("T24: non-admin → redirect propagated", async () => {
+    const redirectError = new Error("NEXT_REDIRECT");
+    (redirectError as unknown as Record<string, unknown>).digest = "NEXT_REDIRECT;/login";
+    mockedRequireAdmin.mockRejectedValue(redirectError);
+    await expect(markReportIssuedAction("r1")).rejects.toThrow("NEXT_REDIRECT");
+  });
+});
+
+describe("deleteReportAction", () => {
+  const deleteId = "00000000-0000-0000-0000-000000000010";
+  const deleteReport = { ...fakeReport, id: deleteId };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedRequireAdmin.mockResolvedValue(fakeAdmin);
+  });
+
+  it("T25: deletes draft + R2 cleanup", async () => {
+    mockedGetReportById.mockResolvedValue(deleteReport);
+    mockedDeleteReport.mockResolvedValue({ deletedReport: deleteReport });
+    mockedDeletePdfFromR2.mockResolvedValue(undefined);
+    const result = await deleteReportAction(deleteId);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.deleted).toBe(true);
+      expect(result.data.fileCleanupAttempted).toBe(true);
+    }
+    expect(mockedDeletePdfFromR2).toHaveBeenCalledWith("reports/2026/r1.pdf");
+    expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/reports");
+  });
+
+  it("T26: guard issued → 409", async () => {
+    const issuedReport = { ...deleteReport, issuedAt: new Date() };
+    mockedGetReportById.mockResolvedValue(issuedReport);
+    const result = await deleteReportAction(deleteId);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("REPORT_DELETE_LOCKED");
+      expect(result.error.status).toBe(409);
+    }
+    expect(mockedDeleteReport).not.toHaveBeenCalled();
+  });
+
+  it("T27: not found → 404", async () => {
+    mockedGetReportById.mockResolvedValue(null);
+    const result = await deleteReportAction("00000000-0000-0000-0000-000000000099");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("REPORT_NOT_FOUND");
+      expect(result.error.status).toBe(404);
+    }
+  });
+
+  it("T28: R2 fails → best-effort ok", async () => {
+    mockedGetReportById.mockResolvedValue(deleteReport);
+    mockedDeleteReport.mockResolvedValue({ deletedReport: deleteReport });
+    mockedDeletePdfFromR2.mockRejectedValue(new R2DeleteError("R2 failure"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await deleteReportAction(deleteId);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.deleted).toBe(true);
+      expect(result.data.fileCleanupAttempted).toBe(false);
+    }
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 });
