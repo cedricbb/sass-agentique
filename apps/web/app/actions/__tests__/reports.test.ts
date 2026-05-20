@@ -13,8 +13,8 @@ vi.mock("@saas/services", () => ({
 
 vi.mock("@/lib/storage/r2", () => {
   class R2DeleteError extends Error {
-    constructor(msg) {
-      super(msg);
+    constructor(msg: string | Error) {
+      super(typeof msg === "string" ? msg : msg.message);
       this.name = "R2DeleteError";
     }
   }
@@ -363,7 +363,7 @@ describe("deleteReportAction", () => {
   it("T28: R2 fails → best-effort ok", async () => {
     mockedGetReportById.mockResolvedValue(deleteReport);
     mockedDeleteReport.mockResolvedValue({ deletedReport: deleteReport });
-    mockedDeletePdfFromR2.mockRejectedValue(new R2DeleteError("R2 failure"));
+    mockedDeletePdfFromR2.mockRejectedValue(new R2DeleteError(new Error("R2 failure")));
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await deleteReportAction(deleteId);
     expect(result.ok).toBe(true);
