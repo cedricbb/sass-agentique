@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 vi.mock("@saas/services", () => ({
   reportService: { getReportById: vi.fn() },
@@ -24,7 +25,7 @@ const mockStreamPdf = streamPdfFromR2 as ReturnType<typeof vi.fn>;
 const mockRequireAdmin = requireAdmin as ReturnType<typeof vi.fn>;
 
 function makeRequest() {
-  return new Request("http://localhost/api/reports/test-id/file");
+  return new NextRequest("http://localhost/api/reports/test-id/file");
 }
 
 function makeParams() {
@@ -49,7 +50,7 @@ describe("GET /api/reports/[id]/file", () => {
       contentType: "application/pdf",
     });
 
-    const response = await GET(makeRequest() as any, makeParams());
+    const response = await GET(makeRequest(), makeParams());
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
@@ -63,7 +64,7 @@ describe("GET /api/reports/[id]/file", () => {
   it("returns 404 when report not found", async () => {
     mockGetReportById.mockResolvedValue(null);
 
-    const response = await GET(makeRequest() as any, makeParams());
+    const response = await GET(makeRequest(), makeParams());
 
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Not Found");
@@ -76,7 +77,7 @@ describe("GET /api/reports/[id]/file", () => {
     });
     mockStreamPdf.mockRejectedValue(new R2NotFoundError("reports/test.pdf"));
 
-    const response = await GET(makeRequest() as any, makeParams());
+    const response = await GET(makeRequest(), makeParams());
 
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("File not found");
@@ -91,7 +92,7 @@ describe("GET /api/reports/[id]/file", () => {
     mockStreamPdf.mockRejectedValue(genericError);
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const response = await GET(makeRequest() as any, makeParams());
+    const response = await GET(makeRequest(), makeParams());
 
     expect(response.status).toBe(500);
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -102,11 +103,12 @@ describe("GET /api/reports/[id]/file", () => {
   });
 
   it("propagates NEXT_REDIRECT when not admin", async () => {
-    const redirectError = new Error("NEXT_REDIRECT");
-    (redirectError as any).digest = "NEXT_REDIRECT;/login;307";
+    const redirectError = Object.assign(new Error("NEXT_REDIRECT"), {
+      digest: "NEXT_REDIRECT;/login;307",
+    });
     mockRequireAdmin.mockRejectedValue(redirectError);
 
-    await expect(GET(makeRequest() as any, makeParams())).rejects.toThrow(
+    await expect(GET(makeRequest(), makeParams())).rejects.toThrow(
       "NEXT_REDIRECT",
     );
   });
