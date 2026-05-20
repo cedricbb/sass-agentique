@@ -30,6 +30,6 @@ export const listReportsParamsSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-export type CreateReportInput = z.infer<typeof createReportSchema>;
+export type CreateReportInput = z.input<typeof createReportSchema>;
 export type UpdateReportInput = z.infer<typeof updateReportSchema>;
 export type ListReportsParams = z.infer<typeof listReportsParamsSchema>;
