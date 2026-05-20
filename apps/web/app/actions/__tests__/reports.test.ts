@@ -146,7 +146,7 @@ describe("updateReport", () => {
   });
 
   it("rejects empty patch (refine error)", async () => {
-    const result = await updateReport("r1", {} as any);
+    const result = await updateReport("r1", {});
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("VALIDATION_ERROR");
   });
