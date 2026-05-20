@@ -28,6 +28,9 @@ export const listReportsParamsSchema = z.object({
   undatedOnly: z.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  clientId: z.string().uuid().optional(),
+  status: z.enum(["all", "draft", "issued"]).default("all"),
+  search: z.string().optional(),
 });
 
 export const transitionReportSchema = z.object({
