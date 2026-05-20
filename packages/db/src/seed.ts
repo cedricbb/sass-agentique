@@ -426,6 +426,35 @@ async function main() {
 
   console.log("✅ 4 paiements créés (3 méthodes, multi-invoices)");
 
+  // ── Reports ─────────────────────────────────────────────────────────────────
+  await db.delete(schema.reports).where(
+    inArray(schema.reports.clientId, [acme.id, bob.id, globex.id]),
+  );
+  await db.insert(schema.reports).values([
+    {
+      clientId: acme.id,
+      title: "Livrable v1 site vitrine",
+      kind: "delivery",
+      issuedAt: null,
+      filePath: "reports/2026/01/seed-acme-delivery-draft.pdf",
+    },
+    {
+      clientId: bob.id,
+      title: "Rapport mensuel maintenance — Janvier 2026",
+      kind: "monthly",
+      issuedAt: new Date("2026-02-05T10:00:00Z"),
+      filePath: "reports/2026/02/seed-bob-monthly.pdf",
+    },
+    {
+      clientId: globex.id,
+      title: "Audit sécurité Q1 2026",
+      kind: "audit",
+      issuedAt: new Date("2026-03-30T16:00:00Z"),
+      filePath: "reports/2026/03/seed-globex-audit.pdf",
+    },
+  ]);
+  console.log("✅ 3 reports créés : 1 delivery Brouillon (Acme), 1 monthly Émis (Bob), 1 audit Émis (Globex)");
+
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin : admin@saas.dev / admin1234");
 
