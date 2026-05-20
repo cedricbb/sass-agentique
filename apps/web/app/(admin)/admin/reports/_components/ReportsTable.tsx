@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Eye, FileCheck, Tag, Building2 } from "lucide-react";
+import { Eye, FileCheck, Tag, Building2, Plus } from "lucide-react";
 import { useQueryState, parseAsString } from "nuqs";
 import {
   DataTable,
@@ -103,14 +103,24 @@ export function ReportsTable({ data, clients, clientNames }: ReportsTableProps) 
   );
 
   return (
-    <DataTable
-      columns={buildColumns(clientNames)}
-      data={filteredData}
-      state={{ pagination, sorting }}
-      onPaginationChange={setPagination}
-      onSortingChange={setSorting}
-      toolbar={toolbar}
-    />
+    <div>
+      <div className="flex justify-end mb-4">
+        <Button asChild>
+          <Link href="/admin/reports/new" data-testid="report-new-link">
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau rapport
+          </Link>
+        </Button>
+      </div>
+      <DataTable
+        columns={buildColumns(clientNames)}
+        data={filteredData}
+        state={{ pagination, sorting }}
+        onPaginationChange={setPagination}
+        onSortingChange={setSorting}
+        toolbar={toolbar}
+      />
+    </div>
   );
 }
 

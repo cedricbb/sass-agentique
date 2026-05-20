@@ -36,7 +36,6 @@ const mockReports: Report[] = [
     issuedAt: null,
     createdAt: new Date("2026-01-15T10:00:00Z"),
     updatedAt: new Date("2026-01-15T10:00:00Z"),
-    tenantId: "tenant-1",
   },
   {
     id: "rpt-2-abcdefgh",
@@ -49,7 +48,6 @@ const mockReports: Report[] = [
     issuedAt: new Date("2026-02-05T10:00:00Z"),
     createdAt: new Date("2026-02-01T10:00:00Z"),
     updatedAt: new Date("2026-02-05T10:00:00Z"),
-    tenantId: "tenant-1",
   },
   {
     id: "rpt-3-abcdefgh",
@@ -62,7 +60,6 @@ const mockReports: Report[] = [
     issuedAt: new Date("2026-03-30T16:00:00Z"),
     createdAt: new Date("2026-03-01T10:00:00Z"),
     updatedAt: new Date("2026-03-30T16:00:00Z"),
-    tenantId: "tenant-1",
   },
 ] as Report[];
 

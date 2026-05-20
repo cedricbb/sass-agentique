@@ -27,6 +27,9 @@ const ERROR_MAP: Record<string, { code: string; status: number }> = {
   ContractNotInStripeAutoModeError: { code: "CONTRACT_NOT_STRIPE_AUTO", status: 409 },
   InvalidProjectTransitionError: { code: "PROJECT_INVALID_TRANSITION", status: 409 },
   StripeServiceError: { code: "STRIPE_ERROR", status: 502 },
+  FileTooLargeError: { code: "FILE_TOO_LARGE", status: 400 },
+  InvalidPdfMagicBytesError: { code: "INVALID_PDF", status: 400 },
+  R2UploadError: { code: "R2_UPLOAD_FAILED", status: 500 },
 };
 
 function isRedirectError(error: unknown): boolean {

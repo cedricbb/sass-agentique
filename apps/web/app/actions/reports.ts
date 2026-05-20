@@ -7,15 +7,24 @@ import {
   listReportsParamsSchema,
   transitionReportSchema,
   deleteReportSchema,
+  uploadReportSchema,
   type CreateReportInput,
   type UpdateReportInput,
   type ListReportsParams,
   type TransitionReportInput,
+  type UploadReportInput,
 } from "@/lib/schemas/report.schemas";
 import { reportService } from "@saas/services";
 import { withAdmin, ok, fail, handleActionError, type ActionResult } from "@/lib/action-result";
 import { requireAdmin } from "@/lib/auth";
-import { deletePdfFromR2 } from "@/lib/storage/r2";
+import {
+  deletePdfFromR2,
+  uploadPdfToR2,
+  buildReportKey,
+  assertPdfSize,
+  isPdfMagicBytes,
+  InvalidPdfMagicBytesError,
+} from "@/lib/storage/r2";
 import type { Report } from "@saas/db";
 
 export async function createReport(
@@ -70,6 +79,74 @@ export async function markReportIssuedAction(
     revalidatePath(`/admin/reports/${id}`);
     return report;
   });
+}
+
+function extractFileFromFormData(formData: FormData): File | null {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return null;
+  return file;
+}
+
+async function validatePdfBuffer(file: File): Promise<Buffer> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  assertPdfSize(buffer);
+  if (!isPdfMagicBytes(buffer)) {
+    throw new InvalidPdfMagicBytesError();
+  }
+  return buffer;
+}
+
+async function createReportWithRollback(
+  key: string,
+  metadata: UploadReportInput,
+): Promise<Report> {
+  try {
+    return await reportService.createReport({
+      clientId: metadata.clientId,
+      projectId: metadata.projectId ?? null,
+      title: metadata.title,
+      kind: metadata.kind,
+      filePath: key,
+      summary: metadata.summary ?? null,
+    });
+  } catch (createError) {
+    try {
+      await deletePdfFromR2(key);
+    } catch (rollbackError) {
+      console.error("[uploadAndCreateReportAction] rollback R2 cleanup failed", key, rollbackError);
+    }
+    throw createError;
+  }
+}
+
+export async function uploadAndCreateReportAction(
+  formData: FormData,
+): Promise<ActionResult<Report>> {
+  try {
+    await requireAdmin();
+
+    const file = extractFileFromFormData(formData);
+    if (!file) return fail("FILE_REQUIRED", "Un fichier PDF est requis.", 400);
+
+    const rawMetadata = {
+      clientId: formData.get("clientId") as string,
+      projectId: (formData.get("projectId") as string) || undefined,
+      title: formData.get("title") as string,
+      kind: formData.get("kind") as string,
+      summary: (formData.get("summary") as string) || undefined,
+    };
+    const metadata = uploadReportSchema.parse(rawMetadata);
+
+    const buffer = await validatePdfBuffer(file);
+    const key = buildReportKey();
+    await uploadPdfToR2(key, buffer);
+
+    const report = await createReportWithRollback(key, metadata);
+    revalidatePath("/admin/reports");
+    return ok(report);
+  } catch (error) {
+    return handleActionError(error);
+  }
 }
 
 export async function deleteReportAction(

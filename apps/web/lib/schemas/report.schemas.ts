@@ -46,3 +46,12 @@ export type UpdateReportInput = z.infer<typeof updateReportSchema>;
 export type ListReportsParams = z.infer<typeof listReportsParamsSchema>;
 export type TransitionReportInput = z.infer<typeof transitionReportSchema>;
 export type DeleteReportInput = z.infer<typeof deleteReportSchema>;
+
+export const uploadReportSchema = z.object({
+  clientId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
+  title: z.string().min(1, "Le titre est requis.").max(255),
+  kind: reportKindSchema,
+  summary: z.string().max(2000).optional(),
+});
+export type UploadReportInput = z.infer<typeof uploadReportSchema>;
