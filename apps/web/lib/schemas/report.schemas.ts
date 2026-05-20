@@ -30,6 +30,16 @@ export const listReportsParamsSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+export const transitionReportSchema = z.object({
+  issuedAt: z.coerce.date().optional(),
+});
+
+export const deleteReportSchema = z.object({
+  id: z.string().uuid(),
+});
+
 export type CreateReportInput = z.input<typeof createReportSchema>;
 export type UpdateReportInput = z.infer<typeof updateReportSchema>;
 export type ListReportsParams = z.infer<typeof listReportsParamsSchema>;
+export type TransitionReportInput = z.infer<typeof transitionReportSchema>;
+export type DeleteReportInput = z.infer<typeof deleteReportSchema>;
