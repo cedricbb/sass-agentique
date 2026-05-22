@@ -32,7 +32,7 @@ const STATUS_VARIANTS: Record<string, "default" | "destructive" | "secondary"> =
   canceled: "secondary",
 };
 
-function formatPeriod(start: Date | null, end: Date | null): string {
+export function formatPeriod(start: Date | null, end: Date | null): string {
   if (!start || !end) return "—";
   return `${formatDate(start)} — ${formatDate(end)}`;
 }

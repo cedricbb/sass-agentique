@@ -14,6 +14,8 @@ import { ContractFilters } from "./ContractFilters";
 import { ContractRow } from "./ContractRow";
 import type { ContractRowData } from "./ContractRow";
 
+export type { ContractRowData };
+
 const COLUMN_HEADERS = ["Client", "Prestation", "Mode", "Statut", "Prix mensuel", "Période", "Actions"];
 
 interface ContractsTableProps {
@@ -39,13 +41,13 @@ export function ContractsTable({ data, clientNames, prestationNames }: Contracts
       <ContractFilters status={status} onStatusChange={setStatus} billingMode={billingMode} onBillingModeChange={setBillingMode} />
       <Table>
         <TableHeader>
-          <TableRow>
-            {COLUMN_HEADERS.map((h) => <TableHead key={h}>{h}</TableHead>)}
-          </TableRow>
+          <TableRow>{COLUMN_HEADERS.map((h) => <TableHead key={h}>{h}</TableHead>)}</TableRow>
         </TableHeader>
         <TableBody>
           {filteredData.map((row) => (
-            <ContractRow key={row.id} row={row} clientName={clientNames[row.clientId] ?? "—"} prestationName={prestationNames[row.prestationId] ?? "—"} pending={pending === row.id} onCancel={handleCancel} />
+            <ContractRow key={row.id} row={row}
+              clientName={clientNames[row.clientId] ?? "—"} prestationName={prestationNames[row.prestationId] ?? "—"}
+              pending={pending === row.id} onCancel={handleCancel} />
           ))}
         </TableBody>
       </Table>
