@@ -23,9 +23,9 @@ import type { Quote } from "@saas/db";
 export async function createQuoteAction(
   input: QuoteCreateValues,
 ): Promise<ActionResult<Quote>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const data = createQuoteSchema.parse(input);
-    const quote = await createQuote(data);
+    const quote = await createQuote({ ...data, ownerId: user.id });
     revalidatePath("/admin/quotes");
     return quote;
   });

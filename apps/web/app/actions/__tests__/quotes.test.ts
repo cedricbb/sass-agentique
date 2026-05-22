@@ -98,7 +98,7 @@ describe("createQuoteAction", () => {
     mockedCreateQuote.mockResolvedValue(mockQuote as never);
     const result = await createQuoteAction(validInput);
     expect(result).toEqual({ ok: true, data: mockQuote });
-    expect(mockedCreateQuote).toHaveBeenCalledWith({ clientId: VALID_UUID });
+    expect(mockedCreateQuote).toHaveBeenCalledWith({ clientId: VALID_UUID, ownerId: "admin-1" });
   });
 
   it("T2 — zod fail clientId not UUID", async () => {

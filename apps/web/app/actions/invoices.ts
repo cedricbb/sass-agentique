@@ -26,9 +26,9 @@ import type { Invoice } from "@saas/db";
 export async function createInvoiceAction(
   input: InvoiceCreateValues,
 ): Promise<ActionResult<Invoice>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const data = createInvoiceSchema.parse(input);
-    const invoice = await createInvoice(data);
+    const invoice = await createInvoice({ ...data, ownerId: user.id });
     revalidatePath("/admin/invoices");
     return invoice;
   });

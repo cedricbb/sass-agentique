@@ -125,7 +125,7 @@ describe("createInvoiceAction", () => {
     mockedCreateInvoice.mockResolvedValue(mockInvoice as never);
     const result = await createInvoiceAction(validInput);
     expect(result).toEqual({ ok: true, data: mockInvoice });
-    expect(mockedCreateInvoice).toHaveBeenCalledWith({ clientId: VALID_UUID });
+    expect(mockedCreateInvoice).toHaveBeenCalledWith({ clientId: VALID_UUID, ownerId: "admin-1" });
   });
 
   it("T2 — zod fail clientId not UUID", async () => {
