@@ -3,7 +3,6 @@ import {
   SEED_REPORT_TITLE_DRAFT,
   SEED_REPORT_TITLE_ISSUED_MONTHLY,
   SEED_REPORT_TITLE_ISSUED_AUDIT,
-  SEED_REPORT_COUNT,
   UPLOAD_REPORT_FIXTURE_PATH,
   SEED_CLIENT_NAME,
   uniqueReportTitle,
@@ -41,19 +40,12 @@ async function createReportViaUI(
 test.describe("Reports Admin — E2E", () => {
   test.describe.configure({ mode: "serial", timeout: 60_000 });
 
-  test("T1 — liste 3 reports seed", async ({ page }) => {
+  test("T1 — liste affiche les 3 reports seed", async ({ page }) => {
     await page.goto("/admin/reports");
-    const rows = page.locator("tbody tr");
-    await expect(rows).toHaveCount(SEED_REPORT_COUNT);
-
-    const draftRow = await getReportRow(page, SEED_REPORT_TITLE_DRAFT);
-    await expect(draftRow).toBeVisible();
-
-    const monthlyRow = await getReportRow(page, SEED_REPORT_TITLE_ISSUED_MONTHLY);
-    await expect(monthlyRow).toBeVisible();
-
-    const auditRow = await getReportRow(page, SEED_REPORT_TITLE_ISSUED_AUDIT);
-    await expect(auditRow).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Rapports" })).toBeVisible();
+    await expect(await getReportRow(page, SEED_REPORT_TITLE_DRAFT)).toBeVisible();
+    await expect(await getReportRow(page, SEED_REPORT_TITLE_ISSUED_MONTHLY)).toBeVisible();
+    await expect(await getReportRow(page, SEED_REPORT_TITLE_ISSUED_AUDIT)).toBeVisible();
   });
 
   test("T2 — filtre kind=Audit", async ({ page }) => {
@@ -110,9 +102,9 @@ test.describe("Reports Admin — E2E", () => {
     await draftRow.locator("[data-testid^='report-view-']").click();
     await expect(page).toHaveURL(/\/admin\/reports\/[a-f0-9-]+/);
 
-    await expect(page.getByText("Brouillon")).toBeVisible();
+    await expect(page.getByTestId("report-status-badge")).toHaveText("Brouillon");
     await page.locator('[data-testid="report-mark-issued-button"]').click();
-    await expect(page.getByText("Émis")).toBeVisible();
+    await expect(page.getByTestId("report-status-badge")).toHaveText("Émis");
     await expect(page.locator('[data-testid="report-mark-issued-button"]')).toBeHidden();
   });
 

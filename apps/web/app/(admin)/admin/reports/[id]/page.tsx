@@ -58,7 +58,7 @@ export default async function ReportDetailPage({
             </div>
             <div>
               <dt className="text-sm text-muted-foreground">Statut</dt>
-              <dd>
+              <dd data-testid="report-status-badge">
                 {isIssued ? (
                   <Badge variant="success">Émis</Badge>
                 ) : (
