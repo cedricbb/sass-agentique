@@ -24,7 +24,7 @@ async function main() {
   const adminEmail = "admin@saas.dev";
   const adminPassword = await bcrypt.hash("admin1234", BCRYPT_ROUNDS);
 
-  await db
+  const [adminUser] = await db
     .insert(schema.users)
     .values({
       email: adminEmail,
@@ -38,6 +38,7 @@ async function main() {
       set: { role: "admin", name: "Super Admin" },
     })
     .returning();
+  const seedAdminId = adminUser.id;
 
   console.log(`✅ Admin créé : ${adminEmail} / admin1234`);
 
@@ -45,6 +46,7 @@ async function main() {
   const [acme] = await db
     .insert(schema.clients)
     .values({
+      ownerId: seedAdminId,
       name: "Acme Studio",
       slug: "acme-studio",
       type: "company",
@@ -58,6 +60,7 @@ async function main() {
   const [bob] = await db
     .insert(schema.clients)
     .values({
+      ownerId: seedAdminId,
       name: "Bob Indep",
       slug: "bob-indep",
       type: "individual",
@@ -71,6 +74,7 @@ async function main() {
   const [globex] = await db
     .insert(schema.clients)
     .values({
+      ownerId: seedAdminId,
       name: "Globex",
       slug: "globex",
       type: "company",
@@ -87,6 +91,7 @@ async function main() {
   const [siteVitrine] = await db
     .insert(schema.prestations)
     .values({
+      ownerId: seedAdminId,
       slug: "site-vitrine-5p",
       name: "Site vitrine 5 pages",
       kind: "one_shot",
@@ -94,7 +99,7 @@ async function main() {
       sortOrder: 1,
     })
     .onConflictDoUpdate({
-      target: schema.prestations.slug,
+      target: [schema.prestations.ownerId, schema.prestations.slug],
       set: { name: "Site vitrine 5 pages" },
     })
     .returning();
@@ -102,6 +107,7 @@ async function main() {
   const [maintenanceMensuelle] = await db
     .insert(schema.prestations)
     .values({
+      ownerId: seedAdminId,
       slug: "maintenance-mensuelle",
       name: "Maintenance mensuelle",
       kind: "recurring",
@@ -109,7 +115,7 @@ async function main() {
       sortOrder: 2,
     })
     .onConflictDoUpdate({
-      target: schema.prestations.slug,
+      target: [schema.prestations.ownerId, schema.prestations.slug],
       set: { name: "Maintenance mensuelle" },
     })
     .returning();
@@ -120,6 +126,7 @@ async function main() {
   const [project] = await db
     .insert(schema.projects)
     .values({
+      ownerId: seedAdminId,
       clientId: acme.id,
       name: "Site Acme",
       slug: "site-acme",
@@ -134,6 +141,7 @@ async function main() {
   const [brouillonDemo] = await db
     .insert(schema.projects)
     .values({
+      ownerId: seedAdminId,
       clientId: bob.id,
       name: "Brouillon démo",
       slug: "brouillon-demo",
@@ -148,6 +156,7 @@ async function main() {
   const [refonteEcommerce] = await db
     .insert(schema.projects)
     .values({
+      ownerId: seedAdminId,
       clientId: globex.id,
       name: "Refonte e-commerce",
       slug: "refonte-ecommerce",
@@ -162,6 +171,7 @@ async function main() {
   const [auditSeoAcme] = await db
     .insert(schema.projects)
     .values({
+      ownerId: seedAdminId,
       clientId: acme.id,
       name: "Audit SEO Acme",
       slug: "audit-seo-acme",
@@ -176,6 +186,7 @@ async function main() {
   const [pocAbandonne] = await db
     .insert(schema.projects)
     .values({
+      ownerId: seedAdminId,
       clientId: bob.id,
       name: "POC abandonné",
       slug: "poc-abandonne",
@@ -193,13 +204,14 @@ async function main() {
   const [quote] = await db
     .insert(schema.quotes)
     .values({
+      ownerId: seedAdminId,
       clientId: acme.id,
       number: "Q-2026-001",
       status: "draft",
       totalEurCents: 255000,
     })
     .onConflictDoUpdate({
-      target: schema.quotes.number,
+      target: [schema.quotes.ownerId, schema.quotes.number],
       set: { totalEurCents: 255000 },
     })
     .returning();
@@ -207,13 +219,14 @@ async function main() {
   const [quote2] = await db
     .insert(schema.quotes)
     .values({
+      ownerId: seedAdminId,
       clientId: bob.id,
       number: "Q-2026-002",
       status: "sent",
       totalEurCents: 250000,
     })
     .onConflictDoUpdate({
-      target: schema.quotes.number,
+      target: [schema.quotes.ownerId, schema.quotes.number],
       set: { totalEurCents: 250000, status: "sent" },
     })
     .returning();
@@ -221,13 +234,14 @@ async function main() {
   const [quote3] = await db
     .insert(schema.quotes)
     .values({
+      ownerId: seedAdminId,
       clientId: globex.id,
       number: "Q-2026-003",
       status: "accepted",
       totalEurCents: 5000,
     })
     .onConflictDoUpdate({
-      target: schema.quotes.number,
+      target: [schema.quotes.ownerId, schema.quotes.number],
       set: { totalEurCents: 5000, status: "accepted" },
     })
     .returning();
@@ -235,13 +249,14 @@ async function main() {
   const [quote4] = await db
     .insert(schema.quotes)
     .values({
+      ownerId: seedAdminId,
       clientId: acme.id,
       number: "Q-2026-004",
       status: "declined",
       totalEurCents: 250000,
     })
     .onConflictDoUpdate({
-      target: schema.quotes.number,
+      target: [schema.quotes.ownerId, schema.quotes.number],
       set: { totalEurCents: 250000, status: "declined" },
     })
     .returning();
@@ -249,13 +264,14 @@ async function main() {
   const [quote5] = await db
     .insert(schema.quotes)
     .values({
+      ownerId: seedAdminId,
       clientId: bob.id,
       number: "Q-2026-005",
       status: "expired",
       totalEurCents: 5000,
     })
     .onConflictDoUpdate({
-      target: schema.quotes.number,
+      target: [schema.quotes.ownerId, schema.quotes.number],
       set: { totalEurCents: 5000, status: "expired" },
     })
     .returning();
@@ -330,6 +346,7 @@ async function main() {
   const [inv1] = await db
     .insert(schema.invoices)
     .values({
+      ownerId: seedAdminId,
       clientId: acme.id,
       number: "INV-2026-001",
       status: "draft",
@@ -337,7 +354,7 @@ async function main() {
       vatRateBps: 2000,
     })
     .onConflictDoUpdate({
-      target: schema.invoices.number,
+      target: [schema.invoices.ownerId, schema.invoices.number],
       set: { totalEurCents: 25000, status: "draft" },
     })
     .returning();
@@ -345,6 +362,7 @@ async function main() {
   const [inv2] = await db
     .insert(schema.invoices)
     .values({
+      ownerId: seedAdminId,
       clientId: bob.id,
       number: "INV-2026-002",
       status: "sent",
@@ -354,7 +372,7 @@ async function main() {
       dueAt: new Date("2026-04-15T00:00:00Z"),
     })
     .onConflictDoUpdate({
-      target: schema.invoices.number,
+      target: [schema.invoices.ownerId, schema.invoices.number],
       set: { totalEurCents: 25000, status: "sent" },
     })
     .returning();
@@ -362,6 +380,7 @@ async function main() {
   const [inv3] = await db
     .insert(schema.invoices)
     .values({
+      ownerId: seedAdminId,
       clientId: globex.id,
       quoteId: quote3.id,
       number: "INV-2026-003",
@@ -373,7 +392,7 @@ async function main() {
       paidAt: new Date("2026-02-20T00:00:00Z"),
     })
     .onConflictDoUpdate({
-      target: schema.invoices.number,
+      target: [schema.invoices.ownerId, schema.invoices.number],
       set: { totalEurCents: 5000, status: "paid" },
     })
     .returning();
@@ -396,12 +415,14 @@ async function main() {
 
   await db.insert(schema.payments).values([
     {
+      ownerId: seedAdminId,
       invoiceId: inv2.id,
       amountEurCents: 5000,
       method: "bank_transfer",
       paidAt: new Date("2026-03-20T00:00:00Z"),
     },
     {
+      ownerId: seedAdminId,
       invoiceId: inv2.id,
       amountEurCents: 10000,
       method: "stripe_card",
@@ -409,6 +430,7 @@ async function main() {
       paidAt: new Date("2026-04-15T00:00:00Z"),
     },
     {
+      ownerId: seedAdminId,
       invoiceId: inv3.id,
       amountEurCents: 6000,
       method: "bank_transfer",
@@ -416,6 +438,7 @@ async function main() {
       paidAt: new Date("2026-02-20T00:00:00Z"),
     },
     {
+      ownerId: seedAdminId,
       invoiceId: inv1.id,
       amountEurCents: 8000,
       method: "other",
@@ -432,6 +455,7 @@ async function main() {
   );
   await db.insert(schema.reports).values([
     {
+      ownerId: seedAdminId,
       clientId: acme.id,
       title: "Livrable v1 site vitrine",
       kind: "delivery",
@@ -439,6 +463,7 @@ async function main() {
       filePath: "reports/2026/01/seed-acme-delivery-draft.pdf",
     },
     {
+      ownerId: seedAdminId,
       clientId: bob.id,
       title: "Rapport mensuel maintenance — Janvier 2026",
       kind: "monthly",
@@ -446,6 +471,7 @@ async function main() {
       filePath: "reports/2026/02/seed-bob-monthly.pdf",
     },
     {
+      ownerId: seedAdminId,
       clientId: globex.id,
       title: "Audit sécurité Q1 2026",
       kind: "audit",
