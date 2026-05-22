@@ -402,57 +402,31 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 | Fichier | Scope |
 |---------|-------|
-| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` | Formulaire client (création, édition) |
-| `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientsTable.test.tsx` | Table clients (rendu, pagination) |
-| `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientButton.test.tsx` | Bouton suppression avec confirmation |
 
 **Web — composants admin prestations**
 
 | Fichier | Scope |
 |---------|-------|
-| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationForm.test.tsx` | Formulaire prestation |
-| `apps/web/app/(admin)/admin/prestations/_components/__tests__/PrestationsTable.test.tsx` | Table prestations |
-| `apps/web/app/(admin)/admin/prestations/_components/__tests__/ArchivePrestationButton.test.tsx` | Bouton archivage |
 
 **Web — composants admin projets**
 
 | Fichier | Scope |
 |---------|-------|
-| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectForm.test.tsx` | Formulaire projet |
-| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectsTable.test.tsx` | Table projets |
-| `apps/web/app/(admin)/admin/projects/_components/__tests__/ProjectStatusActions.test.tsx` | Actions de changement de statut |
 
 **Web — composants admin devis**
 
 | Fichier | Scope |
 |---------|-------|
-| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteForm.test.tsx` | Formulaire devis |
-| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuotesTable.test.tsx` | Table devis |
-| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteItemsEditor.test.tsx` | Éditeur de lignes de devis |
-| `apps/web/app/(admin)/admin/quotes/_components/__tests__/EditQuoteItemDialog.test.tsx` | Dialogue édition de ligne |
-| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteStatusActions.test.tsx` | Actions de statut devis |
-| `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteToInvoiceButton.test.tsx` | Conversion devis → facture |
 
 **Web — composants admin factures**
 
 | Fichier | Scope |
 |---------|-------|
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceForm.test.tsx` | Formulaire facture |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicesTable.test.tsx` | Table factures |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceItemsEditor.test.tsx` | Éditeur de lignes de facture |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/EditInvoiceItemDialog.test.tsx` | Dialogue édition de ligne |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceStatusActions.test.tsx` | Actions de statut facture |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceAmountsCard.test.tsx` | Carte montants (HT, TVA, TTC) |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceBalanceCard.test.tsx` | Carte solde et reste à payer |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicePaymentsList.test.tsx` | Liste des paiements liés |
-| `apps/web/app/(admin)/admin/invoices/_components/__tests__/RecordPaymentDialog.test.tsx` | Dialogue enregistrement de paiement |
-| `apps/web/app/(admin)/admin/invoices/[id]/__tests__/page.test.tsx` | Page détail facture |
 
 **Web — composants admin paiements**
 
 | Fichier | Scope |
 |---------|-------|
-| `apps/web/app/(admin)/admin/payments/_components/__tests__/PaymentsTable.test.tsx` | Table paiements globale (lecture seule) |
 
 **Web — Server Actions**
 
