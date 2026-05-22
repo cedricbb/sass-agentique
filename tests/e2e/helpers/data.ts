@@ -13,6 +13,16 @@ export const SEED_INVOICE_PAID_NUMBER = "INV-2026-003";
 export const SEED_INVOICE_SENT_REMAINING_FR = "100,00 €";
 export const SEED_INVOICE_SENT_TOTAL_FR = "250,00 €";
 
+export const SEED_REPORT_TITLE_DRAFT = "Livrable v1 site vitrine";
+export const SEED_REPORT_TITLE_ISSUED_MONTHLY = "Rapport mensuel maintenance — Janvier 2026";
+export const SEED_REPORT_TITLE_ISSUED_AUDIT = "Audit sécurité Q1 2026";
+export const SEED_REPORT_COUNT = 3;
+export const UPLOAD_REPORT_FIXTURE_PATH = "tests/e2e/fixtures/sample-report.pdf";
+
+export function uniqueReportTitle(): string {
+  return `e2e-report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function uniqueProjectName(): string {
   return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
