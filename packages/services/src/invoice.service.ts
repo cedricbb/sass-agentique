@@ -47,14 +47,18 @@ export function canTransitionInvoice(from: InvoiceStatus, to: InvoiceStatus): bo
 
 export { computeInvoiceTtc, type InvoiceAmounts } from "./invoice.shared";
 
-async function generateInvoiceNumberTx(dbOrTx: DbOrTx, year?: number): Promise<string> {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function generateInvoiceNumberTx(dbOrTx: DbOrTx, ownerId: string, year?: number): Promise<string> {
+  if (!UUID_RE.test(ownerId)) throw new Error("Invalid ownerId");
+
   const y = year ?? new Date().getFullYear();
   const prefix = `INV-${y}-`;
 
   const [last] = await dbOrTx
     .select()
     .from(invoices)
-    .where(like(invoices.number, `${prefix}%`))
+    .where(and(like(invoices.number, `${prefix}%`), eq(invoices.ownerId, ownerId)))
     .orderBy(desc(invoices.number))
     .limit(1);
 
@@ -68,8 +72,8 @@ async function generateInvoiceNumberTx(dbOrTx: DbOrTx, year?: number): Promise<s
   return `${prefix}${String(parsed + 1).padStart(3, "0")}`;
 }
 
-export async function generateInvoiceNumber(year?: number): Promise<string> {
-  return generateInvoiceNumberTx(db, year);
+export async function generateInvoiceNumber(ownerId: string, year?: number): Promise<string> {
+  return generateInvoiceNumberTx(db, ownerId, year);
 }
 
 export type ListInvoicesOptions = { clientId?: string; status?: InvoiceStatus | InvoiceStatus[] };
@@ -117,7 +121,7 @@ export async function getInvoiceByNumber(number: string): Promise<Invoice | null
 }
 
 export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
-  const number = input.number ?? (await generateInvoiceNumber());
+  const number = input.number ?? (await generateInvoiceNumber(input.ownerId));
   const [row] = await db
     .insert(invoices)
     .values({ ...input, number })
@@ -215,11 +219,12 @@ async function copyQuoteItemsToInvoice(tx: Tx, quoteId: string, invoiceId: strin
 export async function createInvoiceFromQuote(quoteId: string): Promise<Invoice> {
   return db.transaction(async (tx) => {
     const quote = await assertQuoteIsInvoiceable(tx, quoteId);
-    const number = await generateInvoiceNumberTx(tx);
+    const number = await generateInvoiceNumberTx(tx, quote.ownerId);
 
     const [invoice] = await tx
       .insert(invoices)
       .values({
+        ownerId: quote.ownerId,
         clientId: quote.clientId,
         projectId: quote.projectId,
         quoteId,

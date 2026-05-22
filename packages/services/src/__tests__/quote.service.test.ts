@@ -20,7 +20,7 @@ let dbMock = makeDrizzleMock();
 
 vi.mock("@saas/db", () => ({
   get db() { return dbMock; },
-  quotes: { id: "id", clientId: "clientId", number: "number", status: "status", totalEurCents: "totalEurCents" },
+  quotes: { id: "id", ownerId: "ownerId", clientId: "clientId", number: "number", status: "status", totalEurCents: "totalEurCents" },
   quoteItems: { id: "id", quoteId: "quoteId", unitPriceEurCents: "unitPriceEurCents", quantity: "quantity" },
   quoteStatusEnum: { enumValues: ["draft", "sent", "accepted", "declined", "expired"] },
 }));
@@ -55,8 +55,11 @@ import {
   recomputeQuoteTotal,
 } from "../quote.service";
 
+const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
+
 const QUOTE_FIXTURE = {
   id: "q1",
+  ownerId: OWNER_ID,
   clientId: "c1",
   projectId: null,
   number: "Q-2026-001",
@@ -149,19 +152,23 @@ describe("InvalidQuoteTransitionError", () => {
 describe("generateQuoteNumber", () => {
   it("returns Q-YYYY-001 when no quotes exist", async () => {
     dbMock.limit.mockResolvedValueOnce([]);
-    const num = await generateQuoteNumber(2026);
+    const num = await generateQuoteNumber(OWNER_ID, 2026);
     expect(num).toBe("Q-2026-001");
   });
 
   it("increments last number", async () => {
     dbMock.limit.mockResolvedValueOnce([{ number: "Q-2026-005" }]);
-    const num = await generateQuoteNumber(2026);
+    const num = await generateQuoteNumber(OWNER_ID, 2026);
     expect(num).toBe("Q-2026-006");
   });
 
   it("throws on corrupted suffix", async () => {
     dbMock.limit.mockResolvedValueOnce([{ number: "Q-2026-ABC" }]);
-    await expect(generateQuoteNumber(2026)).rejects.toThrow("Cannot parse last quote number");
+    await expect(generateQuoteNumber(OWNER_ID, 2026)).rejects.toThrow("Cannot parse last quote number");
+  });
+
+  it("throws on invalid ownerId", async () => {
+    await expect(generateQuoteNumber("not-a-uuid", 2026)).rejects.toThrow("Invalid ownerId");
   });
 });
 
@@ -214,13 +221,13 @@ describe("createQuote", () => {
   it("creates with auto-generated number", async () => {
     dbMock.limit.mockResolvedValueOnce([]);
     dbMock.returning.mockResolvedValueOnce([QUOTE_FIXTURE]);
-    const result = await createQuote({ clientId: "c1" });
+    const result = await createQuote({ clientId: "c1", ownerId: OWNER_ID });
     expect(result).toEqual(QUOTE_FIXTURE);
   });
 
   it("creates with provided number", async () => {
     dbMock.returning.mockResolvedValueOnce([QUOTE_FIXTURE]);
-    const result = await createQuote({ clientId: "c1", number: "Q-CUSTOM-001" });
+    const result = await createQuote({ clientId: "c1", ownerId: OWNER_ID, number: "Q-CUSTOM-001" });
     expect(result).toEqual(QUOTE_FIXTURE);
   });
 
@@ -232,7 +239,7 @@ describe("createQuote", () => {
     dbMock.returning
       .mockRejectedValueOnce(collision)
       .mockResolvedValueOnce([{ ...QUOTE_FIXTURE, number: "Q-2026-003" }]);
-    const result = await createQuote({ clientId: "c1" });
+    const result = await createQuote({ clientId: "c1", ownerId: OWNER_ID });
     expect(result.number).toBe("Q-2026-003");
     expect(dbMock.returning).toHaveBeenCalledTimes(2);
   });
@@ -240,7 +247,7 @@ describe("createQuote", () => {
   it("propagates 23505 immediately when number is provided explicitly", async () => {
     const collision = Object.assign(new Error("unique violation"), { code: "23505" });
     dbMock.returning.mockRejectedValueOnce(collision);
-    await expect(createQuote({ clientId: "c1", number: "Q-2026-001" })).rejects.toThrow("unique violation");
+    await expect(createQuote({ clientId: "c1", ownerId: OWNER_ID, number: "Q-2026-001" })).rejects.toThrow("unique violation");
     expect(dbMock.returning).toHaveBeenCalledTimes(1);
   });
 
@@ -248,7 +255,7 @@ describe("createQuote", () => {
     const collision = Object.assign(new Error("unique violation"), { code: "23505" });
     dbMock.limit.mockResolvedValue([{ number: "Q-2026-001" }]);
     dbMock.returning.mockRejectedValue(collision);
-    await expect(createQuote({ clientId: "c1" })).rejects.toThrow("unique violation");
+    await expect(createQuote({ clientId: "c1", ownerId: OWNER_ID })).rejects.toThrow("unique violation");
     expect(dbMock.returning).toHaveBeenCalledTimes(3);
   });
 });

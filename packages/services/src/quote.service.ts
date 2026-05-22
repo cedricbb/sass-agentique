@@ -58,16 +58,18 @@ export function canTransitionQuote(
   return VALID_QUOTE_TRANSITIONS[from].includes(to);
 }
 
-export async function generateQuoteNumber(
-  year?: number,
-): Promise<string> {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function generateQuoteNumber(ownerId: string, year?: number): Promise<string> {
+  if (!UUID_RE.test(ownerId)) throw new Error("Invalid ownerId");
+
   const y = year ?? new Date().getFullYear();
   const prefix = `Q-${y}-`;
 
   const [last] = await db
     .select()
     .from(quotes)
-    .where(like(quotes.number, `${prefix}%`))
+    .where(and(like(quotes.number, `${prefix}%`), eq(quotes.ownerId, ownerId)))
     .orderBy(desc(quotes.number))
     .limit(1);
 
@@ -132,7 +134,7 @@ export async function createQuote(
 ): Promise<Quote> {
   const MAX_RETRIES = 3;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const number = input.number ?? (await generateQuoteNumber());
+    const number = input.number ?? (await generateQuoteNumber(input.ownerId));
     try {
       const [row] = await db.insert(quotes).values({ ...input, number }).returning();
       return row;

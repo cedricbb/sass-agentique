@@ -20,10 +20,10 @@ let dbMock = makeDrizzleMock();
 
 vi.mock("@saas/db", () => ({
   get db() { return dbMock; },
-  invoices: { id: "id", clientId: "clientId", number: "number", status: "status", totalEurCents: "totalEurCents", quoteId: "quoteId" },
+  invoices: { id: "id", ownerId: "ownerId", clientId: "clientId", number: "number", status: "status", totalEurCents: "totalEurCents", quoteId: "quoteId" },
   invoiceItems: { id: "id", invoiceId: "invoiceId", unitPriceEurCents: "unitPriceEurCents", quantity: "quantity" },
   invoiceStatusEnum: { enumValues: ["draft", "sent", "paid", "overdue", "cancelled"] },
-  quotes: { id: "id", clientId: "clientId", number: "number", status: "status" },
+  quotes: { id: "id", ownerId: "ownerId", clientId: "clientId", number: "number", status: "status" },
   quoteItems: { id: "id", quoteId: "quoteId" },
 }));
 
@@ -60,8 +60,11 @@ import {
   recomputeInvoiceTotal,
 } from "../invoice.service";
 
+const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
+
 const INV_FIXTURE = {
   id: "inv1",
+  ownerId: OWNER_ID,
   clientId: "c1",
   quoteId: null,
   projectId: null,
@@ -157,19 +160,23 @@ describe("Error classes", () => {
 describe("generateInvoiceNumber", () => {
   it("returns INV-YYYY-001 when no existing invoice", async () => {
     dbMock.limit!.mockResolvedValueOnce([]);
-    const result = await generateInvoiceNumber(2026);
+    const result = await generateInvoiceNumber(OWNER_ID, 2026);
     expect(result).toBe("INV-2026-001");
   });
 
   it("increments last number", async () => {
     dbMock.limit!.mockResolvedValueOnce([{ number: "INV-2026-007" }]);
-    const result = await generateInvoiceNumber(2026);
+    const result = await generateInvoiceNumber(OWNER_ID, 2026);
     expect(result).toBe("INV-2026-008");
   });
 
   it("throws on NaN parse", async () => {
     dbMock.limit!.mockResolvedValueOnce([{ number: "INV-2026-ABC" }]);
-    await expect(generateInvoiceNumber(2026)).rejects.toThrow("Cannot parse last invoice number");
+    await expect(generateInvoiceNumber(OWNER_ID, 2026)).rejects.toThrow("Cannot parse last invoice number");
+  });
+
+  it("throws on invalid ownerId", async () => {
+    await expect(generateInvoiceNumber("not-a-uuid", 2026)).rejects.toThrow("Invalid ownerId");
   });
 });
 
@@ -222,13 +229,13 @@ describe("createInvoice", () => {
   it("creates with auto-generated number", async () => {
     dbMock.limit!.mockResolvedValueOnce([]);
     dbMock.returning!.mockResolvedValueOnce([INV_FIXTURE]);
-    const result = await createInvoice({ clientId: "c1", vatRateBps: 2000 });
+    const result = await createInvoice({ clientId: "c1", ownerId: OWNER_ID, vatRateBps: 2000 });
     expect(result).toEqual(INV_FIXTURE);
   });
 
   it("uses provided number", async () => {
     dbMock.returning!.mockResolvedValueOnce([INV_FIXTURE]);
-    const result = await createInvoice({ clientId: "c1", vatRateBps: 2000, number: "INV-CUSTOM" });
+    const result = await createInvoice({ clientId: "c1", ownerId: OWNER_ID, vatRateBps: 2000, number: "INV-CUSTOM" });
     expect(result).toEqual(INV_FIXTURE);
   });
 });
@@ -304,7 +311,7 @@ describe("deleteInvoice", () => {
 
 describe("createInvoiceFromQuote", () => {
   const QUOTE = {
-    id: "q1", clientId: "c1", projectId: "p1", status: "accepted",
+    id: "q1", ownerId: OWNER_ID, clientId: "c1", projectId: "p1", status: "accepted",
     totalEurCents: 5000, vatRateBps: 2000, notes: "note",
   };
 
