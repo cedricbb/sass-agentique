@@ -180,6 +180,7 @@ describe("maintenance-contract.service", () => {
         billingMode: "stripe_auto",
         monthlyPriceEurCents: 5000,
         startedAt: new Date("2026-01-01"),
+        ownerId: "u1",
       });
 
       // Assert
@@ -199,6 +200,7 @@ describe("maintenance-contract.service", () => {
           billingMode: "stripe_auto",
           monthlyPriceEurCents: 5000,
           startedAt: new Date("2026-01-01"),
+          ownerId: "u1",
         }),
       ).rejects.toThrow(ClientAlreadyHasActiveContractError);
     });
@@ -216,6 +218,7 @@ describe("maintenance-contract.service", () => {
         billingMode: "stripe_auto",
         monthlyPriceEurCents: 5000,
         startedAt: new Date("2026-01-01"),
+        ownerId: "u1",
       });
 
       // Assert

@@ -156,7 +156,7 @@ describe("getProjectBySlug", () => {
 describe("createProject", () => {
   it("auto-generates slug when not provided", async () => {
     dbMock.returning.mockResolvedValueOnce([PROJECT_FIXTURE]);
-    await createProject({ clientId: "c1", name: "Project Alpha" });
+    await createProject({ clientId: "c1", name: "Project Alpha", ownerId: "u1" });
     expect(generateSlug).toHaveBeenCalledWith("Project Alpha");
     expect(dbMock.values).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "generated-slug" }),
@@ -165,7 +165,7 @@ describe("createProject", () => {
 
   it("uses provided slug", async () => {
     dbMock.returning.mockResolvedValueOnce([PROJECT_FIXTURE]);
-    await createProject({ clientId: "c1", name: "Project Alpha", slug: "custom-slug" });
+    await createProject({ clientId: "c1", name: "Project Alpha", slug: "custom-slug", ownerId: "u1" });
     expect(generateSlug).not.toHaveBeenCalled();
     expect(dbMock.values).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "custom-slug" }),
