@@ -38,7 +38,7 @@ const PAYMENT_1 = {
   notes: null,
   createdAt: new Date(),
   updatedAt: new Date(),
-  tenantId: "t1",
+  ownerId: "u1",
 };
 
 const PAYMENT_2 = {
@@ -51,7 +51,7 @@ const PAYMENT_2 = {
   notes: null,
   createdAt: new Date(),
   updatedAt: new Date(),
-  tenantId: "t1",
+  ownerId: "u1",
 };
 
 const PAYMENT_3 = {
@@ -64,7 +64,7 @@ const PAYMENT_3 = {
   notes: null,
   createdAt: new Date(),
   updatedAt: new Date(),
-  tenantId: "t1",
+  ownerId: "u1",
 };
 
 describe("InvoicePaymentsList", () => {

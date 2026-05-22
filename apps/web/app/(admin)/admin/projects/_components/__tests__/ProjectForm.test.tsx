@@ -35,6 +35,7 @@ const mockClients: Client[] = [
     billingAddress: null,
     notes: null,
     archivedAt: null,
+    ownerId: "u1",
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
   },
@@ -48,6 +49,7 @@ const mockClients: Client[] = [
     billingAddress: null,
     notes: null,
     archivedAt: null,
+    ownerId: "u1",
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
   },
@@ -62,6 +64,7 @@ const mockProject: Project = {
   description: "A website",
   startedAt: null,
   deliveredAt: null,
+  ownerId: "u1",
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-01-01"),
 };

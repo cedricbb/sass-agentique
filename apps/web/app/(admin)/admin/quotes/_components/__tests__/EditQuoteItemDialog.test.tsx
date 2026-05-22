@@ -34,6 +34,7 @@ const fakePrestations: Prestation[] = [
     stripePriceId: null,
     isActive: true,
     sortOrder: 0,
+    ownerId: "u1",
     createdAt: new Date(),
     updatedAt: new Date(),
   },

@@ -18,6 +18,7 @@ const makeClient = (overrides: Partial<Client> = {}): Client => ({
   billingAddress: null,
   notes: null,
   archivedAt: null,
+  ownerId: "u1",
   createdAt: new Date("2024-01-15"),
   updatedAt: new Date("2024-01-15"),
   ...overrides,
