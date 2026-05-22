@@ -94,6 +94,7 @@ describe("createProjectAction", () => {
     expect(mockedCreateProject).toHaveBeenCalledWith({
       clientId: VALID_UUID,
       name: "Project Alpha",
+      ownerId: "admin-1",
     });
   });
 
@@ -149,6 +150,7 @@ describe("updateProjectAction", () => {
     expect(result).toEqual({ ok: true, data: mockProject });
     expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {
       name: "New Name",
+      ownerId: "admin-1",
     });
   });
 
@@ -167,6 +169,7 @@ describe("updateProjectAction", () => {
     await updateProjectAction("proj-1", { clientId: OTHER_UUID });
     expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {
       clientId: OTHER_UUID,
+      ownerId: "admin-1",
     });
   });
 
@@ -178,6 +181,7 @@ describe("updateProjectAction", () => {
     } as never);
     expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {
       name: "Test",
+      ownerId: "admin-1",
     });
   });
 
@@ -194,7 +198,7 @@ describe("updateProjectAction", () => {
     mockedUpdateProject.mockResolvedValue(mockProject as never);
     const result = await updateProjectAction("proj-1", {});
     expect(result).toEqual({ ok: true, data: mockProject });
-    expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", {});
+    expect(mockedUpdateProject).toHaveBeenCalledWith("proj-1", { ownerId: "admin-1" });
   });
 });
 

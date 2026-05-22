@@ -21,16 +21,16 @@ import type { Project } from "@saas/db";
 export async function createProjectAction(
   input: ProjectCreateValues,
 ): Promise<ActionResult<Project>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const data = createProjectSchema.parse(input);
-    const payload: Record<string, unknown> = {
+    const project = await createProject({
       clientId: data.clientId,
       name: data.name,
-    };
-    if (data.slug !== undefined) payload.slug = data.slug;
-    if (data.status !== undefined) payload.status = data.status;
-    if (data.description !== undefined) payload.description = data.description;
-    const project = await createProject(payload as never);
+      ownerId: user.id,
+      ...(data.slug !== undefined && { slug: data.slug }),
+      ...(data.status !== undefined && { status: data.status }),
+      ...(data.description !== undefined && { description: data.description }),
+    });
     revalidatePath("/admin/projects");
     return project;
   });
@@ -40,14 +40,15 @@ export async function updateProjectAction(
   id: string,
   input: ProjectUpdateValues,
 ): Promise<ActionResult<Project>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const data = updateProjectSchema.parse(input);
-    const patch: Record<string, unknown> = {};
-    if (data.clientId !== undefined) patch.clientId = data.clientId;
-    if (data.name !== undefined) patch.name = data.name;
-    if (data.slug !== undefined) patch.slug = data.slug;
-    if (data.description !== undefined) patch.description = data.description;
-    const project = await updateProject(id, patch as never);
+    const project = await updateProject(id, {
+      ...(data.clientId !== undefined && { clientId: data.clientId }),
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.slug !== undefined && { slug: data.slug }),
+      ...(data.description !== undefined && { description: data.description }),
+      ownerId: user.id,
+    });
     if (project === null) {
       throw new Error("PROJECT_NOT_FOUND");
     }
