@@ -111,6 +111,7 @@ export const agentLogs = pgTable("agent_logs", {
 // ── Clients ──────────────────────────────────────────────────────────────────
 export const clients = pgTable("clients", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   name: text("name").notNull(),
   slug: text("slug").notNull(),
   type: clientTypeEnum("type").notNull().default("company"),
@@ -123,6 +124,7 @@ export const clients = pgTable("clients", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("clients_slug_unique").on(table.slug),
+  index("clients_owner_id_idx").on(table.ownerId),
 ]);
 
 // ── Client Contacts ──────────────────────────────────────────────────────────
@@ -144,6 +146,7 @@ export const clientContacts = pgTable("client_contacts", {
 // ── Projects ─────────────────────────────────────────────────────────────────
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   clientId: uuid("client_id").notNull()
     .references(() => clients.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -156,6 +159,7 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("projects_client_id_idx").on(table.clientId),
+  index("projects_owner_id_idx").on(table.ownerId),
   uniqueIndex("projects_client_slug_unique").on(table.clientId, table.slug),
 ]);
 
@@ -180,6 +184,7 @@ export const maintenanceStatusEnum = pgEnum("maintenance_status",
 // ── Prestations ─────────────────────────────────────────────────────────────
 export const prestations = pgTable("prestations", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   slug: text("slug").notNull(),
   name: text("name").notNull(),
   description: text("description"),
@@ -192,9 +197,10 @@ export const prestations = pgTable("prestations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("prestations_slug_unique").on(table.slug),
+  uniqueIndex("prestations_owner_slug_unique").on(table.ownerId, table.slug),
   uniqueIndex("prestations_stripe_product_unique").on(table.stripeProductId),
   uniqueIndex("prestations_stripe_price_unique").on(table.stripePriceId),
+  index("prestations_owner_id_idx").on(table.ownerId),
 ]);
 
 // Commercial enums
@@ -208,6 +214,7 @@ export const paymentMethodEnum = pgEnum("payment_method",
 // Commercial tables
 export const quotes = pgTable("quotes", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   clientId: uuid("client_id").notNull()
     .references(() => clients.id, { onDelete: "restrict" }),
   projectId: uuid("project_id")
@@ -223,8 +230,9 @@ export const quotes = pgTable("quotes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("quotes_number_unique").on(table.number),
+  uniqueIndex("quotes_owner_number_unique").on(table.ownerId, table.number),
   index("quotes_client_id_idx").on(table.clientId),
+  index("quotes_owner_id_idx").on(table.ownerId),
 ]);
 
 export const quoteItems = pgTable("quote_items", {
@@ -241,6 +249,7 @@ export const quoteItems = pgTable("quote_items", {
 
 export const invoices = pgTable("invoices", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   clientId: uuid("client_id").notNull()
     .references(() => clients.id, { onDelete: "restrict" }),
   quoteId: uuid("quote_id")
@@ -260,9 +269,10 @@ export const invoices = pgTable("invoices", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("invoices_number_unique").on(table.number),
+  uniqueIndex("invoices_owner_number_unique").on(table.ownerId, table.number),
   uniqueIndex("invoices_stripe_pi_unique").on(table.stripePaymentIntentId),
   index("invoices_client_id_idx").on(table.clientId),
+  index("invoices_owner_id_idx").on(table.ownerId),
 ]);
 
 export const invoiceItems = pgTable("invoice_items", {
@@ -277,6 +287,7 @@ export const invoiceItems = pgTable("invoice_items", {
 
 export const payments = pgTable("payments", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   invoiceId: uuid("invoice_id").notNull()
     .references(() => invoices.id, { onDelete: "cascade" }),
   amountEurCents: integer("amount_eur_cents").notNull(),
@@ -287,6 +298,7 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("payments_invoice_id_idx").on(table.invoiceId),
+  index("payments_owner_id_idx").on(table.ownerId),
 ]);
 
 export type Quote = typeof quotes.$inferSelect;
@@ -303,6 +315,7 @@ export type NewPayment = typeof payments.$inferInsert;
 // ── Reports ─────────────────────────────────────────────────────────────────
 export const reports = pgTable("reports", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   clientId: uuid("client_id").notNull()
     .references(() => clients.id, { onDelete: "restrict" }),
   projectId: uuid("project_id")
@@ -316,11 +329,13 @@ export const reports = pgTable("reports", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("reports_client_id_idx").on(table.clientId),
+  index("reports_owner_id_idx").on(table.ownerId),
 ]);
 
 // ── Maintenance Contracts ───────────────────────────────────────────────────
 export const maintenanceContracts = pgTable("maintenance_contracts", {
   id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   clientId: uuid("client_id").notNull()
     .references(() => clients.id, { onDelete: "restrict" }),
   prestationId: uuid("prestation_id").notNull()
@@ -337,9 +352,10 @@ export const maintenanceContracts = pgTable("maintenance_contracts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("maintenance_contracts_client_unique").on(table.clientId),
+  uniqueIndex("maintenance_contracts_owner_client_unique").on(table.ownerId, table.clientId),
   uniqueIndex("maintenance_contracts_stripe_sub_unique")
     .on(table.stripeSubscriptionId),
+  index("maintenance_contracts_owner_id_idx").on(table.ownerId),
 ]);
 
 export type Report = typeof reports.$inferSelect;
