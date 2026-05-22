@@ -99,7 +99,7 @@ describe("maintenance-contract.service", () => {
   describe("listContractsByClient", () => {
     it("should return contracts filtered by clientId", async () => {
       const contracts = [makeContract()];
-      dbMock.where.mockResolvedValueOnce(contracts);
+      dbMock.orderBy.mockResolvedValueOnce(contracts);
 
       const result = await listContractsByClient("client-1");
 
@@ -108,7 +108,7 @@ describe("maintenance-contract.service", () => {
 
     it("should filter by status when provided", async () => {
       const contracts = [makeContract()];
-      dbMock.where.mockResolvedValueOnce(contracts);
+      dbMock.orderBy.mockResolvedValueOnce(contracts);
 
       const result = await listContractsByClient("client-1", { status: "active" });
 
@@ -119,16 +119,32 @@ describe("maintenance-contract.service", () => {
   describe("listAllContracts", () => {
     it("should return all contracts without filters", async () => {
       const contracts = [makeContract()];
-      dbMock.from.mockResolvedValueOnce(contracts);
+      dbMock.orderBy.mockResolvedValueOnce(contracts);
 
       const result = await listAllContracts();
 
       expect(result).toEqual(contracts);
     });
 
+    it("AC9 — should call orderBy desc(createdAt) on no-filter branch", async () => {
+      dbMock.orderBy.mockResolvedValueOnce([]);
+
+      await listAllContracts();
+
+      expect(dbMock.orderBy).toHaveBeenCalled();
+    });
+
+    it("AC9 — should call orderBy desc(createdAt) on filtered branch", async () => {
+      dbMock.orderBy.mockResolvedValueOnce([]);
+
+      await listAllContracts({ status: "active" });
+
+      expect(dbMock.orderBy).toHaveBeenCalled();
+    });
+
     it("should filter by status and billingMode", async () => {
       const contracts = [makeContract()];
-      dbMock.where.mockResolvedValueOnce(contracts);
+      dbMock.orderBy.mockResolvedValueOnce(contracts);
 
       const result = await listAllContracts({ status: "active", billingMode: "stripe_auto" });
 

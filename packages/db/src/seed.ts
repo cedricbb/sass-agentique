@@ -10,6 +10,9 @@ import bcrypt from "bcryptjs";
 import * as schema from "./schema";
 
 export const SEED_PAYMENT_REFS = ["pi_seed_002", "vir_seed_003", "chk_seed_004"];
+export const SEED_CONTRACT_COUNT = 3;
+export const SEED_CONTRACT_ACTIVE_COUNT = 2;
+export const SEED_CONTRACT_CANCELED_COUNT = 1;
 import { env } from "@saas/config";
 
 const BCRYPT_ROUNDS = 12;
@@ -480,6 +483,42 @@ async function main() {
     },
   ]);
   console.log("✅ 3 reports créés : 1 delivery Brouillon (Acme), 1 monthly Émis (Bob), 1 audit Émis (Globex)");
+
+  // ── Maintenance Contracts ──────────────────────────────────────────────────
+  await db.delete(schema.maintenanceContracts).where(
+    inArray(schema.maintenanceContracts.clientId, [acme.id, bob.id, globex.id]),
+  );
+  await db.insert(schema.maintenanceContracts).values([
+    {
+      ownerId: seedAdminId,
+      clientId: acme.id,
+      prestationId: maintenanceMensuelle.id,
+      billingMode: "manual_invoice",
+      status: "active",
+      monthlyPriceEurCents: 5000,
+      startedAt: new Date("2026-01-15T00:00:00Z"),
+    },
+    {
+      ownerId: seedAdminId,
+      clientId: bob.id,
+      prestationId: maintenanceMensuelle.id,
+      billingMode: "stripe_auto",
+      status: "active",
+      monthlyPriceEurCents: 5000,
+      startedAt: new Date("2026-02-01T00:00:00Z"),
+    },
+    {
+      ownerId: seedAdminId,
+      clientId: globex.id,
+      prestationId: maintenanceMensuelle.id,
+      billingMode: "manual_invoice",
+      status: "canceled",
+      monthlyPriceEurCents: 5000,
+      startedAt: new Date("2026-01-10T00:00:00Z"),
+      canceledAt: new Date("2026-03-01T00:00:00Z"),
+    },
+  ]);
+  console.log("✅ 3 contrats de maintenance créés (2 active, 1 canceled)");
 
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin : admin@saas.dev / admin1234");

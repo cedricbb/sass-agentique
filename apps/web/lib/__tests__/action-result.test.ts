@@ -111,6 +111,30 @@ describe("handleActionError", () => {
   });
 });
 
+describe("23505 unique_violation filet", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("AC10 — maps Postgres 23505 to CONTRACT_DUPLICATE 409", () => {
+    const pgError = { code: "23505", message: "unique_violation" };
+    const result = handleActionError(pgError);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "CONTRACT_DUPLICATE", message: "Doublon détecté.", status: 409 },
+    });
+  });
+
+  it("does not match non-23505 codes", () => {
+    const otherError = { code: "23503", message: "foreign_key_violation" };
+    const result = handleActionError(otherError);
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "INTERNAL_ERROR", message: "Une erreur est survenue.", status: 500 },
+    });
+  });
+});
+
 describe("ERROR_MAP coverage", () => {
   const cases = [
     ["InvalidQuoteTransitionError", "QUOTE_INVALID_TRANSITION", 409],

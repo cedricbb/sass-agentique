@@ -6,7 +6,7 @@ import {
   maintenanceStatusEnum,
   billingModeEnum,
 } from "@saas/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import { getStripeService } from "./stripe.service";
 
 type Db = typeof db;
@@ -79,7 +79,7 @@ export async function listContractsByClient(
     }
   }
 
-  return db.select().from(maintenanceContracts).where(and(...conditions));
+  return db.select().from(maintenanceContracts).where(and(...conditions)).orderBy(desc(maintenanceContracts.createdAt));
 }
 
 export async function listAllContracts(
@@ -99,9 +99,9 @@ export async function listAllContracts(
   }
 
   if (conditions.length === 0) {
-    return db.select().from(maintenanceContracts);
+    return db.select().from(maintenanceContracts).orderBy(desc(maintenanceContracts.createdAt));
   }
-  return db.select().from(maintenanceContracts).where(and(...conditions));
+  return db.select().from(maintenanceContracts).where(and(...conditions)).orderBy(desc(maintenanceContracts.createdAt));
 }
 
 export async function getContractById(id: string): Promise<MaintenanceContract | null> {

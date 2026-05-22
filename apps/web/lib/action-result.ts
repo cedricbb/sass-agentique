@@ -48,6 +48,9 @@ export function handleActionError(error: unknown): ActionResult<never> {
       return fail(mapped.code, error.message, mapped.status);
     }
   }
+  if (typeof error === "object" && error !== null && "code" in error && (error as Record<string, unknown>).code === "23505") {
+    return fail("CONTRACT_DUPLICATE", "Doublon détecté.", 409);
+  }
   console.error(error);
   return fail("INTERNAL_ERROR", "Une erreur est survenue.", 500);
 }
