@@ -30,10 +30,11 @@ import type { Report } from "@saas/db";
 export async function createReport(
   input: CreateReportInput,
 ): Promise<ActionResult<Report>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const data = createReportSchema.parse(input);
     const report = await reportService.createReport({
       ...data,
+      ownerId: user.id,
       projectId: data.projectId ?? null,
       summary: data.summary ?? null,
     });
@@ -99,6 +100,7 @@ async function validatePdfBuffer(file: File): Promise<Buffer> {
 async function createReportWithRollback(
   key: string,
   metadata: UploadReportInput,
+  { ownerId }: { ownerId: string },
 ): Promise<Report> {
   try {
     return await reportService.createReport({
@@ -108,6 +110,7 @@ async function createReportWithRollback(
       kind: metadata.kind,
       filePath: key,
       summary: metadata.summary ?? null,
+      ownerId,
     });
   } catch (createError) {
     try {
@@ -123,7 +126,7 @@ export async function uploadAndCreateReportAction(
   formData: FormData,
 ): Promise<ActionResult<Report>> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
 
     const file = extractFileFromFormData(formData);
     if (!file) return fail("FILE_REQUIRED", "Un fichier PDF est requis.", 400);
@@ -141,7 +144,7 @@ export async function uploadAndCreateReportAction(
     const key = buildReportKey();
     await uploadPdfToR2(key, buffer);
 
-    const report = await createReportWithRollback(key, metadata);
+    const report = await createReportWithRollback(key, metadata, { ownerId: user.id });
     revalidatePath("/admin/reports");
     return ok(report);
   } catch (error) {

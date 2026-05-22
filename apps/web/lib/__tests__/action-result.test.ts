@@ -143,7 +143,7 @@ describe("withAdmin", () => {
   });
 
   it("returns ok with data on success", async () => {
-    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<ReturnType<typeof requireAdmin>>);
+    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin" } as unknown as Awaited<ReturnType<typeof requireAdmin>>);
     const result = await withAdmin(async (user) => ({ userId: user.id }));
     expect(result).toEqual({ ok: true, data: { userId: "u1" } });
   });
@@ -155,7 +155,7 @@ describe("withAdmin", () => {
   });
 
   it("catches domain errors via handleActionError", async () => {
-    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<ReturnType<typeof requireAdmin>>);
+    mockedRequireAdmin.mockResolvedValue({ id: "u1", role: "admin" } as unknown as Awaited<ReturnType<typeof requireAdmin>>);
     const err = new Error("bad");
     Object.defineProperty(err.constructor, "name", { value: "StripeServiceError", configurable: true });
     const result = await withAdmin(async () => {

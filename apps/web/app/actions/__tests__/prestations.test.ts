@@ -37,7 +37,7 @@ const mockedArchivePrestation = vi.mocked(archivePrestation);
 const mockedGetPrestationById = vi.mocked(getPrestationById);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
-const fakeAdmin = { id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<
+const fakeAdmin = { id: "u1", role: "admin" } as unknown as Awaited<
   ReturnType<typeof requireAdmin>
 >;
 
@@ -50,7 +50,7 @@ const fakePrestation = {
   kind: "one_shot",
   isActive: true,
   sortOrder: 0,
-  tenantId: "t1",
+  ownerId: "u1",
   createdAt: new Date(),
   updatedAt: new Date(),
 };

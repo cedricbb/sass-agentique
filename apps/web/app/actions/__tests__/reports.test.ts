@@ -117,7 +117,7 @@ const mockedBuildReportKey = vi.mocked(buildReportKey);
 const mockedAssertPdfSize = vi.mocked(assertPdfSize);
 const mockedIsPdfMagicBytes = vi.mocked(isPdfMagicBytes);
 
-const fakeAdmin = { id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<
+const fakeAdmin = { id: "u1", role: "admin" } as unknown as Awaited<
   ReturnType<typeof requireAdmin>
 >;
 
@@ -132,7 +132,7 @@ const fakeReport = {
   issuedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
-  tenantId: "t1",
+  ownerId: "u1",
 };
 
 describe("createReport", () => {

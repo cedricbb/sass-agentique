@@ -37,7 +37,7 @@ const mockedDeleteClient = vi.mocked(deleteClient);
 const mockedGetClientById = vi.mocked(getClientById);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
-const fakeAdmin = { id: "u1", role: "admin", tenantId: "t1" } as unknown as Awaited<
+const fakeAdmin = { id: "u1", role: "admin" } as unknown as Awaited<
   ReturnType<typeof requireAdmin>
 >;
 
@@ -48,7 +48,7 @@ const fakeClient = {
   phone: null,
   address: null,
   slug: "acme",
-  tenantId: "t1",
+  ownerId: "u1",
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -71,7 +71,7 @@ describe("createClientAction", () => {
     mockedCreateClient.mockResolvedValue(fakeClient as never);
     const result = await createClientAction(validInput);
     expect(result).toEqual({ ok: true, data: fakeClient });
-    expect(mockedCreateClient).toHaveBeenCalledWith({ ...validInput, type: "company" });
+    expect(mockedCreateClient).toHaveBeenCalledWith({ ...validInput, type: "company", ownerId: "u1" });
   });
 
   it("2 — input invalide (name manquant)", async () => {

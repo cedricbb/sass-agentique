@@ -15,9 +15,9 @@ import type { Client } from "@saas/db";
 export async function createClientAction(
   input: unknown,
 ): Promise<ActionResult<Client>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const parsed = createClientSchema.parse(input);
-    const client = await createClient(parsed);
+    const client = await createClient({ ...parsed, ownerId: user.id });
     revalidatePath("/admin/clients");
     return client;
   });

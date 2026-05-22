@@ -24,7 +24,7 @@ export async function createPaymentAction(
   input: PaymentCreateValues,
 ): Promise<ActionResult<{ payment: Payment; invoiceMarkedAsPaid: boolean }>> {
   try {
-    await requireAdmin();
+    const user = await requireAdmin();
     const data = createPaymentSchema.parse(input);
 
     const invoice = await getInvoiceById(data.invoiceId);
@@ -52,7 +52,7 @@ export async function createPaymentAction(
       );
     }
 
-    const result = await paymentService.createPayment(data);
+    const result = await paymentService.createPayment({ ...data, ownerId: user.id });
     revalidatePath("/admin/invoices");
     revalidatePath(`/admin/invoices/${data.invoiceId}`);
     return ok(result);
