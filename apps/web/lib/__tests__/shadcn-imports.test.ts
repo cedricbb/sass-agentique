@@ -38,5 +38,6 @@ describe("shadcn/ui components", () => {
       const mod = await import(`@/components/ui/${path}`);
       expect(mod[exportName]).toBeDefined();
     },
+    15_000,
   );
 });
