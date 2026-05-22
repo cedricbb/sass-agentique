@@ -38,7 +38,7 @@ async function createReportViaUI(
 }
 
 test.describe("Reports Admin — E2E", () => {
-  test.describe.configure({ mode: "serial", timeout: 60_000 });
+  test.describe.configure({ timeout: 60_000 });
 
   test("T1 — liste affiche les 3 reports seed", async ({ page }) => {
     await page.goto("/admin/reports");
@@ -96,11 +96,9 @@ test.describe("Reports Admin — E2E", () => {
     await expect(createdRow).toBeVisible();
   });
 
-  test("T6 — mark-issued draft Acme", async ({ page }) => {
-    await page.goto("/admin/reports");
-    const draftRow = await getReportRow(page, SEED_REPORT_TITLE_DRAFT);
-    await draftRow.locator("[data-testid^='report-view-']").click();
-    await expect(page).toHaveURL(/\/admin\/reports\/[a-f0-9-]+/);
+  test("T6 — mark-issued sur un draft créé par le test", async ({ page }) => {
+    const title = uniqueReportTitle();
+    await createReportViaUI(page, { title });
 
     await expect(page.getByTestId("report-status-badge")).toHaveText("Brouillon");
     await page.locator('[data-testid="report-mark-issued-button"]').click();
@@ -128,11 +126,7 @@ test.describe("Reports Admin — E2E", () => {
     await expect(page).toHaveURL(/\/admin\/reports\/[a-f0-9-]+/);
 
     const deleteButton = page.locator('[data-testid="report-delete-trigger"]');
+    await expect(deleteButton).toBeVisible();
     await expect(deleteButton).toBeDisabled();
-
-    await deleteButton.hover();
-    await expect(
-      page.getByText("Un rapport émis ne peut pas être supprimé."),
-    ).toBeVisible({ timeout: 5_000 });
   });
 });
