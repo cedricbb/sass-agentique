@@ -15,18 +15,18 @@ export type ContractRowData = {
   currentPeriodEnd: Date | null;
 };
 
-const MODE_LABELS: Record<string, string> = {
+export const MODE_LABELS: Record<string, string> = {
   manual_invoice: "Facturation manuelle",
   stripe_auto: "Stripe (auto)",
 };
 
-const STATUS_LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<string, string> = {
   active: "Actif",
   past_due: "En retard",
   canceled: "Annulé",
 };
 
-const STATUS_VARIANTS: Record<string, "default" | "destructive" | "secondary"> = {
+export const STATUS_VARIANTS: Record<string, "default" | "destructive" | "secondary"> = {
   active: "default",
   past_due: "destructive",
   canceled: "secondary",
