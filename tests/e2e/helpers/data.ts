@@ -30,3 +30,13 @@ export function uniqueProjectName(): string {
 export function uniqueItemDescription(): string {
   return `e2e-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+export function uniqueClientName(): string {
+  return `e2e-client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export const SEED_CONTRACT_COUNT = 3;
+export const SEED_CONTRACT_ACTIVE_COUNT = 2;
+export const SEED_CONTRACT_CANCELED_COUNT = 1;
+export const SEED_CONTRACT_PRESTATION = "Maintenance mensuelle";
+export const SEED_CONTRACT_PRICE_FR = "50,00 €";
