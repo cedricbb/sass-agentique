@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { CustomerScope } from "../auth";
 
 const mockRedirect = vi.fn().mockImplementation(() => {
   throw new Error("NEXT_REDIRECT");
@@ -165,7 +166,7 @@ describe("assertClientOwnership", () => {
     });
   });
 
-  const SCOPE = { user: CLIENT_USER, client: { id: "client-1" } } as any;
+  const SCOPE = { user: CLIENT_USER, client: { id: "client-1" } } as unknown as CustomerScope;
 
   it("returns entity when clientId matches scope", async () => {
     const { assertClientOwnership } = await import("../auth");
@@ -193,7 +194,7 @@ describe("assertClientOwnershipOrThrow", () => {
     vi.clearAllMocks();
   });
 
-  const SCOPE = { user: CLIENT_USER, client: { id: "client-1" } } as any;
+  const SCOPE = { user: CLIENT_USER, client: { id: "client-1" } } as unknown as CustomerScope;
 
   it("returns entity when clientId matches scope", async () => {
     const { assertClientOwnershipOrThrow } = await import("../auth");

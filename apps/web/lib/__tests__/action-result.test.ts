@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ok, fail, handleActionError, withAdmin, withCustomer } from "@/lib/action-result";
 import type { ActionResult } from "@/lib/action-result";
+import type { CustomerScope } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -243,7 +244,7 @@ describe("withCustomer", () => {
   };
 
   it("returns ok with data on success", async () => {
-    mockedRequireCustomer.mockResolvedValue(MOCK_SCOPE as any);
+    mockedRequireCustomer.mockResolvedValue(MOCK_SCOPE as unknown as CustomerScope);
     const result = await withCustomer(async (scope) => ({ clientId: scope.client.id }));
     expect(result).toEqual({ ok: true, data: { clientId: "c1" } });
   });
@@ -255,7 +256,7 @@ describe("withCustomer", () => {
   });
 
   it("catches domain errors via handleActionError", async () => {
-    mockedRequireCustomer.mockResolvedValue(MOCK_SCOPE as any);
+    mockedRequireCustomer.mockResolvedValue(MOCK_SCOPE as unknown as CustomerScope);
     const err = new Error("bad");
     Object.defineProperty(err.constructor, "name", { value: "ForbiddenScopeError", configurable: true });
     const result = await withCustomer(async () => { throw err; });
