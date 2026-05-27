@@ -23,6 +23,7 @@ vi.mock("@saas/db", () => ({
   get db() { return dbMock; },
   clients: {},
   clientContacts: {},
+  maintenanceContracts: { clientId: "clientId" },
 }));
 
 vi.mock("../utils/slug", () => ({
@@ -163,11 +164,12 @@ describe("unarchiveClient", () => {
 });
 
 describe("deleteClient", () => {
-  it("calls delete with eq on id", async () => {
+  it("deletes contracts then client in a transaction", async () => {
+    dbMock.where.mockResolvedValueOnce(undefined);
     dbMock.where.mockResolvedValueOnce(undefined);
     await deleteClient("c1");
-    expect(dbMock.delete).toHaveBeenCalled();
-    expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.transaction).toHaveBeenCalled();
+    expect(dbMock.delete).toHaveBeenCalledTimes(2);
   });
 });
 
