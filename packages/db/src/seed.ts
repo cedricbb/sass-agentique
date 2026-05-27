@@ -520,8 +520,69 @@ async function main() {
   ]);
   console.log("✅ 3 contrats de maintenance créés (2 active, 1 canceled)");
 
+  // ── Client users ────────────────────────────────────────────────────────────
+  const clientPassword = await bcrypt.hash("client1234", BCRYPT_ROUNDS);
+
+  const [clientAcmeUser] = await db
+    .insert(schema.users)
+    .values({
+      email: "client-acme@saas.dev",
+      hashedPassword: clientPassword,
+      name: "Client Acme",
+      role: "client",
+      emailVerified: true,
+    })
+    .onConflictDoUpdate({
+      target: schema.users.email,
+      set: { role: "client", name: "Client Acme" },
+    })
+    .returning({ id: schema.users.id });
+
+  const [clientBobUser] = await db
+    .insert(schema.users)
+    .values({
+      email: "client-bob@saas.dev",
+      hashedPassword: clientPassword,
+      name: "Client Bob",
+      role: "client",
+      emailVerified: true,
+    })
+    .onConflictDoUpdate({
+      target: schema.users.email,
+      set: { role: "client", name: "Client Bob" },
+    })
+    .returning({ id: schema.users.id });
+
+  await db
+    .insert(schema.clientContacts)
+    .values({
+      clientId: acme.id,
+      userId: clientAcmeUser.id,
+      isPrimary: true,
+    })
+    .onConflictDoUpdate({
+      target: [schema.clientContacts.clientId, schema.clientContacts.userId],
+      set: { isPrimary: true },
+    });
+
+  await db
+    .insert(schema.clientContacts)
+    .values({
+      clientId: bob.id,
+      userId: clientBobUser.id,
+      isPrimary: true,
+    })
+    .onConflictDoUpdate({
+      target: [schema.clientContacts.clientId, schema.clientContacts.userId],
+      set: { isPrimary: true },
+    });
+
+  console.log("✅ 2 client users créés + contacts liés");
+
   console.log("\n🎉 Seed terminé !\n");
-  console.log("  Admin : admin@saas.dev / admin1234");
+  console.log("  Admin   : admin@saas.dev / admin1234");
+  console.log("  Client  : client-acme@saas.dev / client1234");
+  console.log("  Client  : client-bob@saas.dev / client1234");
 
   await client.end();
 }
