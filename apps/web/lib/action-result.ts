@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { requireAdmin, type AdminUser } from "@/lib/auth";
+import { requireAdmin, requireCustomer, type AdminUser, type CustomerScope } from "@/lib/auth";
 
 export type ActionError = { code: string; message: string; status: number };
 
@@ -27,6 +27,8 @@ const ERROR_MAP: Record<string, { code: string; status: number }> = {
   ContractNotInStripeAutoModeError: { code: "CONTRACT_NOT_STRIPE_AUTO", status: 409 },
   InvalidProjectTransitionError: { code: "PROJECT_INVALID_TRANSITION", status: 409 },
   StripeServiceError: { code: "STRIPE_ERROR", status: 502 },
+  CustomerNoClientError: { code: "CUSTOMER_NO_CLIENT", status: 403 },
+  ForbiddenScopeError: { code: "FORBIDDEN_SCOPE", status: 404 },
   FileTooLargeError: { code: "FILE_TOO_LARGE", status: 400 },
   InvalidPdfMagicBytesError: { code: "INVALID_PDF", status: 400 },
   R2UploadError: { code: "R2_UPLOAD_FAILED", status: 500 },
@@ -61,6 +63,19 @@ export async function withAdmin<T>(
   try {
     const user = await requireAdmin();
     const data = await fn(user);
+    return ok(data);
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    return handleActionError(error);
+  }
+}
+
+export async function withCustomer<T>(
+  fn: (scope: CustomerScope) => Promise<T>,
+): Promise<ActionResult<T>> {
+  try {
+    const scope = await requireCustomer();
+    const data = await fn(scope);
     return ok(data);
   } catch (error) {
     if (isRedirectError(error)) throw error;

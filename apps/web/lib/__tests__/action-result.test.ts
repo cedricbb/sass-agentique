@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ok, fail, handleActionError, withAdmin } from "@/lib/action-result";
+import { ok, fail, handleActionError, withAdmin, withCustomer } from "@/lib/action-result";
 import type { ActionResult } from "@/lib/action-result";
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
+  requireCustomer: vi.fn(),
 }));
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireCustomer } from "@/lib/auth";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
+const mockedRequireCustomer = vi.mocked(requireCustomer);
 
 describe("ok", () => {
   it("wraps data in success result", () => {
@@ -201,5 +203,65 @@ describe("type contracts", () => {
     };
     expect(success.ok).toBe(true);
     expect(failure.ok).toBe(false);
+  });
+});
+
+describe("ERROR_MAP — customer scoping entries", () => {
+  it("maps CustomerNoClientError to CUSTOMER_NO_CLIENT 403", () => {
+    class CustomerNoClientError extends Error {
+      constructor() { super("Aucun client associé à ce compte."); }
+    }
+    Object.defineProperty(CustomerNoClientError, "name", { value: "CustomerNoClientError" });
+    const result = handleActionError(new CustomerNoClientError());
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "CUSTOMER_NO_CLIENT", message: "Aucun client associé à ce compte.", status: 403 },
+    });
+  });
+
+  it("maps ForbiddenScopeError to FORBIDDEN_SCOPE 404", () => {
+    class ForbiddenScopeError extends Error {
+      constructor() { super("Ressource introuvable."); }
+    }
+    Object.defineProperty(ForbiddenScopeError, "name", { value: "ForbiddenScopeError" });
+    const result = handleActionError(new ForbiddenScopeError());
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "FORBIDDEN_SCOPE", message: "Ressource introuvable.", status: 404 },
+    });
+  });
+});
+
+describe("withCustomer", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  const MOCK_SCOPE = {
+    user: { id: "u1", role: "client" },
+    client: { id: "c1", name: "Acme" },
+  };
+
+  it("returns ok with data on success", async () => {
+    mockedRequireCustomer.mockResolvedValue(MOCK_SCOPE as any);
+    const result = await withCustomer(async (scope) => ({ clientId: scope.client.id }));
+    expect(result).toEqual({ ok: true, data: { clientId: "c1" } });
+  });
+
+  it("re-throws NEXT_REDIRECT errors", async () => {
+    const redirectError = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;/login;push" });
+    mockedRequireCustomer.mockRejectedValue(redirectError);
+    await expect(withCustomer(async () => "x")).rejects.toThrow(redirectError);
+  });
+
+  it("catches domain errors via handleActionError", async () => {
+    mockedRequireCustomer.mockResolvedValue(MOCK_SCOPE as any);
+    const err = new Error("bad");
+    Object.defineProperty(err.constructor, "name", { value: "ForbiddenScopeError", configurable: true });
+    const result = await withCustomer(async () => { throw err; });
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "FORBIDDEN_SCOPE", message: "bad", status: 404 },
+    });
   });
 });
