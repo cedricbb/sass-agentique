@@ -17,7 +17,7 @@ async function navigateToInvoice(
   await expect(page).toHaveURL(/[?&]q=/);
   const row = page.getByRole("row", { name: invoiceNumber });
   await expect(row).toBeVisible();
-  await row.locator("a").first().click();
+  await row.getByRole("link").click();
   await expect(page).toHaveURL(/\/admin\/invoices\/[a-zA-Z0-9-]+/);
 }
 
@@ -79,7 +79,7 @@ test.describe("Payments Admin — E2E", () => {
       .getByRole("row", { name: SEED_CLIENT_NAME })
       .filter({ hasText: "Brouillon" })
       .first();
-    await draftRow.locator("a").first().click();
+    await draftRow.getByRole("link").click();
     await expect(page).toHaveURL(/\/admin\/invoices\/[a-zA-Z0-9-]+/);
 
     const desc = uniqueItemDescription();
