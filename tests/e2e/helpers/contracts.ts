@@ -36,7 +36,7 @@ export async function deleteClientByName(page: Page, clientName: string): Promis
   await page.goto("/admin/clients");
   await page.locator('[data-testid="clients-search"]').fill(clientName);
   await page.waitForTimeout(500);
-  await page.getByRole("link", { name: clientName }).first().click();
+  await page.getByRole("row", { name: new RegExp(clientName) }).getByRole("link").click();
   await page.waitForURL(/\/admin\/clients\/[a-f0-9-]+/);
   await page.getByRole("button", { name: "Supprimer" }).click();
   await page.getByRole("button", { name: "Confirmer" }).click();
