@@ -7,6 +7,7 @@ const makeDrizzleMock = () => {
     "insert", "values", "returning",
     "update", "set",
     "delete",
+    "innerJoin", "orderBy",
   ];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnThis();
@@ -34,6 +35,8 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: unknown[]) => ({ op: "eq", args })),
   and: vi.fn((...args: unknown[]) => ({ op: "and", args })),
   isNull: vi.fn((col: unknown) => ({ op: "isNull", col })),
+  asc: vi.fn((col: unknown) => ({ op: "asc", col })),
+  desc: vi.fn((col: unknown) => ({ op: "desc", col })),
 }));
 
 import {
@@ -49,6 +52,8 @@ import {
   addClientContact,
   removeClientContact,
   setPrimaryContact,
+  getClientsForUser,
+  getPrimaryClientForUser,
 } from "../client.service";
 import { generateSlug } from "../utils/slug";
 
@@ -223,6 +228,96 @@ describe("setPrimaryContact", () => {
     dbMock.where.mockResolvedValueOnce(undefined);
     dbMock.returning.mockResolvedValueOnce([]);
     const result = await setPrimaryContact("c1", "unknown");
+    expect(result).toBeNull();
+  });
+});
+
+const CLIENT_A = { id: "ca", name: "Alpha", slug: "alpha", archivedAt: null };
+const CLIENT_B = { id: "cb", name: "Beta", slug: "beta", archivedAt: null };
+const CONTACT_A = { id: "cca", clientId: "ca", userId: "u1", isPrimary: true };
+const CONTACT_B = { id: "ccb", clientId: "cb", userId: "u1", isPrimary: false };
+
+describe("getClientsForUser", () => {
+  it("returns clients linked to user, ordered by name", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([
+      { clients: CLIENT_A, clientContacts: CONTACT_A },
+      { clients: CLIENT_B, clientContacts: CONTACT_B },
+    ]);
+    const result = await getClientsForUser("u1");
+    expect(dbMock.select).toHaveBeenCalled();
+    expect(dbMock.from).toHaveBeenCalled();
+    expect(dbMock.innerJoin).toHaveBeenCalled();
+    expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
+    expect(result).toEqual([CLIENT_A, CLIENT_B]);
+  });
+
+  it("returns empty array when user has no links", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([]);
+    const result = await getClientsForUser("u-no-links");
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty array for nonexistent user", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([]);
+    const result = await getClientsForUser("nonexistent-uuid");
+    expect(result).toEqual([]);
+  });
+
+  it("excludes archived clients", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([]);
+    const result = await getClientsForUser("u-archived-only");
+    expect(dbMock.where).toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+
+  it("returns multiple clients when user has N links", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([
+      { clients: CLIENT_A, clientContacts: CONTACT_A },
+      { clients: CLIENT_B, clientContacts: CONTACT_B },
+    ]);
+    const result = await getClientsForUser("u1");
+    expect(result).toHaveLength(2);
+  });
+});
+
+describe("getPrimaryClientForUser", () => {
+  it("returns null when user has no links", async () => {
+    dbMock.limit.mockResolvedValueOnce([]);
+    const result = await getPrimaryClientForUser("u-no-links");
+    expect(result).toBeNull();
+  });
+
+  it("returns the single linked client", async () => {
+    dbMock.limit.mockResolvedValueOnce([
+      { clients: CLIENT_A, clientContacts: CONTACT_A },
+    ]);
+    const result = await getPrimaryClientForUser("u1");
+    expect(result).toEqual(CLIENT_A);
+  });
+
+  it("returns isPrimary client when multiple links exist", async () => {
+    dbMock.limit.mockResolvedValueOnce([
+      { clients: CLIENT_A, clientContacts: { ...CONTACT_A, isPrimary: true } },
+    ]);
+    const result = await getPrimaryClientForUser("u1");
+    expect(dbMock.orderBy).toHaveBeenCalled();
+    expect(dbMock.limit).toHaveBeenCalledWith(1);
+    expect(result).toEqual(CLIENT_A);
+  });
+
+  it("returns first alphabetically when no isPrimary", async () => {
+    dbMock.limit.mockResolvedValueOnce([
+      { clients: CLIENT_A, clientContacts: { ...CONTACT_A, isPrimary: false } },
+    ]);
+    const result = await getPrimaryClientForUser("u1");
+    expect(result).toEqual(CLIENT_A);
+  });
+
+  it("excludes archived clients", async () => {
+    dbMock.limit.mockResolvedValueOnce([]);
+    const result = await getPrimaryClientForUser("u-archived");
+    expect(dbMock.where).toHaveBeenCalled();
     expect(result).toBeNull();
   });
 });

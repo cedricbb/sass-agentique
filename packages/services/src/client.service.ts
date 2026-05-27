@@ -8,7 +8,7 @@ import {
   type ClientContact,
   type NewClientContact,
 } from "@saas/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, asc, desc } from "drizzle-orm";
 import { generateSlug } from "./utils/slug";
 
 export type ListClientsOptions = { includeArchived?: boolean };
@@ -140,6 +140,30 @@ export async function removeClientContact(
         eq(clientContacts.userId, userId),
       ),
     );
+}
+
+export async function getClientsForUser(userId: string): Promise<Client[]> {
+  const rows = await db
+    .select()
+    .from(clientContacts)
+    .innerJoin(clients, eq(clientContacts.clientId, clients.id))
+    .where(and(eq(clientContacts.userId, userId), isNull(clients.archivedAt)))
+    .orderBy(asc(clients.name));
+
+  return rows.map((row) => row.clients);
+}
+
+export async function getPrimaryClientForUser(userId: string): Promise<Client | null> {
+  const rows = await db
+    .select()
+    .from(clientContacts)
+    .innerJoin(clients, eq(clientContacts.clientId, clients.id))
+    .where(and(eq(clientContacts.userId, userId), isNull(clients.archivedAt)))
+    .orderBy(desc(clientContacts.isPrimary), asc(clients.name))
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  return rows[0].clients;
 }
 
 export async function setPrimaryContact(
