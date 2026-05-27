@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -48,7 +49,9 @@ interface ContractRowProps {
 export function ContractRow({ row, clientName, prestationName, pending, onCancel }: ContractRowProps) {
   return (
     <TableRow data-testid={`contract-row-${row.id}`}>
-      <TableCell>{clientName}</TableCell>
+      <TableCell>
+        <Link href={`/admin/contracts/${row.id}`}>{clientName}</Link>
+      </TableCell>
       <TableCell>{prestationName}</TableCell>
       <TableCell>
         <Badge variant="outline">{MODE_LABELS[row.billingMode] ?? row.billingMode}</Badge>
