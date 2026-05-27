@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Client, Invoice, Project, Payment, MaintenanceContract } from "@saas/db";
 
 vi.mock("server-only", () => ({}));
 
@@ -38,7 +39,7 @@ function resetAll() {
   mockListAllProjects.mockResolvedValue([]);
   mockListAllPayments.mockResolvedValue([]);
   mockListAllContracts.mockResolvedValue([]);
-  mockComputeInvoiceTtc.mockImplementation((inv: any) => {
+  mockComputeInvoiceTtc.mockImplementation((inv: { totalEurCents: number; vatRateBps: number }) => {
     const totalHtCents = inv.totalEurCents;
     const vatCents = Math.round((totalHtCents * inv.vatRateBps) / 10000);
     return { totalHtCents, vatCents, totalTtcCents: totalHtCents + vatCents };
@@ -52,7 +53,7 @@ beforeEach(() => {
 
 describe("buildDashboardMetrics", () => {
   it("returns clientsCount from listClients length", async () => {
-    mockListClients.mockResolvedValue([{ id: "1" }, { id: "2" }, { id: "3" }] as any);
+    mockListClients.mockResolvedValue([{ id: "1" }, { id: "2" }, { id: "3" }] as unknown as Client[]);
     const m = await buildDashboardMetrics();
     expect(m.clientsCount).toBe(3);
   });
@@ -63,7 +64,7 @@ describe("buildDashboardMetrics", () => {
       { id: "2", status: "active" },
       { id: "3", status: "draft" },
       { id: "4", status: "delivered" },
-    ] as any);
+    ] as unknown as Project[]);
     const m = await buildDashboardMetrics();
     expect(m.activeProjectsCount).toBe(2);
   });
@@ -74,7 +75,7 @@ describe("buildDashboardMetrics", () => {
       { id: "2", status: "paid", totalEurCents: 5000, vatRateBps: 2000, issuedAt: new Date(), createdAt: new Date() },
       { id: "3", status: "draft", totalEurCents: 9999, vatRateBps: 2000, issuedAt: null, createdAt: new Date() },
       { id: "4", status: "cancelled", totalEurCents: 9999, vatRateBps: 2000, issuedAt: null, createdAt: new Date() },
-    ] as any);
+    ] as unknown as Invoice[]);
     const m = await buildDashboardMetrics();
     expect(m.invoicedTtcCents).toBe(12000 + 6000);
   });
@@ -83,7 +84,7 @@ describe("buildDashboardMetrics", () => {
     mockListInvoices.mockResolvedValue([
       { id: "1", status: "draft", totalEurCents: 10000, vatRateBps: 2000, issuedAt: null, createdAt: new Date() },
       { id: "2", status: "cancelled", totalEurCents: 5000, vatRateBps: 0, issuedAt: null, createdAt: new Date() },
-    ] as any);
+    ] as unknown as Invoice[]);
     const m = await buildDashboardMetrics();
     expect(m.invoicedTtcCents).toBe(0);
   });
@@ -92,7 +93,7 @@ describe("buildDashboardMetrics", () => {
     mockListAllPayments.mockResolvedValue([
       { id: "1", amountEurCents: 5000 },
       { id: "2", amountEurCents: 3000 },
-    ] as any);
+    ] as unknown as Payment[]);
     const m = await buildDashboardMetrics();
     expect(m.collectedCents).toBe(8000);
   });
@@ -103,7 +104,7 @@ describe("buildDashboardMetrics", () => {
       { id: "2", status: "active" },
       { id: "3", status: "canceled" },
       { id: "4", status: "past_due" },
-    ] as any);
+    ] as unknown as MaintenanceContract[]);
     const m = await buildDashboardMetrics();
     expect(m.activeContractsCount).toBe(2);
   });
@@ -114,7 +115,7 @@ describe("buildDashboardMetrics", () => {
       { id: "2", status: "overdue", totalEurCents: 100, vatRateBps: 0, issuedAt: new Date(), createdAt: new Date() },
       { id: "3", status: "paid", totalEurCents: 100, vatRateBps: 0, issuedAt: new Date(), createdAt: new Date() },
       { id: "4", status: "draft", totalEurCents: 100, vatRateBps: 0, issuedAt: null, createdAt: new Date() },
-    ] as any);
+    ] as unknown as Invoice[]);
     const m = await buildDashboardMetrics();
     expect(m.unpaidInvoicesCount).toBe(2);
   });
@@ -129,7 +130,7 @@ describe("buildDashboardMetrics", () => {
       { id: "1", status: "sent", totalEurCents: 10000, vatRateBps: 2000, issuedAt: month0, createdAt: month0 },
       { id: "2", status: "paid", totalEurCents: 5000, vatRateBps: 0, issuedAt: month1, createdAt: month1 },
       { id: "3", status: "sent", totalEurCents: 3000, vatRateBps: 1000, issuedAt: month2, createdAt: month2 },
-    ] as any);
+    ] as unknown as Invoice[]);
 
     const m = await buildDashboardMetrics();
     expect(m.monthlyRevenue).toHaveLength(6);
@@ -152,7 +153,7 @@ describe("buildDashboardMetrics", () => {
 
     mockListInvoices.mockResolvedValue([
       { id: "1", status: "sent", totalEurCents: 1000, vatRateBps: 0, issuedAt: targetMonth, createdAt: differentMonth },
-    ] as any);
+    ] as unknown as Invoice[]);
 
     const m = await buildDashboardMetrics();
     const aprEntry = m.monthlyRevenue.find((e) => e.label === "Avr");
@@ -167,7 +168,7 @@ describe("buildDashboardMetrics", () => {
       { id: "2", status: "draft", totalEurCents: 0, vatRateBps: 0, issuedAt: null, createdAt: new Date() },
       { id: "3", status: "sent", totalEurCents: 0, vatRateBps: 0, issuedAt: new Date(), createdAt: new Date() },
       { id: "4", status: "paid", totalEurCents: 0, vatRateBps: 0, issuedAt: new Date(), createdAt: new Date() },
-    ] as any);
+    ] as unknown as Invoice[]);
     const m = await buildDashboardMetrics();
     const draft = m.invoiceStatusBreakdown.find((b) => b.status === "Brouillon");
     expect(draft?.count).toBe(2);

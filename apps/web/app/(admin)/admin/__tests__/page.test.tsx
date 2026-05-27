@@ -7,12 +7,12 @@ vi.mock("@/lib/dashboard/metrics", () => ({
 }));
 
 vi.mock("@/components/dashboard/MonthlyRevenueChart", () => ({
-  MonthlyRevenueChart: (_props: any) =>
+  MonthlyRevenueChart: (_props: Record<string, unknown>) =>
     React.createElement("div", { "data-testid": "revenue-chart" }),
 }));
 
 vi.mock("@/components/dashboard/InvoiceStatusBreakdownChart", () => ({
-  InvoiceStatusBreakdownChart: (_props: any) =>
+  InvoiceStatusBreakdownChart: (_props: Record<string, unknown>) =>
     React.createElement("div", { "data-testid": "breakdown-chart" }),
 }));
 
@@ -42,8 +42,8 @@ describe("AdminDashboardPage", () => {
   });
 
   it("does NOT import getAdminStats", async () => {
-    const pageSource = await import("../page");
-    expect((pageSource as any).getAdminStats).toBeUndefined();
+    const pageSource: Record<string, unknown> = await import("../page");
+    expect(pageSource.getAdminStats).toBeUndefined();
   });
 
   it("renders 6 StatCard titles", async () => {

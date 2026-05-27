@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import React from "react";
+import React, { type ReactNode } from "react";
 
-vi.mock("recharts", () => {
-  const React = require("react");
+vi.mock("recharts", async () => {
   return {
-    ResponsiveContainer: ({ children }: any) => React.createElement("div", { "data-testid": "responsive" }, children),
-    BarChart: ({ children }: any) => React.createElement("div", { "data-testid": "bar-chart" }, children),
+    ResponsiveContainer: ({ children }: { children: ReactNode }) => React.createElement("div", { "data-testid": "responsive" }, children),
+    BarChart: ({ children }: { children: ReactNode }) => React.createElement("div", { "data-testid": "bar-chart" }, children),
     Bar: () => React.createElement("div"),
     XAxis: () => React.createElement("div"),
     YAxis: () => React.createElement("div"),
