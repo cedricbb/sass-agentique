@@ -1,10 +1,14 @@
-import { Users, Bot, Activity } from "lucide-react";
-import { getAdminStats } from "@saas/services";
+import React from "react";
+import { Users, Briefcase, Euro, CreditCard, FileCheck, FileText } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { MonthlyRevenueChart } from "@/components/dashboard/MonthlyRevenueChart";
+import { InvoiceStatusBreakdownChart } from "@/components/dashboard/InvoiceStatusBreakdownChart";
+import { buildDashboardMetrics } from "@/lib/dashboard/metrics";
+import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function AdminDashboardPage() {
-  const stats = await getAdminStats();
+  const metrics = await buildDashboardMetrics();
 
   return (
     <div className="space-y-6">
@@ -15,71 +19,73 @@ export default async function AdminDashboardPage() {
         </p>
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
-          title="Utilisateurs Total"
-          value={stats.totalUsers.toLocaleString("fr-FR")}
+          title="Clients"
+          value={metrics.clientsCount.toString()}
           trend={0}
-          trendLabel="actifs"
           icon={Users}
           iconBg="bg-blue-100 text-blue-600"
         />
         <StatCard
-          title="Tâches Agent"
-          value={stats.totalAgentTasks.toLocaleString("fr-FR")}
+          title="Projets actifs"
+          value={metrics.activeProjectsCount.toString()}
           trend={0}
-          trendLabel="total"
-          icon={Bot}
+          icon={Briefcase}
           iconBg="bg-emerald-100 text-emerald-600"
         />
         <StatCard
-          title="Utilisateurs Bannis"
-          value={stats.bannedUsers.toLocaleString("fr-FR")}
+          title="CA facturé TTC"
+          value={formatCurrency(metrics.invoicedTtcCents / 100)}
           trend={0}
-          trendLabel={`sur ${stats.totalUsers}`}
-          icon={Activity}
+          icon={Euro}
+          iconBg="bg-violet-100 text-violet-600"
+        />
+        <StatCard
+          title="CA encaissé"
+          value={formatCurrency(metrics.collectedCents / 100)}
+          trend={0}
+          icon={CreditCard}
+          iconBg="bg-amber-100 text-amber-600"
+        />
+        <StatCard
+          title="Contrats actifs"
+          value={metrics.activeContractsCount.toString()}
+          trend={0}
+          icon={FileCheck}
+          iconBg="bg-indigo-100 text-indigo-600"
+        />
+        <StatCard
+          title="Factures en attente"
+          value={metrics.unpaidInvoicesCount.toString()}
+          trend={0}
+          icon={FileText}
           iconBg="bg-red-100 text-red-600"
         />
       </div>
 
-      {/* Quick summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Utilisateurs Actifs
+              Revenu mensuel TTC
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600">
-              {stats.activeUsers.toLocaleString("fr-FR")}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {stats.totalUsers > 0
-                ? Math.round((stats.activeUsers / stats.totalUsers) * 100)
-                : 0}
-              % de l&apos;effectif total
-            </p>
+            <MonthlyRevenueChart data={metrics.monthlyRevenue} />
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Tâches en Attente
+              Répartition des factures
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-amber-600">
-              {stats.pendingAgentTasks.toLocaleString("fr-FR")}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              tâches agents à traiter
-            </p>
+            <InvoiceStatusBreakdownChart data={metrics.invoiceStatusBreakdown} />
           </CardContent>
         </Card>
-
       </div>
     </div>
   );
