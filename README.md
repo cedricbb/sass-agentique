@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot en cours (mai 2026)** — Le projet passe d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin (clients, projets, devis, factures). R1 (suppression multi-tenant) est complété. R2 (nouveau schéma domaine + services clients/prestations/projets/devis/factures) est complété. R3 (refonte Stripe Billing solo) est en cours. R4 (modules admin frontend) est en cours — modules clients, prestations, projets, devis, factures et paiements livrés. Un spike R2/Cloudflare (stockage PDF) est en cours de validation. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot avancé (mai 2026)** — Le projet pivote d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin. R1 (suppression multi-tenant) et R2 (schéma + services domaine) sont complétés. R3 (Stripe Billing solo) est en cours. R4 (modules admin frontend) est largement avancé — onze modules livrés : clients, prestations, projets, devis, factures, paiements, contrats de maintenance, rapports, tâches agents IA, utilisateurs et profil admin. Dashboard avec graphiques analytiques (revenus mensuels, ventilation statuts factures). Spike R2/Cloudflare PDF en cours de validation. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -158,9 +158,12 @@ sass-agentique/
 │       │       └── admin/
 │       │           └── agent-tasks/  # API tâches agents IA
 │       ├── components/
+│       │   ├── admin/            # Composants admin spécifiques
 │       │   ├── billing/          # Composants billing (+ tests)
+│       │   ├── dashboard/        # Graphiques analytiques (MonthlyRevenueChart, InvoiceStatusBreakdownChart)
 │       │   └── ui/               # Composants UI partagés (badge, data-table, + tests)
 │       ├── lib/
+│       │   ├── dashboard/        # Données et utilitaires du tableau de bord
 │       │   ├── hooks/            # Hooks custom (use-data-table-state…)
 │       │   ├── schemas/          # Validation Zod (client, prestation, project)
 │       │   ├── storage/          # Client R2/Cloudflare (upload, delete, stream PDF)
@@ -280,7 +283,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | R1 | Suppression multi-tenant (services, schéma, UI) | 1 semaine | ✅ Complété |
 | R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Complété |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | 🔄 En cours |
-| R4 | Modules admin frontend : clients, projets, devis, factures, rapports | 1–2 semaines | 🔄 En cours |
+| R4 | Modules admin frontend : clients, projets, devis, factures, contrats, rapports, agents, users, profil | 1–2 semaines | 🔄 En cours avancé |
 | R5 | Portail client frontend : compte, devis, factures, rapports | 1–2 semaines | — |
 | R6 | Intégration portfolio (pages marketing) | 1 semaine | — |
 | R7 | Quick wins productivité : PDF, acceptation en ligne, emails auto | 1 semaine | — |
@@ -291,7 +294,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`) et des composants layout legacy. Refonte en cours pour un modèle Stripe solo-admin. Architecture documentée dans `docs/pivot-r3-architecture.md`.
 
-**R4 — En cours** : six modules admin livrés —
+**R4 — En cours** : onze modules admin livrés —
 
 - **Clients** : Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`.
 - **Prestations** : Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composants `PrestationForm`, `PrestationsTable`, `ArchivePrestationButton`.
@@ -299,6 +302,13 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 - **Devis** : Server Actions (`actions/quotes.ts`, `actions/quote-items.ts`), pages liste et détail, composants `QuotesTable`, `QuoteForm`, `QuoteItemsEditor`, `EditQuoteItemDialog`, `QuoteStatusActions`, `QuoteToInvoiceButton`.
 - **Factures** : Server Actions (`actions/invoices.ts`, `actions/invoice-items.ts`), pages liste et détail, composants `InvoicesTable`, `InvoiceForm`, `InvoiceItemsEditor`, `EditInvoiceItemDialog`, `InvoiceStatusActions`, `InvoiceAmountsCard`, `InvoiceBalanceCard`, `InvoicePaymentsList`, `RecordPaymentDialog`.
 - **Paiements** : Server Actions (`actions/payments.ts`), liste globale avec filtres (`/admin/payments`), composant `PaymentsTable` (lecture seule).
+
+- **Contrats de maintenance** : Server Actions (`actions/contracts.ts`), liste globale des contrats (`/admin/contracts`), composants dédiés. Gestion des modes de facturation `stripe_auto` et `manual_invoice`.
+- **Rapports** : pages liste et génération (`/admin/reports`), stockage des fichiers sur Cloudflare R2, Server Actions (`actions/reports.ts`).
+- **Tâches agents IA** : monitoring en temps réel des tâches (`/admin/agent-tasks`), API Route dédiée (`api/admin/agent-tasks/`), vue des logs et statuts.
+- **Utilisateurs** : gestion des comptes admin et client (`/admin/users`), opérations ban/unban.
+- **Profil admin** : édition du profil utilisateur (`/admin/profile`), mise à jour des informations personnelles.
+- **Dashboard** : tableau de bord principal (`/admin`) avec graphiques analytiques — `MonthlyRevenueChart` (revenus mensuels) et `InvoiceStatusBreakdownChart` (ventilation des statuts de facturation). Données agrégées via `lib/dashboard/`.
 
 Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec pagination, tri et filtres.
 
@@ -446,6 +456,18 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 pnpm test   # Exécute les 47 fichiers via vitest workspace
 ```
 
+**Web — composants dashboard**
+
+| Fichier | Scope |
+|---------|-------|
+| `apps/web/components/dashboard/__tests__/` | Graphiques analytiques (MonthlyRevenueChart, InvoiceStatusBreakdownChart) |
+
+**Web — page admin**
+
+| Fichier | Scope |
+|---------|-------|
+| `apps/web/app/(admin)/admin/__tests__/` | Page dashboard admin (rendu, données, graphiques) |
+
 ### Tests E2E (Playwright)
 
 6 specs Playwright sur Chromium avec helpers partagés :
@@ -458,6 +480,8 @@ pnpm test   # Exécute les 47 fichiers via vitest workspace
 | `tests/e2e/quotes.spec.ts` | Workflows devis — création, statuts, lignes |
 | `tests/e2e/invoices.spec.ts` | Workflows factures — conversion, paiements, statuts |
 | `tests/e2e/payments.spec.ts` | Workflows paiements — liste globale, filtres, enregistrement, lecture seule |
+| `tests/e2e/contracts.spec.ts` | Workflows contrats de maintenance — création, statuts, facturation |
+| `tests/e2e/reports.spec.ts` | Génération et téléchargement de rapports, stockage R2 |
 
 Helpers E2E (`tests/e2e/helpers/`) :
 
@@ -573,12 +597,12 @@ docker compose -f infra/docker-compose.yml up -d
 
 ### Next.js — limites Server Actions
 
-`next.config.ts` configure une limite de 10 Mo pour les Server Actions afin de permettre l'upload de fichiers PDF :
+`next.config.ts` configure une limite de 12 Mo pour les Server Actions afin de permettre l'upload de fichiers PDF :
 
 ```typescript
 experimental: {
   serverActions: {
-    bodySizeLimit: "10mb",
+    bodySizeLimit: "12mb",
   },
 },
 ```
