@@ -2,6 +2,7 @@ import {
   db,
   clients,
   clientContacts,
+  maintenanceContracts,
   type Client,
   type NewClient,
   type ClientContact,
@@ -83,7 +84,10 @@ export async function unarchiveClient(id: string): Promise<Client | null> {
 }
 
 export async function deleteClient(id: string): Promise<void> {
-  await db.delete(clients).where(eq(clients.id, id));
+  await db.transaction(async (tx) => {
+    await tx.delete(maintenanceContracts).where(eq(maintenanceContracts.clientId, id));
+    await tx.delete(clients).where(eq(clients.id, id));
+  });
 }
 
 export async function listClientContacts(
