@@ -9,7 +9,8 @@ import {
   type NewQuoteItem,
 } from "@saas/db";
 import { eq, and, inArray, desc, like } from "drizzle-orm";
-export { computeQuoteTtc, type QuoteAmounts } from "./quote.shared";
+import { CUSTOMER_VISIBLE_QUOTE_STATUSES } from "./quote.shared";
+export { computeQuoteTtc, type QuoteAmounts, CUSTOMER_VISIBLE_QUOTE_STATUSES, type CustomerVisibleQuoteStatus } from "./quote.shared";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -81,6 +82,10 @@ export async function generateQuoteNumber(ownerId: string, year?: number): Promi
     throw new Error(`Cannot parse last quote number: "${last.number}"`);
   }
   return `${prefix}${String(parsed + 1).padStart(3, "0")}`;
+}
+
+export async function listQuotesByClient(clientId: string): Promise<Quote[]> {
+  return listQuotes({ clientId, status: [...CUSTOMER_VISIBLE_QUOTE_STATUSES] });
 }
 
 export async function listQuotes(

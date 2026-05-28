@@ -42,6 +42,7 @@ import {
   InvalidQuoteTransitionError,
   generateQuoteNumber,
   listQuotes,
+  listQuotesByClient,
   getQuoteById,
   getQuoteByNumber,
   createQuote,
@@ -53,6 +54,7 @@ import {
   updateQuoteItem,
   removeQuoteItem,
   recomputeQuoteTotal,
+  CUSTOMER_VISIBLE_QUOTE_STATUSES,
 } from "../quote.service";
 
 const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
@@ -402,5 +404,59 @@ describe("recomputeQuoteTotal", () => {
     dbMock.returning.mockResolvedValueOnce([{ ...QUOTE_FIXTURE, totalEurCents: 13000 }]);
     const total = await recomputeQuoteTotal("q1");
     expect(total).toBe(13000);
+  });
+});
+
+describe("CUSTOMER_VISIBLE_QUOTE_STATUSES", () => {
+  it("contains exactly sent, accepted, declined, expired", () => {
+    expect(CUSTOMER_VISIBLE_QUOTE_STATUSES).toEqual(["sent", "accepted", "declined", "expired"]);
+  });
+
+  it("does not include draft", () => {
+    expect(CUSTOMER_VISIBLE_QUOTE_STATUSES).not.toContain("draft");
+  });
+});
+
+describe("listQuotesByClient", () => {
+  it("returns non-draft quotes for the given client", async () => {
+    const sentQuote = { ...QUOTE_FIXTURE, status: "sent", clientId: "c1" };
+    const acceptedQuote = { ...QUOTE_FIXTURE, status: "accepted", clientId: "c1" };
+    dbMock.orderBy.mockResolvedValueOnce([sentQuote, acceptedQuote]);
+
+    const result = await listQuotesByClient("c1");
+
+    expect(result).toEqual([sentQuote, acceptedQuote]);
+    expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
+  });
+
+  it("returns empty array when client has no quotes", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([]);
+
+    const result = await listQuotesByClient("no-quotes-client");
+
+    expect(result).toEqual([]);
+  });
+
+  it("delegates to listQuotes with correct filters", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([]);
+
+    await listQuotesByClient("c1");
+
+    const { inArray: inArrayFn } = await import("drizzle-orm");
+    expect(inArrayFn).toHaveBeenCalledWith(
+      "status",
+      ["sent", "accepted", "declined", "expired"],
+    );
+  });
+
+  it("orders results by createdAt descending", async () => {
+    const older = { ...QUOTE_FIXTURE, status: "sent", createdAt: new Date("2026-01-01") };
+    const newer = { ...QUOTE_FIXTURE, status: "accepted", createdAt: new Date("2026-05-01") };
+    dbMock.orderBy.mockResolvedValueOnce([newer, older]);
+
+    const result = await listQuotesByClient("c1");
+
+    expect(result[0].createdAt.getTime()).toBeGreaterThan(result[1].createdAt.getTime());
   });
 });
