@@ -108,6 +108,7 @@ export async function listInvoices(opts?: ListInvoicesOptions): Promise<Invoice[
 }
 
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
+  if (!UUID_RE.test(id)) return null;
   const [row] = await db
     .select()
     .from(invoices)

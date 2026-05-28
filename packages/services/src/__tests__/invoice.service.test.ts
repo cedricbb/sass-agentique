@@ -64,8 +64,10 @@ import {
 
 const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
 
+const INV_ID = "11111111-1111-1111-1111-111111111111";
+
 const INV_FIXTURE = {
-  id: "inv1",
+  id: INV_ID,
   ownerId: OWNER_ID,
   clientId: "c1",
   quoteId: null,
@@ -244,13 +246,37 @@ describe("listInvoicesByClient", () => {
 describe("getInvoiceById", () => {
   it("returns invoice when found", async () => {
     dbMock.limit!.mockResolvedValueOnce([INV_FIXTURE]);
-    const result = await getInvoiceById("inv1");
+    const result = await getInvoiceById(INV_ID);
     expect(result).toEqual(INV_FIXTURE);
   });
 
   it("returns null when not found", async () => {
     dbMock.limit!.mockResolvedValueOnce([]);
     const result = await getInvoiceById("nope");
+    expect(result).toBeNull();
+  });
+
+  it("retourne null pour un id non-UUID sans exception", async () => {
+    const result = await getInvoiceById("not-a-uuid");
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it("retourne null pour une chaîne vide", async () => {
+    const result = await getInvoiceById("");
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it("retourne null pour un ancien placeholder seed", async () => {
+    const result = await getInvoiceById("SEED_DRAFT_INVOICE_ID");
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it("retourne null pour un UUID inexistant", async () => {
+    dbMock.limit!.mockResolvedValueOnce([]);
+    const result = await getInvoiceById("00000000-0000-0000-0000-000000000000");
     expect(result).toBeNull();
   });
 });
@@ -281,24 +307,24 @@ describe("createInvoice", () => {
 describe("updateInvoice", () => {
   it("updates allowed fields", async () => {
     dbMock.returning!.mockResolvedValueOnce([INV_FIXTURE]);
-    const result = await updateInvoice("inv1", { notes: "updated" });
+    const result = await updateInvoice(INV_ID, { notes: "updated" });
     expect(result).toEqual(INV_FIXTURE);
   });
 
   it("throws if status in patch", async () => {
-    await expect(updateInvoice("inv1", { status: "sent" } as any)).rejects.toThrow();
+    await expect(updateInvoice(INV_ID, { status: "sent" } as any)).rejects.toThrow();
   });
 
   it("throws if totalEurCents in patch", async () => {
-    await expect(updateInvoice("inv1", { totalEurCents: 500 } as any)).rejects.toThrow();
+    await expect(updateInvoice(INV_ID, { totalEurCents: 500 } as any)).rejects.toThrow();
   });
 
   it("throws if number in patch", async () => {
-    await expect(updateInvoice("inv1", { number: "X" } as any)).rejects.toThrow();
+    await expect(updateInvoice(INV_ID, { number: "X" } as any)).rejects.toThrow();
   });
 
   it("throws if paidAt in patch", async () => {
-    await expect(updateInvoice("inv1", { paidAt: new Date() } as any)).rejects.toThrow();
+    await expect(updateInvoice(INV_ID, { paidAt: new Date() } as any)).rejects.toThrow();
   });
 });
 
@@ -311,13 +337,13 @@ describe("transitionInvoiceStatus", () => {
 
   it("throws InvalidInvoiceTransitionError for invalid transition", async () => {
     dbMock.limit!.mockResolvedValueOnce([INV_FIXTURE]);
-    await expect(transitionInvoiceStatus("inv1", "paid")).rejects.toThrow(InvalidInvoiceTransitionError);
+    await expect(transitionInvoiceStatus(INV_ID, "paid")).rejects.toThrow(InvalidInvoiceTransitionError);
   });
 
   it("sets issuedAt when transitioning to sent", async () => {
     dbMock.limit!.mockResolvedValueOnce([{ ...INV_FIXTURE, issuedAt: null }]);
     dbMock.returning!.mockResolvedValueOnce([{ ...INV_FIXTURE, status: "sent" }]);
-    await transitionInvoiceStatus("inv1", "sent");
+    await transitionInvoiceStatus(INV_ID, "sent");
     const setCall = dbMock.set!.mock.calls[0][0];
     expect(setCall.issuedAt).toBeInstanceOf(Date);
   });
@@ -325,7 +351,7 @@ describe("transitionInvoiceStatus", () => {
   it("sets paidAt fallback when transitioning to paid and paidAt null", async () => {
     dbMock.limit!.mockResolvedValueOnce([{ ...INV_FIXTURE, status: "sent", paidAt: null }]);
     dbMock.returning!.mockResolvedValueOnce([{ ...INV_FIXTURE, status: "paid" }]);
-    await transitionInvoiceStatus("inv1", "paid");
+    await transitionInvoiceStatus(INV_ID, "paid");
     const setCall = dbMock.set!.mock.calls[0][0];
     expect(setCall.paidAt).toBeInstanceOf(Date);
   });
@@ -334,7 +360,7 @@ describe("transitionInvoiceStatus", () => {
     const existingDate = new Date("2025-01-01");
     dbMock.limit!.mockResolvedValueOnce([{ ...INV_FIXTURE, status: "sent", paidAt: existingDate }]);
     dbMock.returning!.mockResolvedValueOnce([{ ...INV_FIXTURE, status: "paid" }]);
-    await transitionInvoiceStatus("inv1", "paid");
+    await transitionInvoiceStatus(INV_ID, "paid");
     const setCall = dbMock.set!.mock.calls[0][0];
     expect(setCall.paidAt).toBeUndefined();
   });
@@ -342,7 +368,7 @@ describe("transitionInvoiceStatus", () => {
 
 describe("deleteInvoice", () => {
   it("calls delete", async () => {
-    await deleteInvoice("inv1");
+    await deleteInvoice(INV_ID);
     expect(dbMock.delete).toHaveBeenCalled();
   });
 });
@@ -387,20 +413,20 @@ describe("createInvoiceFromQuote", () => {
 
 describe("listInvoiceItems", () => {
   it("returns items for invoice", async () => {
-    const items = [{ id: "ii1", invoiceId: "inv1" }];
+    const items = [{ id: "ii1", invoiceId: INV_ID }];
     dbMock.where!.mockResolvedValueOnce(items);
-    const result = await listInvoiceItems("inv1");
+    const result = await listInvoiceItems(INV_ID);
     expect(result).toEqual(items);
   });
 });
 
 describe("addInvoiceItem", () => {
   it("inserts item and recomputes total in transaction", async () => {
-    const item = { id: "ii1", invoiceId: "inv1", description: "x", quantity: 1, unitPriceEurCents: 100, sortOrder: 0 };
+    const item = { id: "ii1", invoiceId: INV_ID, description: "x", quantity: 1, unitPriceEurCents: 100, sortOrder: 0 };
     dbMock.returning!.mockResolvedValueOnce([item]);
     dbMock.where!.mockResolvedValueOnce([item]);
     dbMock.returning!.mockResolvedValueOnce([INV_FIXTURE]);
-    const result = await addInvoiceItem("inv1", { description: "x", quantity: 1, unitPriceEurCents: 100, sortOrder: 0 });
+    const result = await addInvoiceItem(INV_ID, { description: "x", quantity: 1, unitPriceEurCents: 100, sortOrder: 0 });
     expect(result).toEqual(item);
     expect(dbMock.transaction).toHaveBeenCalled();
   });
@@ -408,7 +434,7 @@ describe("addInvoiceItem", () => {
 
 describe("updateInvoiceItem", () => {
   it("updates item and recomputes total", async () => {
-    const item = { id: "ii1", invoiceId: "inv1", description: "y", quantity: 2, unitPriceEurCents: 200, sortOrder: 0 };
+    const item = { id: "ii1", invoiceId: INV_ID, description: "y", quantity: 2, unitPriceEurCents: 200, sortOrder: 0 };
     dbMock.where!
       .mockReturnValueOnce(dbMock)
       .mockResolvedValueOnce([item])
@@ -434,7 +460,7 @@ describe("removeInvoiceItem", () => {
       .mockResolvedValueOnce([])
       .mockReturnValueOnce(dbMock);
     dbMock.returning!
-      .mockResolvedValueOnce([{ id: "ii1", invoiceId: "inv1" }])
+      .mockResolvedValueOnce([{ id: "ii1", invoiceId: INV_ID }])
       .mockResolvedValueOnce([INV_FIXTURE]);
     await removeInvoiceItem("ii1");
     expect(dbMock.transaction).toHaveBeenCalled();
@@ -453,7 +479,7 @@ describe("recomputeInvoiceTotal", () => {
       { quantity: 3, unitPriceEurCents: 200 },
     ]);
     dbMock.returning!.mockResolvedValueOnce([INV_FIXTURE]);
-    const total = await recomputeInvoiceTotal("inv1");
+    const total = await recomputeInvoiceTotal(INV_ID);
     expect(total).toBe(800);
   });
 });
