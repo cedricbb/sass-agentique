@@ -1,3 +1,6 @@
+export const CUSTOMER_VISIBLE_QUOTE_STATUSES = ["sent", "accepted", "declined", "expired"] as const;
+export type CustomerVisibleQuoteStatus = (typeof CUSTOMER_VISIBLE_QUOTE_STATUSES)[number];
+
 export type QuoteAmounts = {
   totalHtCents: number;
   vatCents: number;
