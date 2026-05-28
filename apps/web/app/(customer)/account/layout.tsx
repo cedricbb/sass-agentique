@@ -1,16 +1,9 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { validateSession } from "@saas/services";
+import { requireCustomer } from "@/lib/auth";
 import { CustomerShell } from "@/components/layout/CustomerShell";
 import type { ReactNode } from "react";
 
 export default async function AccountLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("session-token")?.value;
-  if (!sessionToken) redirect("/login");
-
-  const user = await validateSession(sessionToken);
-  if (!user) redirect("/login");
+  const { user, client } = await requireCustomer();
 
   return (
     <CustomerShell
@@ -20,6 +13,7 @@ export default async function AccountLayout({ children }: { children: ReactNode 
         email: user.email,
         emailVerified: user.emailVerified,
       }}
+      clientName={client.name}
     >
       {children}
     </CustomerShell>
