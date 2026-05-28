@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { resolveQuoteId } from "./helpers/resolve-seed-ids";
 
 test.describe("Customer Quotes — client-acme", () => {
   test.use({ storageState: "tests/e2e/.auth/acme.json" });
@@ -32,14 +33,14 @@ test.describe("Customer Quotes — client-acme", () => {
   });
 
   test("URL directe draft Q-2026-001 → 404", async ({ page }) => {
-    const draftQuoteId = "SEED_DRAFT_QUOTE_ID";
+    const draftQuoteId = await resolveQuoteId("Q-2026-001");
     await page.goto(`/account/quotes/${draftQuoteId}`);
     await expect(page.getByTestId("quote-not-found")).toBeVisible();
     await expect(page.getByText("Devis introuvable")).toBeVisible();
   });
 
   test("URL directe devis bob → 404", async ({ page }) => {
-    const bobQuoteId = "SEED_BOB_QUOTE_ID";
+    const bobQuoteId = await resolveQuoteId("Q-2026-005");
     await page.goto(`/account/quotes/${bobQuoteId}`);
     await expect(page.getByTestId("quote-not-found")).toBeVisible();
   });
