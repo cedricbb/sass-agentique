@@ -39,7 +39,10 @@ export class ForbiddenScopeError extends Error {
 export async function requireCustomer(): Promise<CustomerScope> {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (user.role !== "client") redirect("/admin");
+  if (user.role !== "client") {
+    if (user.role === "admin") redirect("/admin");
+    redirect("/");
+  }
   const client = await getPrimaryClientForUser(user.id);
   if (!client) redirect("/customer/no-client");
   return { user, client };

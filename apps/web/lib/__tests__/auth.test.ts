@@ -138,6 +138,14 @@ describe("requireCustomer", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/admin");
   });
 
+  it("redirects to / when user role is unknown (Fix F1)", async () => {
+    mockGet.mockReturnValue({ value: "valid-token" });
+    mockValidateSession.mockResolvedValue({ ...CLIENT_USER, role: "unknown" });
+    const { requireCustomer } = await import("../auth");
+    await expect(requireCustomer()).rejects.toThrow("NEXT_REDIRECT");
+    expect(mockRedirect).toHaveBeenCalledWith("/");
+  });
+
   it("redirects to /customer/no-client when client user has no linked client", async () => {
     mockGet.mockReturnValue({ value: "valid-token" });
     mockValidateSession.mockResolvedValue(CLIENT_USER);
