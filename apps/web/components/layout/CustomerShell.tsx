@@ -27,12 +27,16 @@ export interface CustomerUser {
 
 interface CustomerShellProps {
   user: CustomerUser;
+  clientName?: string | null;
   children: ReactNode;
 }
 
 const PAGE_TITLES: Record<string, string> = {
+  account: "Accueil",
+  quotes: "Mes devis",
+  invoices: "Mes factures",
+  reports: "Mes rapports",
   profile: "Mon profil",
-  orders: "Mes commandes",
   security: "Sécurité",
   setup: "Configuration 2FA",
 };
@@ -46,7 +50,7 @@ function getInitials(name: string | null, email: string): string {
   return email.slice(0, 2).toUpperCase();
 }
 
-export function CustomerShell({ user, children }: CustomerShellProps) {
+export function CustomerShell({ user, clientName, children }: CustomerShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
@@ -105,6 +109,7 @@ export function CustomerShell({ user, children }: CustomerShellProps) {
           </Button>
 
           <h1 className="hidden text-sm font-semibold sm:block">{pageTitle}</h1>
+          {clientName && <span className="text-xs text-muted-foreground">Espace client — {clientName}</span>}
 
           <div className="flex-1" />
 

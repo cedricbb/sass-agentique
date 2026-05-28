@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, ShoppingBag, Shield } from "lucide-react";
+import { Home, FileText, Receipt, FileBarChart, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,9 +20,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { href: "/account", label: "Accueil", icon: Home },
+  { href: "/account/quotes", label: "Mes devis", icon: FileText },
+  { href: "/account/invoices", label: "Mes factures", icon: Receipt },
+  { href: "/account/reports", label: "Mes rapports", icon: FileBarChart },
   { href: "/account/profile", label: "Mon profil", icon: User },
-  { href: "/account/orders", label: "Mes commandes", icon: ShoppingBag },
-  { href: "/account/security", label: "Sécurité", icon: Shield },
 ];
 
 function NavLink({
@@ -35,7 +37,9 @@ function NavLink({
   pathname: string;
 }) {
   const active =
-    pathname === item.href || pathname.startsWith(item.href + "/");
+    item.href === "/account"
+      ? pathname === "/account"
+      : pathname === item.href || pathname.startsWith(item.href + "/");
 
   const link = (
     <Link
