@@ -41,11 +41,13 @@ import {
   VALID_INVOICE_TRANSITIONS,
   canTransitionInvoice,
   computeInvoiceTtc,
+  CUSTOMER_VISIBLE_INVOICE_STATUSES,
   InvalidInvoiceTransitionError,
   InvalidQuoteForInvoicingError,
   QuoteAlreadyInvoicedError,
   generateInvoiceNumber,
   listInvoices,
+  listInvoicesByClient,
   getInvoiceById,
   getInvoiceByNumber,
   createInvoice,
@@ -199,6 +201,42 @@ describe("listInvoices", () => {
     dbMock.orderBy!.mockResolvedValueOnce([]);
     await listInvoices({ status: ["draft", "sent"] });
     expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
+  });
+});
+
+describe("CUSTOMER_VISIBLE_INVOICE_STATUSES", () => {
+  it("includes sent, paid, overdue, cancelled but not draft", () => {
+    expect(CUSTOMER_VISIBLE_INVOICE_STATUSES).toEqual(["sent", "paid", "overdue", "cancelled"]);
+    expect(CUSTOMER_VISIBLE_INVOICE_STATUSES).not.toContain("draft");
+  });
+});
+
+describe("listInvoicesByClient", () => {
+  it("retourne les factures non-draft du client", async () => {
+    const sentInvoice = { ...INV_FIXTURE, status: "sent", clientId: "c1" };
+    dbMock.orderBy!.mockResolvedValueOnce([sentInvoice]);
+    const result = await listInvoicesByClient("c1");
+    expect(result).toEqual([sentInvoice]);
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+
+  it("isolation cross-client", async () => {
+    dbMock.orderBy!.mockResolvedValueOnce([]);
+    const result = await listInvoicesByClient("c-other");
+    expect(result).toEqual([]);
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+
+  it("client sans factures retourne tableau vide", async () => {
+    dbMock.orderBy!.mockResolvedValueOnce([]);
+    const result = await listInvoicesByClient("c-empty");
+    expect(result).toEqual([]);
+  });
+
+  it("order desc createdAt via listInvoices", async () => {
+    dbMock.orderBy!.mockResolvedValueOnce([]);
+    await listInvoicesByClient("c1");
     expect(dbMock.orderBy).toHaveBeenCalled();
   });
 });

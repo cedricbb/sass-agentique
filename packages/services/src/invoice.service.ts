@@ -45,7 +45,12 @@ export function canTransitionInvoice(from: InvoiceStatus, to: InvoiceStatus): bo
   return VALID_INVOICE_TRANSITIONS[from].includes(to);
 }
 
-export { computeInvoiceTtc, type InvoiceAmounts } from "./invoice.shared";
+export { computeInvoiceTtc, type InvoiceAmounts, CUSTOMER_VISIBLE_INVOICE_STATUSES, type CustomerVisibleInvoiceStatus } from "./invoice.shared";
+import { CUSTOMER_VISIBLE_INVOICE_STATUSES } from "./invoice.shared";
+
+export async function listInvoicesByClient(clientId: string): Promise<Invoice[]> {
+  return listInvoices({ clientId, status: [...CUSTOMER_VISIBLE_INVOICE_STATUSES] });
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
