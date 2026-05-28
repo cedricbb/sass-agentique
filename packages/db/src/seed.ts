@@ -400,21 +400,42 @@ async function main() {
     })
     .returning();
 
-  console.log("✅ 3 factures créées");
+  const [inv4] = await db
+    .insert(schema.invoices)
+    .values({
+      ownerId: seedAdminId,
+      clientId: acme.id,
+      number: "INV-2026-004",
+      status: "sent",
+      totalEurCents: 40000,
+      vatRateBps: 2000,
+      issuedAt: new Date("2026-04-01T00:00:00Z"),
+      dueAt: new Date("2026-05-01T00:00:00Z"),
+    })
+    .onConflictDoUpdate({
+      target: [schema.invoices.ownerId, schema.invoices.number],
+      set: { totalEurCents: 40000, status: "sent" },
+    })
+    .returning();
+
+  console.log("✅ 4 factures créées");
 
   // ── Invoice Items ──────────────────────────────────────────────────────────
-  await db.delete(schema.invoiceItems).where(inArray(schema.invoiceItems.invoiceId, [inv2.id, inv3.id]));
+  await db.delete(schema.invoiceItems).where(inArray(schema.invoiceItems.invoiceId, [inv2.id, inv3.id, inv4.id]));
   await db.insert(schema.invoiceItems).values([
     { invoiceId: inv2.id, description: "Développement API", quantity: 2, unitPriceEurCents: 10000, sortOrder: 0 },
     { invoiceId: inv2.id, description: "Intégration frontend", quantity: 1, unitPriceEurCents: 5000, sortOrder: 1 },
     { invoiceId: inv3.id, description: "Audit sécurité", quantity: 1, unitPriceEurCents: 5000, sortOrder: 0 },
+    { invoiceId: inv4.id, description: "Développement module client", quantity: 3, unitPriceEurCents: 10000, sortOrder: 0 },
+    { invoiceId: inv4.id, description: "Design UX", quantity: 1, unitPriceEurCents: 10000, sortOrder: 1 },
   ]);
-  console.log("✅ Invoice items créés : 2 sur INV-2026-002, 1 sur INV-2026-003 (INV-2026-001 reste vide)");
+  console.log("✅ Invoice items créés : 2 sur INV-2026-002, 1 sur INV-2026-003, 2 sur INV-2026-004 (INV-2026-001 reste vide)");
 
   // ── Payments ────────────────────────────────────────────────────────────────
   await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv2.id));
   await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv1.id));
   await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv3.id));
+  await db.delete(schema.payments).where(eq(schema.payments.invoiceId, inv4.id));
 
   await db.insert(schema.payments).values([
     {
@@ -448,9 +469,16 @@ async function main() {
       externalRef: "chk_seed_004",
       paidAt: new Date("2026-05-01T00:00:00Z"),
     },
+    {
+      ownerId: seedAdminId,
+      invoiceId: inv4.id,
+      amountEurCents: 20000,
+      method: "bank_transfer",
+      paidAt: new Date("2026-04-20T00:00:00Z"),
+    },
   ]);
 
-  console.log("✅ 4 paiements créés (3 méthodes, multi-invoices)");
+  console.log("✅ 5 paiements créés (3 méthodes, multi-invoices)");
 
   // ── Reports ─────────────────────────────────────────────────────────────────
   await db.delete(schema.reports).where(
