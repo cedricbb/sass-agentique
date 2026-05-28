@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { resolveInvoiceId } from "./helpers/resolve-seed-ids";
 
 test.describe("Customer Invoices — client-acme", () => {
-  test.use({ storageState: "e2e/.auth/acme.json" });
+  test.use({ storageState: "tests/e2e/.auth/acme.json" });
 
   test("voit INV-2026-004 dans la liste", async ({ page }) => {
     await page.goto("/account/invoices");
@@ -33,14 +34,14 @@ test.describe("Customer Invoices — client-acme", () => {
   });
 
   test("URL directe draft INV-2026-001 → 404", async ({ page }) => {
-    const draftInvoiceId = "SEED_DRAFT_INVOICE_ID";
+    const draftInvoiceId = await resolveInvoiceId("INV-2026-001");
     await page.goto(`/account/invoices/${draftInvoiceId}`);
     await expect(page.getByTestId("invoice-not-found")).toBeVisible();
     await expect(page.getByText("Facture introuvable")).toBeVisible();
   });
 
   test("URL directe facture bob INV-2026-002 → 404", async ({ page }) => {
-    const bobInvoiceId = "SEED_BOB_INVOICE_ID";
+    const bobInvoiceId = await resolveInvoiceId("INV-2026-002");
     await page.goto(`/account/invoices/${bobInvoiceId}`);
     await expect(page.getByTestId("invoice-not-found")).toBeVisible();
   });
@@ -55,7 +56,7 @@ test.describe("Customer Invoices — client-acme", () => {
 });
 
 test.describe("Customer Invoices — client-bob", () => {
-  test.use({ storageState: "e2e/.auth/bob.json" });
+  test.use({ storageState: "tests/e2e/.auth/bob.json" });
 
   test("voit INV-2026-002, pas factures acme", async ({ page }) => {
     await page.goto("/account/invoices");

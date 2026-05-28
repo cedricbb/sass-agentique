@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Customer Quotes — client-acme", () => {
-  test.use({ storageState: "e2e/.auth/acme.json" });
+  test.use({ storageState: "tests/e2e/.auth/acme.json" });
 
   test("voit Q-2026-004 dans la liste", async ({ page }) => {
     await page.goto("/account/quotes");
@@ -46,7 +46,7 @@ test.describe("Customer Quotes — client-acme", () => {
 });
 
 test.describe("Customer Quotes — client-bob", () => {
-  test.use({ storageState: "e2e/.auth/bob.json" });
+  test.use({ storageState: "tests/e2e/.auth/bob.json" });
 
   test("voit Q-2026-005, pas devis acme", async ({ page }) => {
     await page.goto("/account/quotes");
