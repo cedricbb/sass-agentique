@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-(globalThis as any).React = React;
+(globalThis as Record<string, unknown>).React = React;
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
@@ -18,21 +18,21 @@ vi.mock("@/components/auth/EmailVerificationBanner", () => ({
 vi.mock("@/components/auth/LogoutButton", () => ({
   LogoutButton: () => <button>Logout</button>,
 }));
-vi.mock("@/lib/utils", () => ({ cn: (...args: any[]) => args.filter(Boolean).join(" ") }));
+vi.mock("@/lib/utils", () => ({ cn: (...args: unknown[]) => args.filter(Boolean).join(" ") }));
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...p }: any) => <button {...p}>{children}</button>,
+  Button: ({ children, ...p }: { children?: React.ReactNode; [key: string]: unknown }) => <button {...p}>{children}</button>,
 }));
 vi.mock("@/components/ui/avatar", () => ({
-  Avatar: ({ children }: any) => <div>{children}</div>,
-  AvatarFallback: ({ children }: any) => <span>{children}</span>,
+  Avatar: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  AvatarFallback: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
 }));
 vi.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuItem: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
+  DropdownMenu: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuLabel: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuSeparator: () => <hr />,
-  DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 
 import { CustomerShell } from "../CustomerShell";

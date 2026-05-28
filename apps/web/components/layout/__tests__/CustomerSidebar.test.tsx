@@ -1,26 +1,26 @@
 // @vitest-environment jsdom
 import React from "react";
-(globalThis as any).React = React;
+(globalThis as Record<string, unknown>).React = React;
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/account" }));
 vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
+  default: ({ children, href, ...props }: { children?: React.ReactNode; href?: string; [key: string]: unknown }) => <a href={href} {...props}>{children}</a>,
 }));
-vi.mock("@/lib/utils", () => ({ cn: (...args: any[]) => args.filter(Boolean).join(" ") }));
+vi.mock("@/lib/utils", () => ({ cn: (...args: unknown[]) => args.filter(Boolean).join(" ") }));
 vi.mock("@/components/ui/sheet", () => ({
-  Sheet: ({ children }: any) => <div>{children}</div>,
-  SheetContent: ({ children }: any) => <div>{children}</div>,
+  Sheet: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  SheetContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 vi.mock("@/components/ui/scroll-area", () => ({
-  ScrollArea: ({ children }: any) => <div>{children}</div>,
+  ScrollArea: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 vi.mock("@/components/ui/tooltip", () => ({
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  TooltipContent: ({ children }: any) => <div>{children}</div>,
-  TooltipProvider: ({ children }: any) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: any) => <div>{children}</div>,
+  Tooltip: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  TooltipContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  TooltipProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 
 import { CustomerSidebar } from "../CustomerSidebar";
