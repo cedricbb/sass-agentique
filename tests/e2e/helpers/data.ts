@@ -6,7 +6,7 @@ export const SEED_INVOICE_NUMBER = "INV-2026-001";
 export const SEED_INVOICE_TTC_FR = "300,00 €";
 export const SEED_INVOICE_CLIENT_NAME = "Acme Studio";
 
-export const SEED_PAYMENT_COUNT = 4;
+export const SEED_PAYMENT_COUNT = 5;
 export const SEED_PAYMENT_BANK_TRANSFER_REF = "vir_seed_003";
 export const SEED_INVOICE_SENT_NUMBER = "INV-2026-002";
 export const SEED_INVOICE_PAID_NUMBER = "INV-2026-003";

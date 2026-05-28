@@ -36,7 +36,7 @@ test.describe("Payments Admin — E2E", () => {
     await page.getByTestId("payments-method-filter").click();
     await page.getByRole("option", { name: "Virement" }).click();
     const rows = page.locator("tbody tr");
-    await expect(rows).toHaveCount(2);
+    await expect(rows).toHaveCount(3);
 
     await page.getByTestId("payments-method-filter").click();
     await page.getByRole("option", { name: "Toutes" }).click();
