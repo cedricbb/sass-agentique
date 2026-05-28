@@ -2,7 +2,7 @@
 
 Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authentification complète maison (email + sessions + 2FA/OTP), RBAC CASL, billing Stripe, workflows Inngest et agents IA via Vercel AI SDK + Claude.
 
-> **Pivot avancé (mai 2026)** — Le projet pivote d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin. R1 (suppression multi-tenant) et R2 (schéma + services domaine) sont complétés. R3 (Stripe Billing solo) est en cours. R4 (modules admin frontend) est largement avancé — onze modules livrés : clients, prestations, projets, devis, factures, paiements, contrats de maintenance, rapports, tâches agents IA, utilisateurs et profil admin. Dashboard avec graphiques analytiques (revenus mensuels, ventilation statuts factures). Spike R2/Cloudflare PDF en cours de validation. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
+> **Pivot avancé (mai 2026)** — Le projet pivote d'un modèle SaaS multi-tenant B2B vers un modèle freelance solo-admin. R1 (suppression multi-tenant) et R2 (schéma + services domaine) sont complétés. R3 (Stripe Billing solo) est en cours. R4 (modules admin frontend) est largement avancé — onze modules livrés : clients, prestations, projets, devis, factures, paiements, contrats de maintenance, rapports, tâches agents IA, utilisateurs et profil admin. Dashboard avec graphiques analytiques (revenus mensuels, ventilation statuts factures). R5 (Portail client) a démarré — pages compte, devis, factures et rapports en cours de construction. Tag de rollback : `pre-pivot-v1`. Voir `docs/PIVOT.md` pour le contexte complet.
 
 <!-- SECTION:overview -->
 ## Vue d'ensemble
@@ -150,8 +150,20 @@ sass-agentique/
 │       │   │       ├── quotes/         # Module devis (liste, [id], new)
 │       │   │       ├── invoices/       # Module factures (liste, [id])
 │       │   │       ├── payments/       # Module paiements (liste globale, lecture seule)
+│       │   │       ├── contracts/      # Module contrats de maintenance
+│       │   │       ├── reports/        # Module rapports (génération, stockage R2)
+│       │   │       ├── agent-tasks/    # Monitoring tâches IA
+│       │   │       ├── users/          # Gestion utilisateurs (ban/unban)
+│       │   │       ├── profile/        # Profil admin
 │       │   │       └── spike-upload/   # Spike R2 — upload/lecture PDF (expérimental)
-│       │   ├── (customer)/       # Portail client (compte)
+│       │   ├── (customer)/       # Portail client (R5 — en cours)
+│       │   │   └── account/
+│       │   │       ├── page.tsx        # Tableau de bord compte client
+│       │   │       ├── quotes/         # Devis (lecture client)
+│       │   │       ├── invoices/       # Factures (lecture client)
+│       │   │       ├── reports/        # Rapports (lecture client)
+│       │   │       ├── profile/        # Profil client
+│       │   │       └── security/       # Paramètres de sécurité
 │       │   ├── actions/          # Server Actions
 │       │   │   └── __tests__/    # Tests des Server Actions
 │       │   └── api/
@@ -161,8 +173,10 @@ sass-agentique/
 │       │   ├── admin/            # Composants admin spécifiques
 │       │   ├── billing/          # Composants billing (+ tests)
 │       │   ├── dashboard/        # Graphiques analytiques (MonthlyRevenueChart, InvoiceStatusBreakdownChart)
+│       │   ├── layout/           # Composants de layout (CustomerShell, CustomerSidebar, + tests)
 │       │   └── ui/               # Composants UI partagés (badge, data-table, + tests)
 │       ├── lib/
+│       │   ├── auth.ts           # Helpers auth (session, guards)
 │       │   ├── dashboard/        # Données et utilitaires du tableau de bord
 │       │   ├── hooks/            # Hooks custom (use-data-table-state…)
 │       │   ├── schemas/          # Validation Zod (client, prestation, project)
@@ -284,7 +298,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 | R2 | Nouveau schéma + services : clients, projets, devis, factures, paiements, rapports | 1 semaine | ✅ Complété |
 | R3 | Refonte Stripe Billing (solo) | 1 semaine | 🔄 En cours |
 | R4 | Modules admin frontend : clients, projets, devis, factures, contrats, rapports, agents, users, profil | 1–2 semaines | 🔄 En cours avancé |
-| R5 | Portail client frontend : compte, devis, factures, rapports | 1–2 semaines | — |
+| R5 | Portail client frontend : compte, devis, factures, rapports | 1–2 semaines | 🔄 En cours |
 | R6 | Intégration portfolio (pages marketing) | 1 semaine | — |
 | R7 | Quick wins productivité : PDF, acceptation en ligne, emails auto | 1 semaine | — |
 
@@ -302,7 +316,6 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 - **Devis** : Server Actions (`actions/quotes.ts`, `actions/quote-items.ts`), pages liste et détail, composants `QuotesTable`, `QuoteForm`, `QuoteItemsEditor`, `EditQuoteItemDialog`, `QuoteStatusActions`, `QuoteToInvoiceButton`.
 - **Factures** : Server Actions (`actions/invoices.ts`, `actions/invoice-items.ts`), pages liste et détail, composants `InvoicesTable`, `InvoiceForm`, `InvoiceItemsEditor`, `EditInvoiceItemDialog`, `InvoiceStatusActions`, `InvoiceAmountsCard`, `InvoiceBalanceCard`, `InvoicePaymentsList`, `RecordPaymentDialog`.
 - **Paiements** : Server Actions (`actions/payments.ts`), liste globale avec filtres (`/admin/payments`), composant `PaymentsTable` (lecture seule).
-
 - **Contrats de maintenance** : Server Actions (`actions/contracts.ts`), liste globale des contrats (`/admin/contracts`), composants dédiés. Gestion des modes de facturation `stripe_auto` et `manual_invoice`.
 - **Rapports** : pages liste et génération (`/admin/reports`), stockage des fichiers sur Cloudflare R2, Server Actions (`actions/reports.ts`).
 - **Tâches agents IA** : monitoring en temps réel des tâches (`/admin/agent-tasks`), API Route dédiée (`api/admin/agent-tasks/`), vue des logs et statuts.
@@ -311,6 +324,14 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 - **Dashboard** : tableau de bord principal (`/admin`) avec graphiques analytiques — `MonthlyRevenueChart` (revenus mensuels) et `InvoiceStatusBreakdownChart` (ventilation des statuts de facturation). Données agrégées via `lib/dashboard/`.
 
 Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec pagination, tri et filtres.
+
+**R5 — En cours** : portail client en construction —
+
+- **Compte** : page tableau de bord client (`/account`), layout `CustomerShell` + sidebar `CustomerSidebar` refactorisés.
+- **Devis** : vue des devis du client (`/account/quotes`), lecture seule.
+- **Factures** : vue des factures du client (`/account/invoices`), lecture seule.
+- **Rapports** : accès aux rapports de livraison (`/account/reports`).
+- **Profil & sécurité** : gestion du profil et des paramètres 2FA client (existants).
 
 ### Spike R2 — Stockage PDF (expérimental)
 
@@ -321,7 +342,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 - Lecture en streaming via route handler authentifiée (`/admin/spike-upload/file?key=…`)
 - Client R2 centralisé dans `apps/web/lib/storage/r2.ts` avec classes d'erreurs typées
 
-> La route est accessible mais reste expérimentale jusqu'à intégration dans le module rapports.
+> La route est accessible mais reste expérimentale jusqu'à intégration complète dans le module rapports.
 
 ### Services métier (`@saas/services`)
 
@@ -396,7 +417,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | Fichier | Scope |
 |---------|-------|
 | `apps/web/lib/__tests__/action-result.test.ts` | Utilitaire action-result |
-| `apps/web/lib/__tests__/auth.test.ts` | Helpers auth (web) |
+| `apps/web/lib/__tests__/auth.test.ts` | Helpers auth (session, guards) |
 | `apps/web/lib/__tests__/format.test.ts` | Utilitaire format (dates, montants) |
 | `apps/web/lib/__tests__/payment-labels.test.ts` | Labels et formatage des paiements |
 | `apps/web/lib/__tests__/shadcn-imports.test.ts` | Intégrité des imports shadcn/ui |
@@ -407,36 +428,19 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
 | `apps/web/components/ui/__tests__/badge.test.tsx` | Composant Badge (variantes, rendu) |
 | `apps/web/components/ui/data-table/__tests__/data-table.test.tsx` | Composant DataTable |
+| `apps/web/components/layout/__tests__/` | Composants layout (CustomerShell, CustomerSidebar) |
 
-**Web — composants admin clients**
-
-| Fichier | Scope |
-|---------|-------|
-
-**Web — composants admin prestations**
+**Web — composants dashboard**
 
 | Fichier | Scope |
 |---------|-------|
+| `apps/web/components/dashboard/__tests__/` | Graphiques analytiques (MonthlyRevenueChart, InvoiceStatusBreakdownChart) |
 
-**Web — composants admin projets**
-
-| Fichier | Scope |
-|---------|-------|
-
-**Web — composants admin devis**
+**Web — page admin**
 
 | Fichier | Scope |
 |---------|-------|
-
-**Web — composants admin factures**
-
-| Fichier | Scope |
-|---------|-------|
-
-**Web — composants admin paiements**
-
-| Fichier | Scope |
-|---------|-------|
+| `apps/web/app/(admin)/admin/__tests__/` | Page dashboard admin (rendu, données, graphiques) |
 
 **Web — Server Actions**
 
@@ -456,21 +460,9 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 pnpm test   # Exécute les 47 fichiers via vitest workspace
 ```
 
-**Web — composants dashboard**
-
-| Fichier | Scope |
-|---------|-------|
-| `apps/web/components/dashboard/__tests__/` | Graphiques analytiques (MonthlyRevenueChart, InvoiceStatusBreakdownChart) |
-
-**Web — page admin**
-
-| Fichier | Scope |
-|---------|-------|
-| `apps/web/app/(admin)/admin/__tests__/` | Page dashboard admin (rendu, données, graphiques) |
-
 ### Tests E2E (Playwright)
 
-6 specs Playwright sur Chromium avec helpers partagés :
+8 specs Playwright sur Chromium avec helpers partagés :
 
 | Fichier | Scope |
 |---------|-------|
@@ -489,6 +481,7 @@ Helpers E2E (`tests/e2e/helpers/`) :
 |---------|------|
 | `tests/e2e/helpers/auth.ts` | Authentification et session de test |
 | `tests/e2e/helpers/data.ts` | Fixtures et création de données de test |
+| `tests/e2e/helpers/contracts.ts` | Helpers dédiés aux contrats de maintenance |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
@@ -524,6 +517,7 @@ Le suivi des tâches est géré via :
 - `docs/pivot-document.md` — Analyse complète : diagnostic, domaine cible, décisions d'architecture, stratégie de migration DB, roadmap d'implémentation
 - `docs/pivot-r3-architecture.md` — Architecture détaillée du module Stripe Billing solo (R3)
 - `docs/roadmap-r3.md` — Décomposition en sous-tâches (ST1–ST11) avec phases détaillées
+- `agency-state/reports/` — Rapports générés par le swarm d'agents (design, impl, QA, security) classés par date
 <!-- END:backlog -->
 
 <!-- SECTION:configuration -->
