@@ -59,8 +59,10 @@ import {
 
 const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
 
+const QUOTE_ID = "11111111-1111-1111-1111-111111111111";
+
 const QUOTE_FIXTURE = {
-  id: "q1",
+  id: QUOTE_ID,
   ownerId: OWNER_ID,
   clientId: "c1",
   projectId: null,
@@ -78,7 +80,7 @@ const QUOTE_FIXTURE = {
 
 const ITEM_FIXTURE = {
   id: "qi1",
-  quoteId: "q1",
+  quoteId: QUOTE_ID,
   prestationId: null,
   description: "Dev work",
   quantity: 2,
@@ -200,14 +202,32 @@ describe("listQuotes", () => {
 describe("getQuoteById", () => {
   it("returns quote when found", async () => {
     dbMock.limit.mockResolvedValueOnce([QUOTE_FIXTURE]);
-    const result = await getQuoteById("q1");
+    const result = await getQuoteById("a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4");
     expect(result).toEqual(QUOTE_FIXTURE);
   });
 
   it("returns null when not found", async () => {
     dbMock.limit.mockResolvedValueOnce([]);
-    const result = await getQuoteById("missing");
+    const result = await getQuoteById("00000000-0000-0000-0000-000000000000");
     expect(result).toBeNull();
+  });
+
+  it("returns null for non-UUID string without querying DB", async () => {
+    const result = await getQuoteById("not-a-uuid");
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it("returns null for empty string without querying DB", async () => {
+    const result = await getQuoteById("");
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it("returns null for placeholder string without querying DB", async () => {
+    const result = await getQuoteById("SEED_DRAFT_QUOTE_ID");
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
   });
 });
 
@@ -265,7 +285,7 @@ describe("createQuote", () => {
 describe("updateQuote", () => {
   it("updates allowed fields", async () => {
     dbMock.returning.mockResolvedValueOnce([{ ...QUOTE_FIXTURE, notes: "updated" }]);
-    const result = await updateQuote("q1", { notes: "updated" });
+    const result = await updateQuote(QUOTE_ID, { notes: "updated" });
     expect(result?.notes).toBe("updated");
   });
 
@@ -291,13 +311,13 @@ describe("updateQuote", () => {
 describe("transitionQuoteStatus", () => {
   it("returns null for nonexistent quote", async () => {
     dbMock.limit.mockResolvedValueOnce([]);
-    const result = await transitionQuoteStatus("missing", "sent");
+    const result = await transitionQuoteStatus("00000000-0000-0000-0000-000000000000", "sent");
     expect(result).toBeNull();
   });
 
   it("throws on invalid transition", async () => {
     dbMock.limit.mockResolvedValueOnce([QUOTE_FIXTURE]);
-    await expect(transitionQuoteStatus("q1", "accepted")).rejects.toThrow(
+    await expect(transitionQuoteStatus(QUOTE_ID, "accepted")).rejects.toThrow(
       InvalidQuoteTransitionError,
     );
   });
@@ -305,7 +325,7 @@ describe("transitionQuoteStatus", () => {
   it("sets issuedAt on draft→sent", async () => {
     dbMock.limit.mockResolvedValueOnce([QUOTE_FIXTURE]);
     dbMock.returning.mockResolvedValueOnce([{ ...QUOTE_FIXTURE, status: "sent" }]);
-    await transitionQuoteStatus("q1", "sent");
+    await transitionQuoteStatus(QUOTE_ID, "sent");
     const setCall = dbMock.set.mock.calls[0][0];
     expect(setCall).toHaveProperty("issuedAt");
     expect(setCall.status).toBe("sent");
@@ -315,7 +335,7 @@ describe("transitionQuoteStatus", () => {
     const sentQuote = { ...QUOTE_FIXTURE, status: "sent" as const, issuedAt: new Date() };
     dbMock.limit.mockResolvedValueOnce([sentQuote]);
     dbMock.returning.mockResolvedValueOnce([{ ...sentQuote, status: "accepted" }]);
-    await transitionQuoteStatus("q1", "accepted");
+    await transitionQuoteStatus(QUOTE_ID, "accepted");
     const setCall = dbMock.set.mock.calls[0][0];
     expect(setCall).toHaveProperty("acceptedAt");
   });
@@ -323,7 +343,7 @@ describe("transitionQuoteStatus", () => {
 
 describe("deleteQuote", () => {
   it("deletes by id", async () => {
-    await deleteQuote("q1");
+    await deleteQuote(QUOTE_ID);
     expect(dbMock.delete).toHaveBeenCalled();
   });
 });
@@ -331,7 +351,7 @@ describe("deleteQuote", () => {
 describe("listQuoteItems", () => {
   it("returns items for a quote", async () => {
     dbMock.where.mockResolvedValueOnce([ITEM_FIXTURE]);
-    const result = await listQuoteItems("q1");
+    const result = await listQuoteItems(QUOTE_ID);
     expect(result).toEqual([ITEM_FIXTURE]);
   });
 });
@@ -341,7 +361,7 @@ describe("addQuoteItem", () => {
     dbMock.returning.mockResolvedValueOnce([ITEM_FIXTURE]);
     dbMock.where.mockResolvedValueOnce([ITEM_FIXTURE]);
     dbMock.returning.mockResolvedValueOnce([{ ...QUOTE_FIXTURE, totalEurCents: 10000 }]);
-    const result = await addQuoteItem("q1", {
+    const result = await addQuoteItem(QUOTE_ID, {
       description: "Dev work",
       quantity: 2,
       unitPriceEurCents: 5000,
@@ -402,7 +422,7 @@ describe("recomputeQuoteTotal", () => {
       { quantity: 1, unitPriceEurCents: 3000 },
     ]);
     dbMock.returning.mockResolvedValueOnce([{ ...QUOTE_FIXTURE, totalEurCents: 13000 }]);
-    const total = await recomputeQuoteTotal("q1");
+    const total = await recomputeQuoteTotal(QUOTE_ID);
     expect(total).toBe(13000);
   });
 });
