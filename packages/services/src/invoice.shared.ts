@@ -1,3 +1,6 @@
+export const CUSTOMER_VISIBLE_INVOICE_STATUSES = ["sent", "paid", "overdue", "cancelled"] as const;
+export type CustomerVisibleInvoiceStatus = (typeof CUSTOMER_VISIBLE_INVOICE_STATUSES)[number];
+
 export type InvoiceAmounts = { totalHtCents: number; vatCents: number; totalTtcCents: number };
 
 export function computeInvoiceTtc(invoice: {
