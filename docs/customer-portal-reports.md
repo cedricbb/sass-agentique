@@ -47,7 +47,7 @@ Réponse succès (`200`) :
 | Header | Valeur |
 |---|---|
 | `Content-Type` | `application/pdf` |
-| `Content-Disposition` | `inline; filename="report-{id}.pdf"` |
+| `Content-Disposition` | `inline; filename="report-{report.id}.pdf"` (UUID issu de la DB, non du paramètre URL) |
 | `Content-Length` | taille en octets |
 | `Cache-Control` | `no-store` |
 
@@ -57,10 +57,10 @@ Réponses d'erreur :
 |---|---|---|
 | Non authentifié | redirect (NEXT_REDIRECT) | — |
 | Report inexistant / non émis / mauvais client | `404` | `Not Found` |
-| Fichier absent dans R2 | `404` | `File not found` |
+| Fichier absent dans R2 | `404` | `Not Found` |
 | Erreur R2 générique | `500` | `Internal Server Error` |
 
-> Les cas "inexistant", "non émis" et "mauvais client" retournent un body identique (`Not Found`) — non-divulgation volontaire.
+> Les cas "inexistant", "non émis", "mauvais client" **et "fichier absent dans R2"** retournent un body identique (`Not Found`) — non-divulgation volontaire (indiscernabilité stricte côté customer).
 
 ## Architecture interne
 
