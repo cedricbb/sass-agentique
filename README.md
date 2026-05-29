@@ -328,7 +328,7 @@ Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec p
 **R5 — En cours** : portail client en construction —
 
 - **Compte** : page tableau de bord client (`/account`), layout `CustomerShell` + sidebar `CustomerSidebar` refactorisés.
-- **Devis** : vue des devis du client (`/account/quotes`), lecture seule.
+- **Devis** : vue des devis du client (`/account/quotes`), lecture seule. Guards séquentiels : UUID valide → non-draft → ownership (non-divulgation 404). Voir `docs/customer-portal-quotes.md`.
 - **Factures** : vue des factures du client (`/account/invoices`), lecture seule.
 - **Rapports** : accès aux rapports de livraison (`/account/reports`) ; téléchargement PDF scopé via `GET /api/account/reports/[id]/file` (requireCustomer + guard issuedAt + guard ownership, non-divulgation 404). Voir `docs/customer-portal-reports.md`.
 - **Profil & sécurité** : gestion du profil et des paramètres 2FA client (existants).
@@ -462,7 +462,7 @@ pnpm test   # Exécute les 47 fichiers via vitest workspace
 
 ### Tests E2E (Playwright)
 
-8 specs Playwright sur Chromium avec helpers partagés :
+11 specs Playwright sur Chromium avec helpers partagés :
 
 | Fichier | Scope |
 |---------|-------|
@@ -474,6 +474,9 @@ pnpm test   # Exécute les 47 fichiers via vitest workspace
 | `tests/e2e/payments.spec.ts` | Workflows paiements — liste globale, filtres, enregistrement, lecture seule |
 | `tests/e2e/contracts.spec.ts` | Workflows contrats de maintenance — création, statuts, facturation |
 | `tests/e2e/reports.spec.ts` | Génération et téléchargement de rapports, stockage R2 |
+| `tests/e2e/customer-quotes.spec.ts` | Portail client — isolation cross-client devis, guard draft, guard UUID |
+| `tests/e2e/customer-invoices.spec.ts` | Portail client — isolation cross-client factures |
+| `tests/e2e/customer-reports.spec.ts` | Portail client — isolation cross-client rapports, stream PDF |
 
 Helpers E2E (`tests/e2e/helpers/`) :
 
@@ -482,6 +485,7 @@ Helpers E2E (`tests/e2e/helpers/`) :
 | `tests/e2e/helpers/auth.ts` | Authentification et session de test |
 | `tests/e2e/helpers/data.ts` | Fixtures et création de données de test |
 | `tests/e2e/helpers/contracts.ts` | Helpers dédiés aux contrats de maintenance |
+| `tests/e2e/helpers/resolve-seed-ids.ts` | `resolveQuoteId` / `resolveInvoiceId` / `resolveReportId` — UUID réels depuis numéros seed |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
