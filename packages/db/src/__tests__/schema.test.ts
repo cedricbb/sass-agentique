@@ -26,6 +26,9 @@ import {
   prestationKindEnum,
   billingModeEnum,
   maintenanceStatusEnum,
+  customerInvitations,
+  type CustomerInvitation,
+  type NewCustomerInvitation,
 } from "../schema";
 
 describe("schema — exports", () => {
@@ -377,5 +380,31 @@ describe("schema — enum maintenanceStatus", () => {
     expect(maintenanceStatusEnum.enumValues).toEqual(
       ["active", "past_due", "canceled"]
     );
+  });
+});
+
+describe("schema — table customer_invitations", () => {
+  it("a le bon nom de table", () => {
+    expect(getTableName(customerInvitations)).toBe("customer_invitations");
+  });
+
+  it("contient les colonnes attendues", () => {
+    const cols = Object.keys(customerInvitations);
+    for (const col of [
+      "id", "clientId", "contactId", "email", "token",
+      "invitedBy", "expiresAt", "consumedAt", "createdAt",
+    ]) {
+      expect(cols).toContain(col);
+    }
+  });
+});
+
+describe("schema — exports", () => {
+  it("exporte customerInvitations et ses types", () => {
+    expect(customerInvitations).toBeDefined();
+    const _row = {} as CustomerInvitation;
+    const _insert = {} as NewCustomerInvitation;
+    expect(_row).toBeDefined();
+    expect(_insert).toBeDefined();
   });
 });

@@ -364,3 +364,27 @@ export type Prestation = typeof prestations.$inferSelect;
 export type NewPrestation = typeof prestations.$inferInsert;
 export type MaintenanceContract = typeof maintenanceContracts.$inferSelect;
 export type NewMaintenanceContract = typeof maintenanceContracts.$inferInsert;
+
+// ── Customer Invitations ─────────────────────────────────────────────────────
+export const customerInvitations = pgTable("customer_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id").notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  contactId: uuid("contact_id").notNull()
+    .references(() => clientContacts.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  invitedBy: uuid("invited_by")
+    .references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  consumedAt: timestamp("consumed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("customer_invitations_token_unique").on(table.token),
+  index("customer_invitations_client_id_idx").on(table.clientId),
+  index("customer_invitations_contact_id_idx").on(table.contactId),
+  index("customer_invitations_email_idx").on(table.email),
+]);
+
+export type CustomerInvitation = typeof customerInvitations.$inferSelect;
+export type NewCustomerInvitation = typeof customerInvitations.$inferInsert;
