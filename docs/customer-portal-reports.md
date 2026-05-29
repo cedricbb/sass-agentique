@@ -109,6 +109,7 @@ Les routes admin et customer partagent `streamPdfFromR2` et `reportService.getRe
 - `packages/services/src/report.service.ts` — `getReportById(id)`, `listReportsByClient(clientId, opts)`, `getReportByTitle(title)` (e2e helper)
 - `apps/web/lib/storage/r2.ts` — `streamPdfFromR2(key)`, `R2NotFoundError`
 - `packages/db/src/seed.ts` — 4 rapports seed (Acme draft, Acme monthly émis, Bob monthly émis, Globex émis)
+- `apps/web/lib/test-constants.ts` — constantes `SEED_REPORT_TITLE_*` et `SEED_REPORT_KIND_LABELS` (partagés entre tests e2e et unitaires)
 
 ## Liens vers tests
 
