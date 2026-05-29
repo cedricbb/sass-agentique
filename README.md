@@ -330,7 +330,7 @@ Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec p
 - **Compte** : page tableau de bord client (`/account`), layout `CustomerShell` + sidebar `CustomerSidebar` refactorisés.
 - **Devis** : vue des devis du client (`/account/quotes`), lecture seule.
 - **Factures** : vue des factures du client (`/account/invoices`), lecture seule.
-- **Rapports** : accès aux rapports de livraison (`/account/reports`).
+- **Rapports** : accès aux rapports de livraison (`/account/reports`) ; téléchargement PDF scopé via `GET /api/account/reports/[id]/file` (requireCustomer + guard issuedAt + guard ownership, non-divulgation 404). Voir `docs/customer-portal-reports.md`.
 - **Profil & sécurité** : gestion du profil et des paramètres 2FA client (existants).
 
 ### Spike R2 — Stockage PDF (expérimental)
