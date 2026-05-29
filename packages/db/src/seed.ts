@@ -509,8 +509,16 @@ async function main() {
       issuedAt: new Date("2026-03-30T16:00:00Z"),
       filePath: "reports/2026/03/seed-globex-audit.pdf",
     },
+    {
+      ownerId: seedAdminId,
+      clientId: acme.id,
+      title: "Rapport mensuel Acme — Avril 2026",
+      kind: "monthly",
+      issuedAt: new Date("2026-04-15T10:00:00Z"),
+      filePath: "reports/2026/04/seed-acme-monthly.pdf",
+    },
   ]);
-  console.log("✅ 3 reports créés : 1 delivery Brouillon (Acme), 1 monthly Émis (Bob), 1 audit Émis (Globex)");
+  console.log("✅ 4 reports créés : 1 delivery Brouillon (Acme), 1 monthly Émis (Bob), 1 audit Émis (Globex), 1 monthly Émis (Acme)");
 
   // ── Maintenance Contracts ──────────────────────────────────────────────────
   await db.delete(schema.maintenanceContracts).where(
