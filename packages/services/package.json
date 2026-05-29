@@ -15,6 +15,7 @@
     "./invoice.service": "./src/invoice.service.ts",
     "./admin.service": "./src/admin.service.ts",
     "./profile.service": "./src/profile.service.ts",
+    "./report.service": "./src/report.service.ts",
     "./utils/slug": "./src/utils/slug.ts"
   },
   "scripts": {
