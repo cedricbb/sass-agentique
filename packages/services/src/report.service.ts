@@ -83,6 +83,15 @@ export async function getReportById(id: string): Promise<Report | null> {
   return rows[0] ?? null;
 }
 
+export async function getReportByTitle(title: string): Promise<Report | null> {
+  const rows = await db
+    .select()
+    .from(reports)
+    .where(eq(reports.title, title))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function createReport(input: NewReport): Promise<Report> {
   const trimmedPath = validateFilePath(input.filePath);
   const rows = await db
