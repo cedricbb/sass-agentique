@@ -7,8 +7,7 @@ CREATE TABLE "customer_invitations" (
 	"invited_by" uuid,
 	"expires_at" timestamp NOT NULL,
 	"consumed_at" timestamp,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "customer_invitations_token_unique" UNIQUE("token")
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "customer_invitations" ADD CONSTRAINT "customer_invitations_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

@@ -373,7 +373,7 @@ export const customerInvitations = pgTable("customer_invitations", {
   contactId: uuid("contact_id").notNull()
     .references(() => clientContacts.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
-  token: text("token").notNull().unique(),
+  token: text("token").notNull(),
   invitedBy: uuid("invited_by")
     .references(() => users.id, { onDelete: "set null" }),
   expiresAt: timestamp("expires_at").notNull(),
