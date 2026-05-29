@@ -27,10 +27,11 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((a: unknown, b: unknown) => ({ field: a, value: b })),
   and: vi.fn((...args: unknown[]) => ({ and: args })),
   isNull: vi.fn((a: unknown) => ({ isNull: a })),
+  isNotNull: vi.fn((a: unknown) => ({ isNotNull: a })),
   desc: vi.fn((a: unknown) => ({ desc: a })),
 }));
 
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
 import {
   listReportsByClient,
   listReportsByProject,
@@ -97,6 +98,23 @@ describe("report.service", () => {
       expect(and).toHaveBeenCalled();
       expect(result).toEqual([fixture]);
     });
+
+    it("excludes drafts when issuedOnly is true", async () => {
+      const issuedFixture = { ...fixture, issuedAt: new Date("2026-01-01") };
+      mockDbReturns([issuedFixture]);
+      const result = await listReportsByClient("c-1", { issuedOnly: true });
+      expect(isNotNull).toHaveBeenCalled();
+      expect(and).toHaveBeenCalled();
+      expect(result).toEqual([issuedFixture]);
+    });
+
+    it("combines kind and issuedOnly filters", async () => {
+      mockDbReturns([]);
+      await listReportsByClient("c-1", { kind: "delivery", issuedOnly: true });
+      expect(and).toHaveBeenCalled();
+      const andCallArgs = (and as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(andCallArgs).toHaveLength(3);
+    });
   });
 
   // #3
@@ -136,8 +154,9 @@ describe("report.service", () => {
   // #6
   describe("getReportById", () => {
     it("returns report when found or null when not found", async () => {
+      const validUUID = "00000000-0000-0000-0000-000000000001";
       mockDbReturns([fixture]);
-      const result = await getReportById("r-1");
+      const result = await getReportById(validUUID);
       expect(dbMock.where).toHaveBeenCalled();
       expect(eq).toHaveBeenCalled();
       expect(dbMock.limit).toHaveBeenCalledWith(1);
@@ -148,6 +167,21 @@ describe("report.service", () => {
       mockDbReturns([]);
       const result2 = await getReportById("missing");
       expect(result2).toBeNull();
+    });
+
+    it("returns null without DB call for non-UUID id", async () => {
+      const result = await getReportById("not-a-uuid");
+      expect(dbMock.select).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it("returns report for valid UUID", async () => {
+      const validUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+      mockDbReturns([fixture]);
+      const result = await getReportById(validUUID);
+      expect(dbMock.where).toHaveBeenCalled();
+      expect(dbMock.limit).toHaveBeenCalledWith(1);
+      expect(result).toEqual(fixture);
     });
   });
 

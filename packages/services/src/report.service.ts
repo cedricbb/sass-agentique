@@ -1,5 +1,7 @@
 import { db, type Report, type NewReport, reportKindEnum, reports } from "@saas/db";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ReportKind = (typeof reportKindEnum.enumValues)[number];
 
@@ -22,11 +24,14 @@ function validateFilePath(filePath: string): string {
 
 export async function listReportsByClient(
   clientId: string,
-  opts?: { kind?: ReportKind },
+  opts?: { kind?: ReportKind; issuedOnly?: boolean },
 ): Promise<Report[]> {
   const conditions = [eq(reports.clientId, clientId)];
   if (opts?.kind) {
     conditions.push(eq(reports.kind, opts.kind));
+  }
+  if (opts?.issuedOnly) {
+    conditions.push(isNotNull(reports.issuedAt));
   }
   return db
     .select()
@@ -69,6 +74,7 @@ export async function listAllReports(
 }
 
 export async function getReportById(id: string): Promise<Report | null> {
+  if (!UUID_RE.test(id)) return null;
   const rows = await db
     .select()
     .from(reports)
