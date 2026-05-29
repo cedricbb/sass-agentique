@@ -94,7 +94,7 @@ describe("GET /api/account/reports/[id]/file", () => {
     expect(await response.text()).toBe("Not Found");
   });
 
-  it("returns identical 404 body for not-found, not-issued, and wrong-client", async () => {
+  it("returns identical 404 body for not-found, not-issued, wrong-client, and R2NotFoundError", async () => {
     mockGetReportById.mockResolvedValue(null);
     const r1 = await GET(makeRequest(), makeParams());
     const body1 = await r1.text();
@@ -107,9 +107,15 @@ describe("GET /api/account/reports/[id]/file", () => {
     const r3 = await GET(makeRequest(), makeParams());
     const body3 = await r3.text();
 
+    mockGetReportById.mockResolvedValue(makeReport());
+    mockStreamPdf.mockRejectedValue(new R2NotFoundError("reports/test.pdf"));
+    const r4 = await GET(makeRequest(), makeParams());
+    const body4 = await r4.text();
+
     expect(body1).toBe("Not Found");
     expect(body2).toBe(body1);
     expect(body3).toBe(body1);
+    expect(body4).toBe(body1);
   });
 
   it("returns 404 when R2NotFoundError thrown", async () => {
@@ -119,7 +125,7 @@ describe("GET /api/account/reports/[id]/file", () => {
     const response = await GET(makeRequest(), makeParams());
 
     expect(response.status).toBe(404);
-    expect(await response.text()).toBe("File not found");
+    expect(await response.text()).toBe("Not Found");
   });
 
   it("returns 500 and logs on generic R2 error", async () => {

@@ -31,14 +31,14 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="report-${id}.pdf"`,
+        "Content-Disposition": `inline; filename="report-${report.id}.pdf"`,
         "Content-Length": String(contentLength),
         "Cache-Control": "no-store",
       },
     });
   } catch (err) {
     if (err instanceof R2NotFoundError) {
-      return new Response("File not found", { status: 404 });
+      return new Response("Not Found", { status: 404 });
     }
     console.error("[GET /api/account/reports/[id]/file] R2 stream error", err);
     return new Response("Internal Server Error", { status: 500 });
