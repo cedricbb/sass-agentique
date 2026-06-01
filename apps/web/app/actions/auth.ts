@@ -12,6 +12,8 @@ import {
   resendVerificationEmail,
   validateSession,
   consumeTotpChallenge,
+  setInitialPassword,
+  linkExistingAccount,
 } from "@saas/services";
 
 const SESSION_COOKIE = "session-token";
@@ -241,6 +243,82 @@ export async function resetPasswordAction(
   }
 
   redirect("/login?reset=success");
+}
+
+// ── Set initial password (invitation flow) ────────────────────────────────────
+
+export async function setInitialPasswordAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (!token) {
+    return { error: "Token manquant." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Le mot de passe doit contenir au moins 8 caractères." };
+  }
+
+  if (password !== confirm) {
+    return { error: "Les mots de passe ne correspondent pas." };
+  }
+
+  let sessionToken: string;
+
+  try {
+    const result = await setInitialPassword({ token, password });
+    sessionToken = result.sessionToken;
+  } catch {
+    return { error: "Ce lien d'invitation est invalide ou a expiré." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+
+  redirect("/account/");
+}
+
+// ── Link existing account (invitation flow) ───────────────────────────────────
+
+export async function linkExistingAccountAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const token = String(formData.get("token") ?? "");
+
+  if (!token) {
+    return { error: "Token manquant." };
+  }
+
+  let sessionToken: string;
+
+  try {
+    const result = await linkExistingAccount({ token });
+    sessionToken = result.sessionToken;
+  } catch {
+    return { error: "Ce lien d'invitation est invalide ou a expiré." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+
+  redirect("/account/");
 }
 
 // ── Resend verification email ─────────────────────────────────────────────────

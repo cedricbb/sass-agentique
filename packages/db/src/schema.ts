@@ -132,15 +132,14 @@ export const clientContacts = pgTable("client_contacts", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientId: uuid("client_id").notNull()
     .references(() => clients.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "set null" }),
   isPrimary: boolean("is_primary").notNull().default(false),
   role: text("role"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("client_contacts_client_user_unique")
-    .on(table.clientId, table.userId),
+  index("client_contacts_user_id_idx").on(table.userId),
 ]);
 
 // ── Projects ─────────────────────────────────────────────────────────────────

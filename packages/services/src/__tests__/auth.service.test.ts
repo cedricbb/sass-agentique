@@ -30,6 +30,21 @@ vi.mock("@saas/db", () => ({
   emailVerifications: {},
   passwordResets: {},
   totpChallenges: {},
+  clientContacts: {},
+}));
+
+vi.mock("../invitation.service", () => ({
+  consumeInvitation: vi.fn().mockResolvedValue({
+    id: "inv-1",
+    email: "contact@test.com",
+    contactId: "contact-1",
+    clientId: "client-1",
+    token: "valid-token",
+    consumedAt: new Date(),
+    expiresAt: new Date(),
+    createdAt: new Date(),
+    invitedBy: null,
+  }),
 }));
 
 vi.mock("../totp.service", () => ({
@@ -70,8 +85,11 @@ import {
   forgotPassword,
   resetPassword,
   resendVerificationEmail,
+  setInitialPassword,
+  linkExistingAccount,
 } from "../auth.service";
 import { createTotpChallenge } from "../totp.service";
+import { consumeInvitation } from "../invitation.service";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -349,6 +367,90 @@ describe("auth.service", () => {
       expect(dbMock.update).toHaveBeenCalled();
       expect(dbMock.delete).toHaveBeenCalledTimes(2);
       expect(bcrypt.hash).toHaveBeenCalledWith("newpassword123", 12);
+    });
+  });
+
+  // ── setInitialPassword ────────────────────────────────────────────────────────
+
+  describe("setInitialPassword", () => {
+    it("setInitialPassword_creates_user_links_contact_creates_session", async () => {
+      dbMock.where.mockResolvedValueOnce([]); // no existing user
+      dbMock.returning.mockResolvedValueOnce([{ id: "new-user-1" }]); // insert user
+
+      const result = await setInitialPassword({ token: "valid-token", password: "pass123456" });
+
+      expect(result).toHaveProperty("sessionToken");
+      expect(result.userId).toBe("new-user-1");
+      expect(bcrypt.hash).toHaveBeenCalledWith("pass123456", 12);
+      expect(dbMock.insert).toHaveBeenCalled();
+      expect(dbMock.update).toHaveBeenCalled();
+    });
+
+    it("setInitialPassword_creates_session_with_valid_token", async () => {
+      dbMock.where.mockResolvedValueOnce([]); // no existing user
+      dbMock.returning.mockResolvedValueOnce([{ id: "new-user-1" }]);
+
+      const result = await setInitialPassword({ token: "valid-token", password: "pass123456" });
+
+      expect(result).toHaveProperty("sessionToken");
+      expect(result.sessionToken).toBeTruthy();
+    });
+
+    it("setInitialPassword_throws_on_invalid_token", async () => {
+      vi.mocked(consumeInvitation).mockRejectedValueOnce(new Error("INVALID_TOKEN"));
+
+      await expect(
+        setInitialPassword({ token: "bad-token", password: "pass123456" }),
+      ).rejects.toThrow("INVALID_TOKEN");
+    });
+
+    it("setInitialPassword_throws_on_expired_token", async () => {
+      vi.mocked(consumeInvitation).mockRejectedValueOnce(new Error("TOKEN_EXPIRED"));
+
+      await expect(
+        setInitialPassword({ token: "expired-token", password: "pass123456" }),
+      ).rejects.toThrow("TOKEN_EXPIRED");
+    });
+
+    it("setInitialPassword_throws_on_consumed_token", async () => {
+      vi.mocked(consumeInvitation).mockRejectedValueOnce(new Error("TOKEN_ALREADY_CONSUMED"));
+
+      await expect(
+        setInitialPassword({ token: "consumed-token", password: "pass123456" }),
+      ).rejects.toThrow("TOKEN_ALREADY_CONSUMED");
+    });
+
+    it("setInitialPassword_runs_in_transaction", async () => {
+      dbMock.where.mockResolvedValueOnce([]);
+      dbMock.returning.mockResolvedValueOnce([{ id: "new-user-1" }]);
+
+      await setInitialPassword({ token: "valid-token", password: "pass123456" });
+
+      expect(dbMock.transaction).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ── linkExistingAccount ───────────────────────────────────────────────────────
+
+  describe("linkExistingAccount", () => {
+    it("linkExistingAccount_links_without_password_change", async () => {
+      dbMock.where.mockResolvedValueOnce([{ id: "existing-user-1", name: "Existing User" }]);
+
+      const result = await linkExistingAccount({ token: "valid-token" });
+
+      expect(result.userId).toBe("existing-user-1");
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+      expect(dbMock.update).toHaveBeenCalled();
+    });
+
+    it("linkExistingAccount_creates_session", async () => {
+      dbMock.where.mockResolvedValueOnce([{ id: "existing-user-1", name: "Existing User" }]);
+
+      const result = await linkExistingAccount({ token: "valid-token" });
+
+      expect(result).toHaveProperty("sessionToken");
+      expect(result.sessionToken).toBeTruthy();
+      expect(dbMock.insert).toHaveBeenCalled();
     });
   });
 });

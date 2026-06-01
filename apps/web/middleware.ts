@@ -10,6 +10,8 @@ const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/set-password",
+  "/portal-invitation-help",
 ];
 
 function isPublicRoute(pathname: string): boolean {

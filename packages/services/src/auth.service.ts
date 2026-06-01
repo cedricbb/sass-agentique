@@ -5,7 +5,9 @@ import {
   sessions,
   emailVerifications,
   passwordResets,
+  clientContacts,
 } from "@saas/db";
+import { consumeInvitation } from "./invitation.service";
 import { createTotpChallenge } from "./totp.service";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
@@ -321,4 +323,105 @@ export async function resetPassword(
 
   // Invalider toutes les sessions existantes
   await db.delete(sessions).where(eq(sessions.userId, reset.userId));
+}
+
+// ── Set initial password (invitation flow) ────────────────────────────────────
+
+export type SetInitialPasswordInput = {
+  token: string;
+  password: string;
+};
+
+export async function setInitialPassword(
+  input: SetInitialPasswordInput,
+): Promise<AuthResult> {
+  const { token, password } = input;
+
+  const invitation = await consumeInvitation(token);
+  const normalizedEmail = invitation.email.toLowerCase();
+
+  return db.transaction(async (tx) => {
+    const existingUsers = await tx
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(eq(users.email, normalizedEmail));
+
+    let userId: string;
+    let userName: string | null = null;
+
+    if (existingUsers.length === 0) {
+      const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      const [newUser] = await tx
+        .insert(users)
+        .values({
+          email: normalizedEmail,
+          hashedPassword,
+          role: "client",
+          emailVerified: true,
+        })
+        .returning({ id: users.id });
+      userId = newUser.id;
+    } else {
+      userId = existingUsers[0].id;
+      userName = existingUsers[0].name;
+    }
+
+    await tx
+      .update(clientContacts)
+      .set({ userId })
+      .where(eq(clientContacts.id, invitation.contactId));
+
+    const sessionToken = generateToken();
+    await tx.insert(sessions).values({
+      userId,
+      sessionToken,
+      expires: sessionExpiresAt(),
+    });
+
+    const tenantSlug = generateSlug(userName ?? normalizedEmail.split("@")[0]);
+
+    return { sessionToken, userId, tenantSlug };
+  });
+}
+
+// ── Link existing account (invitation flow) ───────────────────────────────────
+
+export type LinkExistingAccountInput = {
+  token: string;
+};
+
+export async function linkExistingAccount(
+  input: LinkExistingAccountInput,
+): Promise<AuthResult> {
+  const { token } = input;
+
+  const invitation = await consumeInvitation(token);
+  const normalizedEmail = invitation.email.toLowerCase();
+
+  return db.transaction(async (tx) => {
+    const [existingUser] = await tx
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(eq(users.email, normalizedEmail));
+
+    if (!existingUser) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    await tx
+      .update(clientContacts)
+      .set({ userId: existingUser.id })
+      .where(eq(clientContacts.id, invitation.contactId));
+
+    const sessionToken = generateToken();
+    await tx.insert(sessions).values({
+      userId: existingUser.id,
+      sessionToken,
+      expires: sessionExpiresAt(),
+    });
+
+    const tenantSlug = generateSlug(existingUser.name ?? normalizedEmail.split("@")[0]);
+
+    return { sessionToken, userId: existingUser.id, tenantSlug };
+  });
 }
