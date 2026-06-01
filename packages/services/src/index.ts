@@ -14,3 +14,4 @@ export * as paymentService from "./payment.service";
 export * as reportService from "./report.service";
 export { getReportByTitle } from "./report.service";
 export * as maintenanceContractService from "./maintenance-contract.service";
+export * from "./invitation.service";
