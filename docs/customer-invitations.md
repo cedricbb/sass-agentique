@@ -75,7 +75,13 @@ import { consumeInvitation } from "@saas/services";
 const invitation = await consumeInvitation(token);
 ```
 
-Marque `consumedAt = now`. Délègue la validation à `getInvitationByToken` (throw si invalide/expiré/déjà consommé). Ne crée pas de user — responsabilité de R4.6c.
+Marque `consumedAt = now` via un UPDATE atomique côté PostgreSQL (`WHERE id = ? AND consumedAt IS NULL`).
+
+Throws :
+- `INVALID_TOKEN` / `TOKEN_EXPIRED` / `TOKEN_ALREADY_CONSUMED` — délégués à `getInvitationByToken` (validation préalable)
+- `TOKEN_ALREADY_CONSUMED` — si la race est perdue : l'UPDATE retourne 0 lignes car un autre thread a consommé le token entre la validation et l'UPDATE
+
+Ne crée pas de user — responsabilité de R4.6c.
 
 ### `sendCustomerInvitationEmail`
 
@@ -101,6 +107,7 @@ Fallback console.log si ni `SMTP_HOST` ni `RESEND_API_KEY` n'est configuré.
 - **SET NULL sur `invitedBy`** : un admin supprimé n'invalide pas l'historique des invitations.
 - **CASCADE sur `clientId`/`contactId`** : suppression client ou contact nettoie automatiquement les invitations associées.
 - **Erreurs nommées** : `INVALID_TOKEN`, `TOKEN_EXPIRED`, `TOKEN_ALREADY_CONSUMED` — cohérent avec `resetPassword` dans `auth.service.ts`.
+- **UPDATE atomique (CAS) dans `consumeInvitation`** : l'UPDATE inclut `AND consumedAt IS NULL` dans le WHERE. PostgreSQL garantit l'atomicité au niveau ligne — en cas de race condition (double-clic, bot replay, retry réseau), seul le premier thread voit 1 ligne affectée, le second reçoit 0 lignes et lève `TOKEN_ALREADY_CONSUMED`. Critique avant R4.6c qui chaîne `consumeInvitation → createUser` : sans ce guard, deux users role=client seraient créés pour le même contact.
 
 ### Interactions
 
@@ -112,8 +119,9 @@ admin → [inviteCustomerAction R4.6b] → createInvitation
 
 customer → GET /set-password?token=… (R4.6c)
   → consumeInvitation(token)
-    → getInvitationByToken (valide token)
-    → SET consumedAt = now
+    → getInvitationByToken (valide token : INVALID_TOKEN / TOKEN_EXPIRED / TOKEN_ALREADY_CONSUMED)
+    → UPDATE SET consumedAt = now WHERE id = ? AND consumedAt IS NULL  ← atomique
+    → si 0 lignes → throw TOKEN_ALREADY_CONSUMED (race perdue)
   → créer user role=client + lier clientContact.userId (R4.6c)
 ```
 
@@ -131,6 +139,6 @@ customer → GET /set-password?token=… (R4.6c)
 `packages/services/src/__tests__/invitation.service.test.ts` — tests unitaires couvrant :
 - `createInvitation` : génère token, supprime invitations non consommées, insère, envoie email
 - `getInvitationByToken` : happy path + INVALID_TOKEN + TOKEN_EXPIRED + TOKEN_ALREADY_CONSUMED
-- `consumeInvitation` : marque consumedAt + throw si déjà consommé
+- `consumeInvitation` : marque consumedAt (UPDATE atomique CAS) + throw TOKEN_ALREADY_CONSUMED si déjà consommé (chemin métier) ou si race perdue (chemin CAS : UPDATE retourne 0 lignes)
 
 `packages/db/src/__tests__/schema.test.ts` — tests DB : présence table + 9 colonnes + exports.
