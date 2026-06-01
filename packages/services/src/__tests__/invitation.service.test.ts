@@ -241,6 +241,15 @@ describe("invitation.service", () => {
         "TOKEN_ALREADY_CONSUMED",
       );
     });
+
+    it("consume_throws_token_already_consumed_on_cas_miss", async () => {
+      dbMock.where.mockResolvedValueOnce([BASE_INVITATION]);
+      dbMock.returning.mockResolvedValueOnce([]);
+
+      await expect(consumeInvitation(BASE_INVITATION.token)).rejects.toThrow(
+        "TOKEN_ALREADY_CONSUMED",
+      );
+    });
   });
 
   // ── sendCustomerInvitationEmail (direct) ──────────────────────────────────────

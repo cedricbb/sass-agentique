@@ -113,8 +113,12 @@ export async function consumeInvitation(
   const [updated] = await db
     .update(customerInvitations)
     .set({ consumedAt: now })
-    .where(eq(customerInvitations.id, invitation.id))
+    .where(and(eq(customerInvitations.id, invitation.id), isNull(customerInvitations.consumedAt)))
     .returning();
+
+  if (!updated) {
+    throw new Error("TOKEN_ALREADY_CONSUMED");
+  }
 
   return updated;
 }
