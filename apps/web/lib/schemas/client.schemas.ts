@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const inviteCustomerSchema = z.object({
+  clientId: z.string().uuid(),
+  contactId: z.string().uuid(),
+});
+
+export type InviteCustomerInput = z.infer<typeof inviteCustomerSchema>;
+
 export const createClientSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
