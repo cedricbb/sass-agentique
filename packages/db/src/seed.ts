@@ -590,28 +590,20 @@ async function main() {
     .returning({ id: schema.users.id });
 
   await db
-    .insert(schema.clientContacts)
-    .values({
-      clientId: acme.id,
-      userId: clientAcmeUser.id,
-      isPrimary: true,
-    })
-    .onConflictDoUpdate({
-      target: [schema.clientContacts.clientId, schema.clientContacts.userId],
-      set: { isPrimary: true },
-    });
+    .delete(schema.clientContacts)
+    .where(inArray(schema.clientContacts.clientId, [acme.id, bob.id]));
 
-  await db
-    .insert(schema.clientContacts)
-    .values({
-      clientId: bob.id,
-      userId: clientBobUser.id,
-      isPrimary: true,
-    })
-    .onConflictDoUpdate({
-      target: [schema.clientContacts.clientId, schema.clientContacts.userId],
-      set: { isPrimary: true },
-    });
+  await db.insert(schema.clientContacts).values({
+    clientId: acme.id,
+    userId: clientAcmeUser.id,
+    isPrimary: true,
+  });
+
+  await db.insert(schema.clientContacts).values({
+    clientId: bob.id,
+    userId: clientBobUser.id,
+    isPrimary: true,
+  });
 
   console.log("✅ 2 client users créés + contacts liés");
 
