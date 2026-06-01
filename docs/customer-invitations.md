@@ -301,6 +301,28 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 | `apps/web/app/(admin)/admin/clients/[id]/page.tsx` | Section "Accès portail" + tableau contacts + statut portail |
 | `apps/web/app/(admin)/admin/clients/_components/InviteCustomerDialog.tsx` | Dialog confirmation invitation |
 
+## Tests e2e Playwright (R4.6d)
+
+`apps/web/tests/e2e/customer-invitation-e2e.spec.ts` — spec Playwright couvrant la chaîne complète admin invite → set-password → /account/ → vérification "Compte créé".
+
+**Deux scénarios distincts, aucune entité partagée :**
+
+| Scénario | Email | Client seed | Flow |
+|---|---|---|---|
+| A — Nouveau user | `e2e-newuser-${Date.now()}@test.dev` | `acme-studio` | Token valide + email absent de `users` → form password (`set-new`) → `/account/` |
+| B — User existant | `e2e-existing-${Date.now()}@test.dev` | `bob-indep` | Création compte via `/register` → token → form "Lier mon compte existant" (`link-existing`) → `/account/` |
+
+**Setup service layer** : les contacts et invitations sont créés via `addClientContact` + `createInvitation` (service layer direct), sans passer par l'UI admin. Choix pragmatique : l'UI admin de création de contact n'est pas implémentée.
+
+**Interception du token** : `getInvitationTokenForContact(email)` — query DB Drizzle dans `resolve-seed-ids.ts`. Retourne le token de la dernière invitation active pour l'email donné, throw si aucune.
+
+**Logout** : `page.context().clearCookies()` (pas de bouton logout dans le layout admin).
+
+**Helpers e2e utilisés** (apps/web/tests/e2e/helpers/resolve-seed-ids.ts) :
+- `getInvitationTokenForContact(email)` — query `customer_invitations WHERE email = ? AND consumedAt IS NULL ORDER BY createdAt DESC LIMIT 1`
+- `resolveClientIdBySlug(slug)` — query `clients WHERE slug = ?`
+- `resolveAdminId()` — query `users WHERE role = 'admin' LIMIT 1`
+
 ## Liens vers tests
 
 `packages/services/src/__tests__/invitation.service.test.ts` — tests unitaires couvrant :
