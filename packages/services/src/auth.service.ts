@@ -29,6 +29,17 @@ function sessionExpiresAt(): Date {
   return d;
 }
 
+// ── User existence check ─────────────────────────────────────────────────────
+
+export async function userExistsByEmail(email: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email.toLowerCase()))
+    .limit(1);
+  return !!row;
+}
+
 // ── Register ──────────────────────────────────────────────────────────────────
 
 export type RegisterInput = {

@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
-import { db, users } from "@saas/db";
-import { getInvitationByToken } from "@saas/services";
+import { getInvitationByToken, userExistsByEmail } from "@saas/services";
 import {
   Card,
   CardContent,
@@ -13,6 +11,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PasswordSetupForm } from "@/components/auth/PasswordSetupForm";
+import { LinkAccountForm } from "@/components/auth/LinkAccountForm";
 import { setInitialPasswordAction, linkExistingAccountAction } from "@/app/actions/auth";
 
 type Props = {
@@ -56,16 +55,9 @@ export default async function SetPasswordPage({ searchParams }: Props) {
     return INVALID_LINK_CARD;
   }
 
-  const existingUsers = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, invitationEmail));
-
-  const hasExistingAccount = existingUsers.length > 0;
+  const hasExistingAccount = await userExistsByEmail(invitationEmail);
 
   if (hasExistingAccount) {
-    const linkAction = linkExistingAccountAction.bind(null, null);
-
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
@@ -78,12 +70,7 @@ export default async function SetPasswordPage({ searchParams }: Props) {
           <p className="text-sm text-muted-foreground">
             Vous avez déjà un compte chez nous. Votre mot de passe actuel reste inchangé.
           </p>
-          <form action={linkAction}>
-            <input type="hidden" name="token" value={token} />
-            <Button type="submit" className="w-full">
-              Lier mon compte existant
-            </Button>
-          </form>
+          <LinkAccountForm token={token} action={linkExistingAccountAction} />
         </CardContent>
         <CardFooter className="flex justify-center">
           <Link href="/login" className="text-primary hover:underline text-sm">
