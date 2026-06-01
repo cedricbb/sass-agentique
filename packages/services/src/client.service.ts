@@ -129,7 +129,7 @@ export async function listClientContacts(
 
 export async function addClientContact(
   clientId: string,
-  userId: string,
+  userId: string | null,
   opts?: AddContactOptions,
 ): Promise<ClientContact> {
   const [row] = await db
