@@ -6,7 +6,7 @@ Gère le flow d'invitation d'un contact client au portail.
 Depuis la fiche client admin, un administrateur sélectionne un contact existant (`client_contacts`) et déclenche une invitation.
 L'invitation crée un token TTL 24h permettant au contact de définir son mot de passe via `/set-password?token=…`.
 
-R4.6a1 livre la table. R4.6a2 livre la couche service + email. R4.6a2.1 fixe le TOCTOU CAS sur `consumeInvitation`. R4.6b livre la Server Action admin + UI fiche client (section "Accès portail"). R4.6c livre le flow set-password côté customer : migration `clientContacts.userId`, page `/set-password`, actions `setInitialPasswordAction`/`linkExistingAccountAction`, auto-login + redirect `/account/`.
+R4.6a1 livre la table. R4.6a2 livre la couche service + email. R4.6a2.1 fixe le TOCTOU CAS sur `consumeInvitation`. R4.6b livre la Server Action admin + UI fiche client (section "Accès portail"). R4.6c livre le flow set-password côté customer : migration `clientContacts.userId`, page `/set-password`, actions `setInitialPasswordAction`/`linkExistingAccountAction`, auto-login + redirect `/account/`. R4.6e livre le 3e état "Compte créé" sur la fiche client admin : `getLastConsumedInvitationByContact`, colonne Statut avec Tooltip user, colonne Action avec date de liaison.
 
 ## Structure de données
 
@@ -138,6 +138,20 @@ Retourne l'invitation active du contact (non consommée et non expirée), ou `nu
 
 Utilisé par la page admin `/admin/clients/[id]` pour afficher le statut portail de chaque contact.
 
+### `getLastConsumedInvitationByContact`
+
+```ts
+import { getLastConsumedInvitationByContact } from "@saas/services";
+
+const invitation = await getLastConsumedInvitationByContact(contactId);
+```
+
+Retourne la dernière invitation consommée du contact (`consumedAt IS NOT NULL`, triée par `consumedAt DESC LIMIT 1`), ou `null` si aucune.
+
+Utilisé par la page admin `/admin/clients/[id]` pour récupérer la date de liaison effective (`consumedAt`) à afficher dans la colonne Action quand un contact a un compte créé.
+
+Note : appelé uniquement si `contact.userId !== null` (évite une query inutile pour les contacts sans compte).
+
 ### `setInitialPasswordAction` / `linkExistingAccountAction` (Server Actions customer)
 
 ```ts
@@ -205,18 +219,24 @@ Fallback console.log si ni `SMTP_HOST` ni `RESEND_API_KEY` n'est configuré.
 
 ### Section "Accès portail" — fiche client admin
 
-La page `/admin/clients/[id]` affiche un tableau des contacts du client avec une colonne **Statut portail** :
+La page `/admin/clients/[id]` affiche un tableau des contacts du client avec une colonne **Statut portail** et une colonne **Action**.
 
-| Statut | Condition |
-|--------|-----------|
-| "À inviter" | Pas d'invitation active (`getActiveInvitationByContact` retourne `null`) |
-| "Invitation en cours, expire le DD/MM/YYYY HH:MM" | Invitation active (non consommée + non expirée) |
+**Priorité de détection des états (dans l'ordre) :**
 
-Chaque ligne expose un bouton déclenchant `InviteCustomerDialog` :
-- **"Inviter au portail"** si aucune invitation active
-- **"Renvoyer l'invitation"** si invitation active
+| Priorité | Condition | Statut affiché | Action affichée |
+|----------|-----------|----------------|-----------------|
+| 1 | `contact.userId !== null` | "Compte créé" (Tooltip au survol : email + nom du user lié) | `"Compte créé le DD/MM/YYYY"` (date = `consumedAt` de la dernière invitation consommée) ou `"Compte créé"` si aucune invitation consommée trouvée |
+| 2 | Invitation active (`consumedAt IS NULL AND expiresAt > now()`) | `"Invitation en cours, expire le DD/MM/YYYY HH:MM"` | Bouton `InviteCustomerDialog` — "Renvoyer l'invitation" |
+| 3 | Sinon | `"À inviter"` | Bouton `InviteCustomerDialog` — "Inviter au portail" |
 
-Le 3e état "Compte créé" n'est pas encore disponible dans l'UI admin : la colonne `clientContacts.userId` est posée (R4.6c), mais l'affichage de ce 3e statut sur la fiche client est réservé à un hardening ultérieur (hors scope R4.6c).
+**Tooltip "Compte créé" (R4.6e)** : composant shadcn `Tooltip`/`TooltipTrigger`/`TooltipContent` (`apps/web/components/ui/tooltip.tsx`). Contenu : `user.email` + ` — user.name` si `name` non null.
+
+**Date de liaison** : provient de `customer_invitations.consumedAt` (date effective de liaison), **pas** de `users.createdAt` (peut être très antérieure si user préexistant lié via `linkExistingAccount`). Si plusieurs invitations consommées historiques existent pour ce contact, la plus récente est prise (`ORDER BY consumedAt DESC LIMIT 1`).
+
+Pour chaque contact, le chargement est parallèle via `Promise.all` :
+1. `getClientContactWithUser(contact.id)` — user lié (JOIN userId → users)
+2. `getActiveInvitationByContact(contact.id)` — invitation active
+3. `getLastConsumedInvitationByContact(contact.id)` — uniquement si `contact.userId !== null` (sinon `Promise.resolve(null)`)
 
 ### `InviteCustomerDialog`
 
@@ -263,7 +283,7 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 
 | Fichier | Rôle |
 |---|---|
-| `packages/services/src/invitation.service.ts` | `createInvitation`, `getInvitationByToken`, `consumeInvitation`, `getActiveInvitationByContact` |
+| `packages/services/src/invitation.service.ts` | `createInvitation`, `getInvitationByToken`, `consumeInvitation`, `getActiveInvitationByContact`, `getLastConsumedInvitationByContact` |
 | `packages/services/src/auth.service.ts` | `setInitialPassword`, `linkExistingAccount` (flow customer R4.6c) |
 | `packages/services/src/email.service.ts` | `sendCustomerInvitationEmail` (template email) |
 | `packages/services/src/client.service.ts` | `getClientContactWithUser` (JOIN contact ↔ user pour IDOR check + email) |
@@ -287,6 +307,7 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 - `createInvitation` : génère token, supprime invitations non consommées, insère, envoie email
 - `getInvitationByToken` : happy path + INVALID_TOKEN + TOKEN_EXPIRED + TOKEN_ALREADY_CONSUMED
 - `consumeInvitation` : marque consumedAt (UPDATE atomique CAS) + throw TOKEN_ALREADY_CONSUMED si déjà consommé (chemin métier) ou si race perdue (chemin CAS : UPDATE retourne 0 lignes)
+- `getLastConsumedInvitationByContact` : retourne la dernière invitation consommée (DESC) + null si aucune (2 cas)
 
 `packages/services/src/__tests__/auth.service.test.ts` — tests `setInitialPassword` + `linkExistingAccount` (8 cas) :
 - `setInitialPassword` : crée user + lie contact + crée session (happy path)

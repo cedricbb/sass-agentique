@@ -1,4 +1,4 @@
-import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gt, desc } from "drizzle-orm";
 import { db } from "@saas/db";
 import { customerInvitations, clients, users } from "@saas/db";
 import type { CustomerInvitation } from "@saas/db";
@@ -93,6 +93,23 @@ export async function getActiveInvitationByContact(
         gt(customerInvitations.expiresAt, now),
       ),
     )
+    .limit(1);
+  return invitation ?? null;
+}
+
+export async function getLastConsumedInvitationByContact(
+  contactId: string,
+): Promise<CustomerInvitation | null> {
+  const [invitation] = await db
+    .select()
+    .from(customerInvitations)
+    .where(
+      and(
+        eq(customerInvitations.contactId, contactId),
+        isNotNull(customerInvitations.consumedAt),
+      ),
+    )
+    .orderBy(desc(customerInvitations.consumedAt))
     .limit(1);
   return invitation ?? null;
 }

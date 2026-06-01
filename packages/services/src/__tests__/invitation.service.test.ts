@@ -13,6 +13,7 @@ const makeDrizzleMock = () => {
     "insert", "values", "returning",
     "update", "set",
     "delete",
+    "orderBy", "limit",
   ];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnThis();
@@ -33,6 +34,9 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((a: unknown, b: unknown) => ({ eq: [a, b] })),
   and: vi.fn((...args: unknown[]) => ({ and: args })),
   isNull: vi.fn((a: unknown) => ({ isNull: a })),
+  isNotNull: vi.fn((a: unknown) => ({ isNotNull: a })),
+  gt: vi.fn((a: unknown, b: unknown) => ({ gt: [a, b] })),
+  desc: vi.fn((a: unknown) => ({ desc: a })),
 }));
 
 vi.mock("../email.service", () => ({
@@ -70,6 +74,7 @@ import {
   createInvitation,
   getInvitationByToken,
   consumeInvitation,
+  getLastConsumedInvitationByContact,
 } from "../invitation.service";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -249,6 +254,29 @@ describe("invitation.service", () => {
       await expect(consumeInvitation(BASE_INVITATION.token)).rejects.toThrow(
         "TOKEN_ALREADY_CONSUMED",
       );
+    });
+  });
+
+  // ── getLastConsumedInvitationByContact ────────────────────────────────────────
+
+  describe("getLastConsumedInvitationByContact", () => {
+    it("returns_last_consumed_invitation_by_consumed_at_desc", async () => {
+      const consumedInvitation = { ...BASE_INVITATION, consumedAt: new Date() };
+      dbMock.limit.mockResolvedValueOnce([consumedInvitation]);
+
+      const result = await getLastConsumedInvitationByContact("contact-uuid-1");
+
+      expect(result).toMatchObject({ id: BASE_INVITATION.id, consumedAt: expect.any(Date) });
+      expect(dbMock.orderBy).toHaveBeenCalled();
+      expect(dbMock.limit).toHaveBeenCalledWith(1);
+    });
+
+    it("returns_null_when_no_consumed_invitation_exists", async () => {
+      dbMock.limit.mockResolvedValueOnce([]);
+
+      const result = await getLastConsumedInvitationByContact("contact-uuid-1");
+
+      expect(result).toBeNull();
     });
   });
 

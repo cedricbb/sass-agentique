@@ -3,9 +3,16 @@ import { getClientByIdAction } from "@/app/actions/clients";
 import { ClientForm } from "../_components/ClientForm";
 import { InviteCustomerDialog } from "../_components/InviteCustomerDialog";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
   listClientContacts,
   getClientContactWithUser,
   getActiveInvitationByContact,
+  getLastConsumedInvitationByContact,
 } from "@saas/services";
 
 const portalStatusLabel = (expiresAt: Date): string => {
@@ -14,6 +21,12 @@ const portalStatusLabel = (expiresAt: Date): string => {
     timeStyle: "short",
   }).format(expiresAt);
   return `Invitation en cours, expire le ${formatted}`;
+};
+
+const portalAccountCreatedLabel = (consumedAt: Date | null): string => {
+  if (!consumedAt) return "Compte créé";
+  const formatted = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short" }).format(consumedAt);
+  return `Compte créé le ${formatted}`;
 };
 
 export default async function EditClientPage({
@@ -28,11 +41,12 @@ export default async function EditClientPage({
   const contacts = await listClientContacts(id);
   const contactsWithData = await Promise.all(
     contacts.map(async (contact) => {
-      const [withUser, activeInvitation] = await Promise.all([
+      const [withUser, activeInvitation, lastConsumedInvitation] = await Promise.all([
         getClientContactWithUser(contact.id),
         getActiveInvitationByContact(contact.id),
+        contact.userId ? getLastConsumedInvitationByContact(contact.id) : Promise.resolve(null),
       ]);
-      return { contact, user: withUser?.user ?? null, activeInvitation };
+      return { contact, user: withUser?.user ?? null, activeInvitation, lastConsumedInvitation };
     }),
   );
 
@@ -55,18 +69,34 @@ export default async function EditClientPage({
               </tr>
             </thead>
             <tbody>
-              {contactsWithData.map(({ contact, user, activeInvitation }) => (
+              {contactsWithData.map(({ contact, user, activeInvitation, lastConsumedInvitation }) => (
                 <tr key={contact.id} className="border-b">
                   <td className="p-2">{user?.name ?? "—"}</td>
                   <td className="p-2">{user?.email ?? "—"}</td>
                   <td className="p-2">{contact.role ?? "—"}</td>
                   <td className="p-2">
-                    {activeInvitation
-                      ? portalStatusLabel(activeInvitation.expiresAt)
-                      : "À inviter"}
+                    {contact.userId ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>Compte créé</TooltipTrigger>
+                          <TooltipContent>
+                            {user?.email}
+                            {user?.name ? ` — ${user.name}` : ""}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : activeInvitation ? (
+                      portalStatusLabel(activeInvitation.expiresAt)
+                    ) : (
+                      "À inviter"
+                    )}
                   </td>
                   <td className="p-2">
-                    {user && (
+                    {contact.userId ? (
+                      <span className="text-muted-foreground text-sm">
+                        {portalAccountCreatedLabel(lastConsumedInvitation?.consumedAt ?? null)}
+                      </span>
+                    ) : user ? (
                       <InviteCustomerDialog
                         clientId={id}
                         contactId={contact.id}
@@ -75,7 +105,7 @@ export default async function EditClientPage({
                         hasActiveInvitation={!!activeInvitation}
                         activeExpiresAt={activeInvitation?.expiresAt}
                       />
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
