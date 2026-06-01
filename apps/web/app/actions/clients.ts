@@ -1,15 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClientSchema, updateClientSchema } from "@/lib/schemas/client.schemas";
+import { createClientSchema, updateClientSchema, inviteCustomerSchema } from "@/lib/schemas/client.schemas";
 import {
   createClient,
   updateClient,
   deleteClient,
   getClientById,
+  getClientContactWithUser,
+  createInvitation,
 } from "@saas/services";
-import { withAdmin, type ActionResult } from "@/lib/action-result";
+import { withAdmin, ok, fail, handleActionError, type ActionResult } from "@/lib/action-result";
+import { requireAdmin } from "@/lib/auth";
 import type { Client } from "@saas/db";
+
+function isNextRedirectError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const digest = (error as Error & { digest?: string }).digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+}
 
 
 export async function createClientAction(
@@ -50,4 +59,29 @@ export async function getClientByIdAction(
   return withAdmin(async () => {
     return getClientById(id);
   });
+}
+
+export async function inviteCustomerAction(
+  clientId: string,
+  contactId: string,
+): Promise<ActionResult<{ expiresAt: Date }>> {
+  try {
+    const adminUser = await requireAdmin();
+    const parsed = inviteCustomerSchema.parse({ clientId, contactId });
+    const contactWithUser = await getClientContactWithUser(parsed.contactId);
+    if (!contactWithUser || contactWithUser.contact.clientId !== parsed.clientId) {
+      return fail("INVALID_INPUT", "Contact introuvable ou accès refusé.", 400);
+    }
+    const result = await createInvitation({
+      clientId: parsed.clientId,
+      contactId: parsed.contactId,
+      email: contactWithUser.user.email,
+      invitedBy: adminUser.id,
+    });
+    revalidatePath(`/admin/clients/${parsed.clientId}`);
+    return ok({ expiresAt: result.expiresAt });
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    return handleActionError(error);
+  }
 }

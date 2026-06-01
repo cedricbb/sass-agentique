@@ -5,6 +5,8 @@ vi.mock("@saas/services", () => ({
   updateClient: vi.fn(),
   deleteClient: vi.fn(),
   getClientById: vi.fn(),
+  getClientContactWithUser: vi.fn(),
+  createInvitation: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -20,13 +22,17 @@ import {
   updateClientAction,
   deleteClientAction,
   getClientByIdAction,
+  inviteCustomerAction,
 } from "../clients";
 import {
   createClient,
   updateClient,
   deleteClient,
   getClientById,
+  getClientContactWithUser,
+  createInvitation,
 } from "@saas/services";
+import { inviteCustomerSchema } from "@/lib/schemas/client.schemas";
 import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -36,6 +42,25 @@ const mockedUpdateClient = vi.mocked(updateClient);
 const mockedDeleteClient = vi.mocked(deleteClient);
 const mockedGetClientById = vi.mocked(getClientById);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
+const mockedGetClientContactWithUser = vi.mocked(getClientContactWithUser);
+const mockedCreateInvitation = vi.mocked(createInvitation);
+
+const VALID_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174001";
+const VALID_CONTACT_ID = "123e4567-e89b-12d3-a456-426614174002";
+const OTHER_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174003";
+
+const fakeContactWithUser = {
+  contact: {
+    id: VALID_CONTACT_ID,
+    clientId: VALID_CLIENT_ID,
+    userId: "u2",
+    isPrimary: false,
+    role: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  user: { id: "u2", email: "contact@example.com", name: "Alice" },
+};
 
 const fakeAdmin = { id: "u1", role: "admin" } as unknown as Awaited<
   ReturnType<typeof requireAdmin>
@@ -217,5 +242,76 @@ describe("getClientByIdAction", () => {
     mockedGetClientById.mockResolvedValue(fakeClient as never);
     await getClientByIdAction("c1");
     expect(mockedRevalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("inviteCustomerAction", () => {
+  const fakeExpiresAt = new Date("2026-06-02T10:00:00Z");
+
+  it("inviteCustomerAction — success with valid contact", async () => {
+    mockedGetClientContactWithUser.mockResolvedValue(fakeContactWithUser as never);
+    mockedCreateInvitation.mockResolvedValue({ id: "inv-1", token: "tok", expiresAt: fakeExpiresAt } as never);
+
+    const result = await inviteCustomerAction(VALID_CLIENT_ID, VALID_CONTACT_ID);
+
+    expect(result).toEqual({ ok: true, data: { expiresAt: fakeExpiresAt } });
+    expect(mockedCreateInvitation).toHaveBeenCalledWith({
+      clientId: VALID_CLIENT_ID,
+      contactId: VALID_CONTACT_ID,
+      email: "contact@example.com",
+      invitedBy: "u1",
+    });
+    expect(mockedRevalidatePath).toHaveBeenCalledWith(`/admin/clients/${VALID_CLIENT_ID}`);
+  });
+
+  it("inviteCustomerAction — rejects contact not owned by client", async () => {
+    mockedGetClientContactWithUser.mockResolvedValue({
+      ...fakeContactWithUser,
+      contact: { ...fakeContactWithUser.contact, clientId: OTHER_CLIENT_ID },
+    } as never);
+
+    const result = await inviteCustomerAction(VALID_CLIENT_ID, VALID_CONTACT_ID);
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "INVALID_INPUT" }),
+    });
+    expect(mockedCreateInvitation).not.toHaveBeenCalled();
+  });
+
+  it("inviteCustomerAction — rejects unauthenticated caller", async () => {
+    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
+
+    await expect(inviteCustomerAction(VALID_CLIENT_ID, VALID_CONTACT_ID)).rejects.toThrow("NEXT_REDIRECT");
+    expect(mockedCreateInvitation).not.toHaveBeenCalled();
+  });
+
+  it("inviteCustomerAction — rejects invalid uuid input", async () => {
+    const result = await inviteCustomerAction("not-uuid", "also-not-uuid");
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "VALIDATION_ERROR" }),
+    });
+    expect(mockedGetClientContactWithUser).not.toHaveBeenCalled();
+    expect(mockedCreateInvitation).not.toHaveBeenCalled();
+  });
+});
+
+describe("inviteCustomerSchema", () => {
+  it("inviteCustomerSchema — accepts valid uuid pair", () => {
+    const result = inviteCustomerSchema.safeParse({
+      clientId: VALID_CLIENT_ID,
+      contactId: VALID_CONTACT_ID,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("inviteCustomerSchema — rejects non-uuid input", () => {
+    const result = inviteCustomerSchema.safeParse({
+      clientId: "not-uuid",
+      contactId: VALID_CONTACT_ID,
+    });
+    expect(result.success).toBe(false);
   });
 });
