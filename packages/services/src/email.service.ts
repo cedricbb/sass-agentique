@@ -100,6 +100,34 @@ export async function sendPasswordResetEmail(
   });
 }
 
+export async function sendCustomerInvitationEmail(
+  email: string,
+  token: string,
+  clientName: string,
+  inviterName?: string,
+): Promise<void> {
+  const url = `${APP_URL}/set-password?token=${token}`;
+
+  if (!env.SMTP_HOST && !env.RESEND_API_KEY) {
+    console.log(`[email.service] customer invitation URL: ${url}`);
+    return;
+  }
+
+  await sendEmail({
+    to: email,
+    subject: `Bienvenue dans l'espace client de ${clientName}`,
+    html: `
+      <h1>Bienvenue dans l'espace client de ${clientName}</h1>
+      ${inviterName ? `<p>${inviterName} vous invite à accéder à l'espace client.</p>` : ""}
+      <a href="${url}" style="background:#0070f3;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">
+        Définir mon mot de passe
+      </a>
+      <p>Ce lien expire dans 24 heures.</p>
+      <p>Si vous n'êtes pas concerné par cette invitation, ignorez cet email.</p>
+    `,
+  });
+}
+
 export async function sendInvitationEmail(
   email: string,
   token: string,
