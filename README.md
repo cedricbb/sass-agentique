@@ -310,7 +310,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R4 — En cours** : onze modules admin livrés —
 
-- **Clients** : Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`.
+- **Clients** : Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`. Section "Accès portail" sur la fiche client : tableau des contacts avec statut d'invitation ("À inviter" / "Invitation en cours"), Server Action `inviteCustomerAction` (anti-IDOR, `requireAdmin`), dialog de confirmation `InviteCustomerDialog`. Voir `docs/customer-invitations.md`.
 - **Prestations** : Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composants `PrestationForm`, `PrestationsTable`, `ArchivePrestationButton`.
 - **Projets** : Server Actions (`actions/projects.ts`), schémas Zod (`lib/schemas/project.schemas.ts`), pages liste (`/admin/projects`), création (`/admin/projects/new`), détail/édition (`/admin/projects/[id]`), composants `ProjectsTable`, `ProjectForm`, `ProjectStatusActions`. Error boundary dédié.
 - **Devis** : Server Actions (`actions/quotes.ts`, `actions/quote-items.ts`), pages liste et détail, composants `QuotesTable`, `QuoteForm`, `QuoteItemsEditor`, `EditQuoteItemDialog`, `QuoteStatusActions`, `QuoteToInvoiceButton`.
