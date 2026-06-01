@@ -3,6 +3,7 @@ import {
   clients,
   clientContacts,
   maintenanceContracts,
+  users,
   type Client,
   type NewClient,
   type ClientContact,
@@ -88,6 +89,33 @@ export async function deleteClient(id: string): Promise<void> {
     await tx.delete(maintenanceContracts).where(eq(maintenanceContracts.clientId, id));
     await tx.delete(clients).where(eq(clients.id, id));
   });
+}
+
+export type ContactWithUser = {
+  contact: ClientContact;
+  user: { id: string; email: string; name: string | null };
+};
+
+export async function getClientContactWithUser(
+  contactId: string,
+): Promise<ContactWithUser | null> {
+  const [row] = await db
+    .select({
+      contact: clientContacts,
+      userId: users.id,
+      userEmail: users.email,
+      userName: users.name,
+    })
+    .from(clientContacts)
+    .innerJoin(users, eq(clientContacts.userId, users.id))
+    .where(eq(clientContacts.id, contactId))
+    .limit(1);
+
+  if (!row) return null;
+  return {
+    contact: row.contact,
+    user: { id: row.userId, email: row.userEmail, name: row.userName },
+  };
 }
 
 export async function listClientContacts(
