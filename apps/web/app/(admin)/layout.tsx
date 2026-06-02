@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { validateSession } from "@saas/services";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminUserMenuDropdown } from "@/components/admin/AdminUserMenuDropdown";
 import { Toaster } from "@/components/ui/sonner";
 import type { ReactNode } from "react";
 
@@ -21,10 +22,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Topbar */}
           <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
-            <span className="text-sm text-muted-foreground">
-              Connecté en tant qu&apos;admin —{" "}
-              <span className="font-medium text-foreground">{user.email}</span>
-            </span>
+            <span className="text-sm text-muted-foreground">Administration</span>
+            <AdminUserMenuDropdown user={{ name: user.name, email: user.email }} />
           </header>
           {/* Main content */}
           <main className="flex-1 overflow-y-auto p-6">{children}</main>
