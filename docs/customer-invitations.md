@@ -6,7 +6,7 @@ Gère le flow d'invitation d'un contact client au portail.
 Depuis la fiche client admin, un administrateur sélectionne un contact existant (`client_contacts`) et déclenche une invitation.
 L'invitation crée un token TTL 24h permettant au contact de définir son mot de passe via `/set-password?token=…`.
 
-R4.6a1 livre la table. R4.6a2 livre la couche service + email. R4.6a2.1 fixe le TOCTOU CAS sur `consumeInvitation`. R4.6b livre la Server Action admin + UI fiche client (section "Accès portail"). R4.6c livre le flow set-password côté customer : migration `clientContacts.userId`, page `/set-password`, actions `setInitialPasswordAction`/`linkExistingAccountAction`, auto-login + redirect `/account/`. R4.6e livre le 3e état "Compte créé" sur la fiche client admin : `getLastConsumedInvitationByContact`, colonne Statut avec Tooltip user, colonne Action avec date de liaison.
+R4.6a1 livre la table. R4.6a2 livre la couche service + email. R4.6a2.1 fixe le TOCTOU CAS sur `consumeInvitation`. R4.6b livre la Server Action admin + UI fiche client (section "Accès portail"). R4.6c livre le flow set-password côté customer : migration `clientContacts.userId`, page `/set-password`, actions `setInitialPasswordAction`/`linkExistingAccountAction`, auto-login + redirect `/account/`. R4.6e livre le 3e état "Compte créé" sur la fiche client admin : `getLastConsumedInvitationByContact`, colonne Statut avec Tooltip user, colonne Action avec date de liaison. R4.6f1 dénormalise le nom et l'email sur `client_contacts` (colonnes `name` et `email` NOT NULL, migration 0014 avec backfill) et refactorise `addClientContact` pour accepter `{ name, email, userId? }` sans dépendre d'un user pré-existant.
 
 ## Structure de données
 
@@ -37,6 +37,19 @@ Migration `0013_steady_senator_kelly.sql` (Drizzle) :
 **Index** : `client_contacts_user_id_idx` (non-unique — un user peut être lié à plusieurs contacts dans des clients différents).
 
 NULL acceptable : les contacts créés avant R4.6c n'ont pas encore de user lié.
+
+### Colonnes `client_contacts.name` + `client_contacts.email` (R4.6f1)
+
+Migration `0014_client_contacts_name_email.sql` (Drizzle, modifiée manuellement — pattern backfill-safe 3 étapes) :
+
+| Colonne | Type | Contrainte |
+|---|---|---|
+| `name` | text | NOT NULL |
+| `email` | text | NOT NULL |
+
+Dénormalisation : les contacts portent désormais leur propre nom et email, indépendamment du user lié (`user_id` pouvant être NULL). Cela lève le prérequis d'un user pré-existant pour créer un contact.
+
+**Backfill** : les rows existantes sont peuplées depuis `users` via `COALESCE(u.name, '')` et `u.email`. Les rows orphelines (`user_id IS NULL`) reçoivent `name = ''` et `email = ''` (fallback — le service `addClientContact` prévient toute nouvelle row avec des valeurs vides).
 
 ### Schema Drizzle (`packages/db/src/schema.ts`)
 
@@ -288,8 +301,9 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 | `packages/services/src/email.service.ts` | `sendCustomerInvitationEmail` (template email) |
 | `packages/services/src/client.service.ts` | `getClientContactWithUser` (JOIN contact ↔ user pour IDOR check + email) |
 | `packages/services/src/index.ts` | Exporte `invitation.service`, `client.service`, `auth.service` |
-| `packages/db/src/schema.ts` | Table `customerInvitations` + colonne `clientContacts.userId` + types |
+| `packages/db/src/schema.ts` | Table `customerInvitations` + colonnes `clientContacts.userId`, `clientContacts.name`, `clientContacts.email` + types |
 | `packages/db/migrations/0013_steady_senator_kelly.sql` | Migration DDL : `user_id` nullable + FK SET NULL + index non-unique |
+| `packages/db/migrations/0014_client_contacts_name_email.sql` | Migration DDL (R4.6f1) : `name` + `email` NOT NULL avec backfill depuis `users` |
 | `apps/web/app/actions/auth.ts` | `setInitialPasswordAction`, `linkExistingAccountAction` (Server Actions customer) |
 | `apps/web/app/actions/clients.ts` | `inviteCustomerAction` (Server Action admin) |
 | `apps/web/app/(auth)/set-password/page.tsx` | Server Component : validation token + branch UI (form password / form lien) |
@@ -312,7 +326,7 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 | A — Nouveau user | `e2e-newuser-${Date.now()}@test.dev` | `acme-studio` | Token valide + email absent de `users` → form password (`set-new`) → `/account/` |
 | B — User existant | `e2e-existing-${Date.now()}@test.dev` | `bob-indep` | Création compte via `/register` → token → form "Lier mon compte existant" (`link-existing`) → `/account/` |
 
-**Setup service layer** : les contacts et invitations sont créés via `addClientContact` + `createInvitation` (service layer direct), sans passer par l'UI admin. Choix pragmatique : l'UI admin de création de contact n'est pas implémentée.
+**Setup service layer** : les contacts et invitations sont créés via `addClientContact({ clientId, name, email })` + `createInvitation` (service layer direct), sans passer par l'UI admin. Depuis R4.6f1, `addClientContact` n'exige plus de `userId` pré-existant — `name` et `email` sont requis directement.
 
 **Interception du token** : `getInvitationTokenForContact(email)` — query DB Drizzle dans `resolve-seed-ids.ts`. Retourne le token de la dernière invitation active pour l'email donné, throw si aucune.
 
