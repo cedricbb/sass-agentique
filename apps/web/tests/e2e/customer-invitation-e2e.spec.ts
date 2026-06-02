@@ -1,9 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
-import { addClientContact, createInvitation } from "@saas/services";
 import {
   resolveClientIdBySlug,
   getInvitationTokenForContact,
-  resolveAdminId,
 } from "./helpers/resolve-seed-ids";
 
 async function loginAdmin(page: Page): Promise<void> {
@@ -14,25 +12,32 @@ async function loginAdmin(page: Page): Promise<void> {
   await page.waitForURL(/\/admin/);
 }
 
+async function addContactViaUI(page: Page, name: string, email: string): Promise<void> {
+  await page.getByRole("button", { name: "Ajouter un contact" }).click();
+  await page.getByRole("dialog").waitFor({ state: "visible" });
+  await page.locator('input[name="name"]').fill(name);
+  await page.locator('input[name="email"]').fill(email);
+  await page.getByRole("button", { name: "Ajouter" }).click();
+  await expect(page.getByText("Contact ajouté")).toBeVisible();
+}
+
+async function inviteContactViaUI(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Inviter au portail" }).click();
+  await page.getByRole("button", { name: "Envoyer l'invitation" }).click();
+  await expect(page.getByText("Invitation envoyée")).toBeVisible();
+}
+
 test("Scenario A set-new — invite nouveau user → set-password → account → admin verifie Compte cree", async ({ page }) => {
   const newUserEmail = `e2e-newuser-${Date.now()}@test.dev`;
+  const acmeClientId = await resolveClientIdBySlug("acme-studio");
 
-  const [acmeClientId, adminId] = await Promise.all([
-    resolveClientIdBySlug("acme-studio"),
-    resolveAdminId(),
-  ]);
+  await loginAdmin(page);
+  await page.goto(`/admin/clients/${acmeClientId}`);
+  await addContactViaUI(page, "New User", newUserEmail);
+  await expect(page.getByText("À inviter")).toBeVisible();
+  await inviteContactViaUI(page);
 
-  const contact = await addClientContact({
-    clientId: acmeClientId,
-    name: "New User",
-    email: newUserEmail,
-  });
-  const { token } = await createInvitation({
-    clientId: acmeClientId,
-    contactId: contact.id,
-    email: newUserEmail,
-    invitedBy: adminId,
-  });
+  const token = await getInvitationTokenForContact(newUserEmail);
 
   await page.goto(`/set-password?token=${token}`);
   await expect(page.locator('input[name="password"]')).toBeVisible();
@@ -63,22 +68,13 @@ test("Scenario B link-existing — invite user existant → link account → acc
 
   await page.context().clearCookies();
 
-  const [bobClientId, adminId] = await Promise.all([
-    resolveClientIdBySlug("bob-indep"),
-    resolveAdminId(),
-  ]);
+  const bobClientId = await resolveClientIdBySlug("bob-indep");
 
-  const contact = await addClientContact({
-    clientId: bobClientId,
-    name: "Existing User",
-    email: existingUserEmail,
-  });
-  await createInvitation({
-    clientId: bobClientId,
-    contactId: contact.id,
-    email: existingUserEmail,
-    invitedBy: adminId,
-  });
+  await loginAdmin(page);
+  await page.goto(`/admin/clients/${bobClientId}`);
+  await addContactViaUI(page, "Existing User", existingUserEmail);
+  await expect(page.getByText("À inviter")).toBeVisible();
+  await inviteContactViaUI(page);
 
   const token = await getInvitationTokenForContact(existingUserEmail);
 
