@@ -333,6 +333,7 @@ Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec p
 - **Devis** : vue des devis du client (`/account/quotes`), lecture seule. Guards séquentiels : UUID valide → non-draft → ownership (non-divulgation 404). Voir `docs/customer-portal-quotes.md`.
 - **Factures** : vue des factures du client (`/account/invoices`), lecture seule.
 - **Rapports** : accès aux rapports de livraison (`/account/reports`) ; téléchargement PDF scopé via `GET /api/account/reports/[id]/file` (requireCustomer + guard issuedAt + guard ownership, non-divulgation 404). Voir `docs/customer-portal-reports.md`.
+- **Contrats de maintenance** : services dédiés portail (`listContractsForCustomerPortal`, `getContractByIdForClient`) avec scope `clientId` strict, guard UUID sans query DB, statuts visibles `active`+`past_due`. Helper pur `computeContractBilledAmount` (zéro dépendance DB, consommable Client Component). Voir `docs/customer-portal-contracts.md`.
 - **Profil & sécurité** : gestion du profil et des paramètres 2FA client (existants).
 
 ### Spike R2 — Stockage PDF (expérimental)
