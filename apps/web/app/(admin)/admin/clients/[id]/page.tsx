@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getClientByIdAction } from "@/app/actions/clients";
 import { ClientForm } from "../_components/ClientForm";
 import { InviteCustomerDialog } from "../_components/InviteCustomerDialog";
+import { AddClientContactDialog } from "../_components/AddClientContactDialog";
 import {
   Tooltip,
   TooltipTrigger,
@@ -54,7 +55,10 @@ export default async function EditClientPage({
     <div className="space-y-8">
       <ClientForm initialData={result.data} />
       <section>
-        <h2 className="text-lg font-semibold mb-4">Accès portail</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Accès portail</h2>
+          <AddClientContactDialog clientId={id} />
+        </div>
         {contactsWithData.length === 0 ? (
           <p className="text-muted-foreground text-sm">Aucun contact associé à ce client.</p>
         ) : (
@@ -71,8 +75,8 @@ export default async function EditClientPage({
             <tbody>
               {contactsWithData.map(({ contact, user, activeInvitation, lastConsumedInvitation }) => (
                 <tr key={contact.id} className="border-b">
-                  <td className="p-2">{user?.name ?? "—"}</td>
-                  <td className="p-2">{user?.email ?? "—"}</td>
+                  <td className="p-2">{contact.name}</td>
+                  <td className="p-2">{contact.email}</td>
                   <td className="p-2">{contact.role ?? "—"}</td>
                   <td className="p-2">
                     {contact.userId ? (
@@ -96,16 +100,16 @@ export default async function EditClientPage({
                       <span className="text-muted-foreground text-sm">
                         {portalAccountCreatedLabel(lastConsumedInvitation?.consumedAt ?? null)}
                       </span>
-                    ) : user ? (
+                    ) : (
                       <InviteCustomerDialog
                         clientId={id}
                         contactId={contact.id}
-                        contactName={user.name ?? user.email}
-                        contactEmail={user.email}
+                        contactName={contact.name}
+                        contactEmail={contact.email}
                         hasActiveInvitation={!!activeInvitation}
                         activeExpiresAt={activeInvitation?.expiresAt}
                       />
-                    ) : null}
+                    )}
                   </td>
                 </tr>
               ))}
