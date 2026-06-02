@@ -308,7 +308,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 
 **R3 — En cours** : suppression des anciennes routes billing multi-tenant (`api/billing/`, `api/webhooks/stripe/`) et des composants layout legacy. Refonte en cours pour un modèle Stripe solo-admin. Architecture documentée dans `docs/pivot-r3-architecture.md`.
 
-**R4 — Complété** : onze modules admin + flow invitation customer —
+**R4 — Complété** : onze modules admin + flow invitation customer + header admin avec menu utilisateur —
 
 - **Clients** : Server Actions (`actions/clients.ts`), pages liste (`/admin/clients`), création (`/admin/clients/new`), détail/édition (`/admin/clients/[id]`), composants `ClientForm`, `ClientsTable`, `DeleteClientButton`. Section "Accès portail" sur la fiche client : tableau des contacts avec 3 états ("À inviter" / "Invitation en cours" / "Compte créé"), Server Action `inviteCustomerAction` (anti-IDOR, `requireAdmin`), dialog de confirmation `InviteCustomerDialog`. État "Compte créé" (R4.6e) : Tooltip shadcn au survol (email + nom du user lié), colonne Action affichant la date de liaison effective (`consumedAt`). Flow set-password customer complet (R4.6c) : page `/set-password` (validation token au GET, 2 forms selon état du compte), `setInitialPasswordAction`/`linkExistingAccountAction`, auto-login + redirect `/account/`, migration `clientContacts.userId` (FK SET NULL, index non-unique). Voir `docs/customer-invitations.md`.
 - **Prestations** : Server Actions (`actions/prestations.ts`), schémas Zod (`lib/schemas/prestation.schemas.ts`), page liste (`/admin/prestations`), composants `PrestationForm`, `PrestationsTable`, `ArchivePrestationButton`.
@@ -322,6 +322,8 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 - **Utilisateurs** : gestion des comptes admin et client (`/admin/users`), opérations ban/unban.
 - **Profil admin** : édition du profil utilisateur (`/admin/profile`), mise à jour des informations personnelles.
 - **Dashboard** : tableau de bord principal (`/admin`) avec graphiques analytiques — `MonthlyRevenueChart` (revenus mensuels) et `InvoiceStatusBreakdownChart` (ventilation des statuts de facturation). Données agrégées via `lib/dashboard/`.
+
+- **Header admin — UserMenuDropdown** : avatar avec initiales (name ou email fallback) + email visible + item "Déconnexion". Composant `AdminUserMenuDropdown` (`components/admin/`), `LogoutButton` partagé dans `components/auth/`, `logoutAction` dans `actions/auth.ts`. Redirect vers `/login` après logout. Voir `docs/admin-user-menu.md`.
 
 Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec pagination, tri et filtres.
 
