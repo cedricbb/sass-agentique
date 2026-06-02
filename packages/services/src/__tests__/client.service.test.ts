@@ -58,7 +58,7 @@ import {
 import { generateSlug } from "../utils/slug";
 
 const CLIENT_FIXTURE = { id: "c1", name: "Acme", slug: "acme", archivedAt: null };
-const CONTACT_FIXTURE = { id: "cc1", clientId: "c1", userId: "u1", isPrimary: false, role: null };
+const CONTACT_FIXTURE = { id: "cc1", clientId: "c1", userId: "u1", name: "Test User", email: "test@example.com", isPrimary: false, role: null };
 
 beforeEach(() => {
   dbMock = makeDrizzleMock();
@@ -190,13 +190,26 @@ describe("listClientContacts", () => {
 });
 
 describe("addClientContact", () => {
-  it("inserts with correct defaults", async () => {
-    dbMock.returning.mockResolvedValueOnce([CONTACT_FIXTURE]);
-    const result = await addClientContact("c1", "u1");
+  it("inserts_without_userId_defaults_to_null", async () => {
+    dbMock.returning.mockResolvedValueOnce([{ ...CONTACT_FIXTURE, userId: null }]);
+    const result = await addClientContact({ clientId: "c1", name: "Test User", email: "test@example.com" });
     const valuesArg = dbMock.values.mock.calls[0][0];
     expect(valuesArg.clientId).toBe("c1");
-    expect(valuesArg.userId).toBe("u1");
+    expect(valuesArg.name).toBe("Test User");
+    expect(valuesArg.email).toBe("test@example.com");
+    expect(valuesArg.userId).toBeNull();
     expect(valuesArg.isPrimary).toBe(false);
+    expect(result).toEqual({ ...CONTACT_FIXTURE, userId: null });
+  });
+
+  it("inserts_with_userId_linked", async () => {
+    dbMock.returning.mockResolvedValueOnce([CONTACT_FIXTURE]);
+    const result = await addClientContact({ clientId: "c1", name: "Test User", email: "test@example.com", userId: "u1" });
+    const valuesArg = dbMock.values.mock.calls[0][0];
+    expect(valuesArg.clientId).toBe("c1");
+    expect(valuesArg.name).toBe("Test User");
+    expect(valuesArg.email).toBe("test@example.com");
+    expect(valuesArg.userId).toBe("u1");
     expect(result).toEqual(CONTACT_FIXTURE);
   });
 });

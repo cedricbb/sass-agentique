@@ -15,7 +15,14 @@ import { generateSlug } from "./utils/slug";
 export type ListClientsOptions = { includeArchived?: boolean };
 export type CreateClientInput = Omit<NewClient, "slug"> & { slug?: string };
 export type UpdateClientPatch = Partial<NewClient>;
-export type AddContactOptions = { isPrimary?: boolean; role?: string };
+export type AddContactInput = {
+  clientId: string;
+  name: string;
+  email: string;
+  userId?: string | null;
+  isPrimary?: boolean;
+  role?: string;
+};
 export type UpdateContactPatch = Partial<NewClientContact>;
 
 export async function listClients(
@@ -128,17 +135,17 @@ export async function listClientContacts(
 }
 
 export async function addClientContact(
-  clientId: string,
-  userId: string | null,
-  opts?: AddContactOptions,
+  input: AddContactInput,
 ): Promise<ClientContact> {
   const [row] = await db
     .insert(clientContacts)
     .values({
-      clientId,
-      userId,
-      isPrimary: opts?.isPrimary ?? false,
-      role: opts?.role,
+      clientId: input.clientId,
+      name: input.name,
+      email: input.email,
+      userId: input.userId ?? null,
+      isPrimary: input.isPrimary ?? false,
+      role: input.role,
     })
     .returning();
   return row;
