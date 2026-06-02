@@ -45,6 +45,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: unknown[]) => ({ op: "and", args })),
   inArray: vi.fn((...args: unknown[]) => ({ op: "inArray", args })),
   desc: vi.fn((...args: unknown[]) => ({ op: "desc", args })),
+  asc: vi.fn((...args: unknown[]) => ({ op: "asc", args })),
 }));
 
 const mockCancelSubscription = vi.fn();
@@ -64,10 +65,13 @@ import {
   transitionContractStatus,
   syncFromStripeSubscription,
   attachStripeSubscriptionToContract,
+  listContractsForCustomerPortal,
+  getContractByIdForClient,
   ClientAlreadyHasActiveContractError,
   InvalidContractTransitionError,
   ContractNotInStripeAutoModeError,
 } from "../maintenance-contract.service";
+import { computeContractBilledAmount } from "../maintenance-contract.shared";
 import { getStripeService } from "../stripe.service";
 
 function makeContract(overrides: Record<string, unknown> = {}) {
@@ -467,6 +471,107 @@ describe("maintenance-contract.service", () => {
       expect(result).not.toBeNull();
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
+    });
+  });
+
+  describe("listContractsForCustomerPortal", () => {
+    it("returns_only_active_and_past_due_contracts", async () => {
+      const contracts = [
+        makeContract({ status: "active" }),
+        makeContract({ status: "past_due", id: "contract-2" }),
+      ];
+      dbMock.orderBy.mockResolvedValueOnce(contracts);
+
+      const result = await listContractsForCustomerPortal("client-1");
+
+      expect(result).toEqual(contracts);
+    });
+
+    it("orders_by_status_asc_then_started_at_desc", async () => {
+      dbMock.orderBy.mockResolvedValueOnce([]);
+
+      await listContractsForCustomerPortal("client-1");
+
+      expect(dbMock.orderBy).toHaveBeenCalledWith(
+        { op: "asc", args: ["status"] },
+        { op: "desc", args: ["startedAt"] },
+      );
+    });
+  });
+
+  describe("getContractByIdForClient", () => {
+    it("returns_null_for_invalid_uuid", async () => {
+      const result = await getContractByIdForClient("not-a-uuid", "client-1");
+
+      expect(result).toBeNull();
+      expect(dbMock.select).not.toHaveBeenCalled();
+    });
+
+    it("returns_null_when_client_id_mismatch", async () => {
+      dbMock.limit.mockResolvedValueOnce([]);
+
+      const result = await getContractByIdForClient(
+        "00000000-0000-0000-0000-000000000001",
+        "wrong-client",
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it("returns_contract_for_matching_id_and_client", async () => {
+      const contract = makeContract();
+      dbMock.limit.mockResolvedValueOnce([contract]);
+
+      const result = await getContractByIdForClient(
+        "00000000-0000-0000-0000-000000000001",
+        "client-1",
+      );
+
+      expect(result).toEqual(contract);
+    });
+  });
+
+  describe("computeContractBilledAmount", () => {
+    it("computes_billed_amount_for_active_contract", () => {
+      const now = new Date("2026-06-01");
+      const contract = {
+        monthlyPriceEurCents: 5000,
+        startedAt: new Date("2026-03-01"),
+        canceledAt: null,
+      };
+
+      const result = computeContractBilledAmount(contract, now);
+
+      expect(result.monthsBilled).toBe(3);
+      expect(result.billedAmountEurCents).toBe(15000);
+    });
+
+    it("bounds_to_canceled_at_when_before_now", () => {
+      const now = new Date("2026-06-01");
+      const contract = {
+        monthlyPriceEurCents: 5000,
+        startedAt: new Date("2026-01-01"),
+        canceledAt: new Date("2026-04-01"),
+      };
+
+      const result = computeContractBilledAmount(contract, now);
+
+      expect(result.monthsBilled).toBe(3);
+      expect(result.billedAmountEurCents).toBe(15000);
+    });
+
+    it("returns_zero_when_same_month", () => {
+      const now = new Date("2026-06-15");
+      const contract = {
+        monthlyPriceEurCents: 5000,
+        startedAt: new Date("2026-06-01"),
+        canceledAt: null,
+      };
+
+      const result = computeContractBilledAmount(contract, now);
+
+      expect(result.monthsBilled).toBe(0);
+      expect(result.billedAmountEurCents).toBe(0);
     });
   });
 

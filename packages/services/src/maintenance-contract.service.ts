@@ -6,7 +6,10 @@ import {
   maintenanceStatusEnum,
   billingModeEnum,
 } from "@saas/db";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, asc } from "drizzle-orm";
+import { CUSTOMER_VISIBLE_CONTRACT_STATUSES } from "./maintenance-contract.shared";
+export { CUSTOMER_VISIBLE_CONTRACT_STATUSES, computeContractBilledAmount } from "./maintenance-contract.shared";
+export type { CustomerVisibleContractStatus } from "./maintenance-contract.shared";
 import { getStripeService } from "./stripe.service";
 
 type Db = typeof db;
@@ -365,4 +368,34 @@ export async function attachStripeSubscriptionToContract(
     .where(eq(maintenanceContracts.id, contractId))
     .returning();
   return updated;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function listContractsForCustomerPortal(
+  clientId: string,
+): Promise<MaintenanceContract[]> {
+  return db
+    .select()
+    .from(maintenanceContracts)
+    .where(
+      and(
+        eq(maintenanceContracts.clientId, clientId),
+        inArray(maintenanceContracts.status, [...CUSTOMER_VISIBLE_CONTRACT_STATUSES]),
+      ),
+    )
+    .orderBy(asc(maintenanceContracts.status), desc(maintenanceContracts.startedAt));
+}
+
+export async function getContractByIdForClient(
+  id: string,
+  clientId: string,
+): Promise<MaintenanceContract | null> {
+  if (!UUID_RE.test(id)) return null;
+  const results = await db
+    .select()
+    .from(maintenanceContracts)
+    .where(and(eq(maintenanceContracts.id, id), eq(maintenanceContracts.clientId, clientId)))
+    .limit(1);
+  return results[0] ?? null;
 }
