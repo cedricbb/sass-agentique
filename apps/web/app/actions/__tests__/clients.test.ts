@@ -5,7 +5,8 @@ vi.mock("@saas/services", () => ({
   updateClient: vi.fn(),
   deleteClient: vi.fn(),
   getClientById: vi.fn(),
-  getClientContactWithUser: vi.fn(),
+  listClientContacts: vi.fn(),
+  addClientContact: vi.fn(),
   createInvitation: vi.fn(),
 }));
 
@@ -23,13 +24,15 @@ import {
   deleteClientAction,
   getClientByIdAction,
   inviteCustomerAction,
+  addClientContactAction,
 } from "../clients";
 import {
   createClient,
   updateClient,
   deleteClient,
   getClientById,
-  getClientContactWithUser,
+  listClientContacts,
+  addClientContact,
   createInvitation,
 } from "@saas/services";
 import { inviteCustomerSchema } from "@/lib/schemas/client.schemas";
@@ -42,24 +45,24 @@ const mockedUpdateClient = vi.mocked(updateClient);
 const mockedDeleteClient = vi.mocked(deleteClient);
 const mockedGetClientById = vi.mocked(getClientById);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
-const mockedGetClientContactWithUser = vi.mocked(getClientContactWithUser);
+const mockedListClientContacts = vi.mocked(listClientContacts);
+const mockedAddClientContact = vi.mocked(addClientContact);
 const mockedCreateInvitation = vi.mocked(createInvitation);
 
 const VALID_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174001";
 const VALID_CONTACT_ID = "123e4567-e89b-12d3-a456-426614174002";
 const OTHER_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174003";
 
-const fakeContactWithUser = {
-  contact: {
-    id: VALID_CONTACT_ID,
-    clientId: VALID_CLIENT_ID,
-    userId: "u2",
-    isPrimary: false,
-    role: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  user: { id: "u2", email: "contact@example.com", name: "Alice" },
+const fakeContact = {
+  id: VALID_CONTACT_ID,
+  clientId: VALID_CLIENT_ID,
+  email: "contact@example.com",
+  name: "Alice",
+  userId: "u2",
+  isPrimary: false,
+  role: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 const fakeAdmin = { id: "u1", role: "admin" } as unknown as Awaited<
@@ -249,7 +252,7 @@ describe("inviteCustomerAction", () => {
   const fakeExpiresAt = new Date("2026-06-02T10:00:00Z");
 
   it("inviteCustomerAction — success with valid contact", async () => {
-    mockedGetClientContactWithUser.mockResolvedValue(fakeContactWithUser as never);
+    mockedListClientContacts.mockResolvedValue([fakeContact] as never);
     mockedCreateInvitation.mockResolvedValue({ id: "inv-1", token: "tok", expiresAt: fakeExpiresAt } as never);
 
     const result = await inviteCustomerAction(VALID_CLIENT_ID, VALID_CONTACT_ID);
@@ -265,10 +268,7 @@ describe("inviteCustomerAction", () => {
   });
 
   it("inviteCustomerAction — rejects contact not owned by client", async () => {
-    mockedGetClientContactWithUser.mockResolvedValue({
-      ...fakeContactWithUser,
-      contact: { ...fakeContactWithUser.contact, clientId: OTHER_CLIENT_ID },
-    } as never);
+    mockedListClientContacts.mockResolvedValue([] as never);
 
     const result = await inviteCustomerAction(VALID_CLIENT_ID, VALID_CONTACT_ID);
 
@@ -293,7 +293,7 @@ describe("inviteCustomerAction", () => {
       ok: false,
       error: expect.objectContaining({ code: "VALIDATION_ERROR" }),
     });
-    expect(mockedGetClientContactWithUser).not.toHaveBeenCalled();
+    expect(mockedListClientContacts).not.toHaveBeenCalled();
     expect(mockedCreateInvitation).not.toHaveBeenCalled();
   });
 });
@@ -313,5 +313,77 @@ describe("inviteCustomerSchema", () => {
       contactId: VALID_CONTACT_ID,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("addClientContactAction", () => {
+  const validInput = {
+    clientId: VALID_CLIENT_ID,
+    name: "Alice",
+    email: "alice@example.com",
+    role: "Décideur",
+    isPrimary: false,
+  };
+
+  const createdContact = {
+    ...fakeContact,
+    email: "alice@example.com",
+    name: "Alice",
+    userId: null,
+  };
+
+  it("addClientContactAction — success creates contact with userId null", async () => {
+    mockedGetClientById.mockResolvedValue(fakeClient as never);
+    mockedListClientContacts.mockResolvedValue([]);
+    mockedAddClientContact.mockResolvedValue(createdContact as never);
+
+    const result = await addClientContactAction(validInput);
+
+    expect(result).toEqual({ ok: true, data: createdContact });
+    expect(mockedAddClientContact).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: null, name: "Alice", email: "alice@example.com" }),
+    );
+    expect(mockedRevalidatePath).toHaveBeenCalledWith(`/admin/clients/${VALID_CLIENT_ID}`);
+  });
+
+  it("addClientContactAction — rejects unknown client", async () => {
+    mockedGetClientById.mockResolvedValue(null);
+
+    const result = await addClientContactAction(validInput);
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "CLIENT_NOT_FOUND" }),
+    });
+    expect(mockedAddClientContact).not.toHaveBeenCalled();
+  });
+
+  it("addClientContactAction — rejects duplicate email case-insensitive", async () => {
+    mockedGetClientById.mockResolvedValue(fakeClient as never);
+    mockedListClientContacts.mockResolvedValue([{ ...fakeContact, email: "ALICE@example.com" }] as never);
+
+    const result = await addClientContactAction(validInput);
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "EMAIL_ALREADY_EXISTS" }),
+    });
+    expect(mockedAddClientContact).not.toHaveBeenCalled();
+  });
+
+  it("addClientContactAction — rejects unauthenticated caller", async () => {
+    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
+
+    await expect(addClientContactAction(validInput)).rejects.toThrow("NEXT_REDIRECT");
+  });
+
+  it("addClientContactAction — rejects invalid input", async () => {
+    const result = await addClientContactAction({ clientId: "not-uuid", name: "", email: "bad" });
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "VALIDATION_ERROR" }),
+    });
+    expect(mockedGetClientById).not.toHaveBeenCalled();
   });
 });
