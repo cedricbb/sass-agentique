@@ -12,6 +12,44 @@ Le tri est pédagogique : `status ASC` (active avant past_due) puis `startedAt D
 
 ## Comment l'utiliser
 
+### Page liste — `/account/contracts`
+
+Route Server Component (`apps/web/app/(customer)/account/contracts/page.tsx`).
+
+- Accessible depuis le menu latéral "Mes contrats" (icône FileSignature).
+- Affiche un tableau read-only : **Prestation | Statut | Mode facturation | Prix mensuel | Depuis le**.
+- Prix affiché HT (`monthlyPriceEurCents / 100`, suffixe " / mois HT") — le modèle DB ne porte pas `vatRateBps` (franchise TVA, HT = TTC visuellement).
+- Empty state : card `data-testid="contracts-empty"` "Aucun contrat actif".
+- Tri délégué au service : `status ASC` puis `startedAt DESC`.
+
+Labels statuts FR :
+
+| Valeur DB  | Libellé affiché       | Badge variant  |
+|------------|-----------------------|----------------|
+| `active`   | Actif                 | `success`      |
+| `past_due` | Paiement en attente   | `destructive`  |
+
+Labels billingMode FR :
+
+| Valeur DB        | Libellé affiché     |
+|------------------|---------------------|
+| `stripe_auto`    | Stripe (auto)       |
+| `manual_invoice` | Facturation manuelle|
+
+> **Lien détail** : la page détail `/account/contracts/[id]` est prévue en A.3. En A.2, le nom de prestation est affiché en texte simple (pas de `Link`).
+
+### Navigation (CustomerShell + CustomerSidebar)
+
+`CustomerSidebar.tsx` — entrée ajoutée en position 4 (après "Mes rapports", avant "Mon profil") :
+```typescript
+{ href: "/account/contracts", label: "Mes contrats", icon: FileSignature }
+```
+
+`CustomerShell.tsx` — titre de page résolu par segment URL :
+```typescript
+PAGE_TITLES = { ..., contracts: "Mes contrats" }
+```
+
 ### Services
 
 ```typescript
