@@ -51,7 +51,6 @@ const mockedCreateInvitation = vi.mocked(createInvitation);
 
 const VALID_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174001";
 const VALID_CONTACT_ID = "123e4567-e89b-12d3-a456-426614174002";
-const OTHER_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174003";
 
 const fakeContact = {
   id: VALID_CONTACT_ID,
