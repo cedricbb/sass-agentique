@@ -31,11 +31,12 @@ interface CustomerShellProps {
   children: ReactNode;
 }
 
-const PAGE_TITLES: Record<string, string> = {
+export const PAGE_TITLES: Record<string, string> = {
   account: "Accueil",
   quotes: "Mes devis",
   invoices: "Mes factures",
   reports: "Mes rapports",
+  contracts: "Mes contrats",
   profile: "Mon profil",
   security: "Sécurité",
   setup: "Configuration 2FA",
