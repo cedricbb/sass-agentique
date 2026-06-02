@@ -1,18 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClientSchema, updateClientSchema, inviteCustomerSchema } from "@/lib/schemas/client.schemas";
+import { createClientSchema, updateClientSchema, inviteCustomerSchema, addClientContactSchema } from "@/lib/schemas/client.schemas";
 import {
   createClient,
   updateClient,
   deleteClient,
   getClientById,
-  getClientContactWithUser,
+  listClientContacts,
+  addClientContact,
   createInvitation,
 } from "@saas/services";
 import { withAdmin, ok, fail, handleActionError, type ActionResult } from "@/lib/action-result";
 import { requireAdmin } from "@/lib/auth";
-import type { Client } from "@saas/db";
+import type { Client, ClientContact } from "@saas/db";
 
 function isNextRedirectError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -68,18 +69,45 @@ export async function inviteCustomerAction(
   try {
     const adminUser = await requireAdmin();
     const parsed = inviteCustomerSchema.parse({ clientId, contactId });
-    const contactWithUser = await getClientContactWithUser(parsed.contactId);
-    if (!contactWithUser || contactWithUser.contact.clientId !== parsed.clientId) {
+    const contacts = await listClientContacts(parsed.clientId);
+    const contact = contacts.find((c) => c.id === parsed.contactId);
+    if (!contact) {
       return fail("INVALID_INPUT", "Contact introuvable ou accès refusé.", 400);
     }
     const result = await createInvitation({
       clientId: parsed.clientId,
       contactId: parsed.contactId,
-      email: contactWithUser.user.email,
+      email: contact.email,
       invitedBy: adminUser.id,
     });
     revalidatePath(`/admin/clients/${parsed.clientId}`);
     return ok({ expiresAt: result.expiresAt });
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    return handleActionError(error);
+  }
+}
+
+export async function addClientContactAction(
+  input: unknown,
+): Promise<ActionResult<ClientContact>> {
+  try {
+    await requireAdmin();
+    const parsed = addClientContactSchema.parse(input);
+    const client = await getClientById(parsed.clientId);
+    if (!client) {
+      return fail("CLIENT_NOT_FOUND", "Client introuvable.", 404);
+    }
+    const existingContacts = await listClientContacts(parsed.clientId);
+    const hasDuplicate = existingContacts.some(
+      (c) => c.email.toLowerCase() === parsed.email.toLowerCase(),
+    );
+    if (hasDuplicate) {
+      return fail("EMAIL_ALREADY_EXISTS", "Un contact avec cet email existe déjà.", 409);
+    }
+    const result = await addClientContact({ ...parsed, userId: null });
+    revalidatePath(`/admin/clients/${parsed.clientId}`);
+    return ok(result);
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     return handleActionError(error);
