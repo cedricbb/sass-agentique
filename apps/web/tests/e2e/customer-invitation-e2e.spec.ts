@@ -22,7 +22,11 @@ test("Scenario A set-new — invite nouveau user → set-password → account �
     resolveAdminId(),
   ]);
 
-  const contact = await addClientContact(acmeClientId, null);
+  const contact = await addClientContact({
+    clientId: acmeClientId,
+    name: "New User",
+    email: newUserEmail,
+  });
   const { token } = await createInvitation({
     clientId: acmeClientId,
     contactId: contact.id,
@@ -64,7 +68,11 @@ test("Scenario B link-existing — invite user existant → link account → acc
     resolveAdminId(),
   ]);
 
-  const contact = await addClientContact(bobClientId, null);
+  const contact = await addClientContact({
+    clientId: bobClientId,
+    name: "Existing User",
+    email: existingUserEmail,
+  });
   await createInvitation({
     clientId: bobClientId,
     contactId: contact.id,
