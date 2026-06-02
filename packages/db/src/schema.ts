@@ -136,6 +136,8 @@ export const clientContacts = pgTable("client_contacts", {
     .references(() => users.id, { onDelete: "set null" }),
   isPrimary: boolean("is_primary").notNull().default(false),
   role: text("role"),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [

@@ -145,9 +145,9 @@ describe("schema — table client_contacts", () => {
   it("a le bon nom de table", () => {
     expect(getTableName(clientContacts)).toBe("client_contacts");
   });
-  it("contient clientId, userId, isPrimary, role", () => {
+  it("contient_clientId_userId_isPrimary_role_name_email", () => {
     const cols = Object.keys(clientContacts);
-    for (const col of ["clientId", "userId", "isPrimary", "role"]) {
+    for (const col of ["clientId", "userId", "isPrimary", "role", "name", "email"]) {
       expect(cols).toContain(col);
     }
   });
