@@ -16,7 +16,8 @@
     "./admin.service": "./src/admin.service.ts",
     "./profile.service": "./src/profile.service.ts",
     "./report.service": "./src/report.service.ts",
-    "./utils/slug": "./src/utils/slug.ts"
+    "./utils/slug": "./src/utils/slug.ts",
+    "./maintenance-contract.shared": "./src/maintenance-contract.shared.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",
