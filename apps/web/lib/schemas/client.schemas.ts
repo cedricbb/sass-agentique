@@ -5,6 +5,16 @@ export const inviteCustomerSchema = z.object({
   contactId: z.string().uuid(),
 });
 
+export const addClientContactSchema = z.object({
+  clientId: z.string().uuid(),
+  name: z.string().min(1),
+  email: z.string().email(),
+  role: z.string().nullable().optional(),
+  isPrimary: z.boolean().optional(),
+});
+
+export type AddClientContactInput = z.infer<typeof addClientContactSchema>;
+
 export type InviteCustomerInput = z.infer<typeof inviteCustomerSchema>;
 
 export const createClientSchema = z.object({
