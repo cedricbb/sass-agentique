@@ -595,12 +595,16 @@ async function main() {
 
   await db.insert(schema.clientContacts).values({
     clientId: acme.id,
+    name: "Client Acme",
+    email: "client-acme@saas.dev",
     userId: clientAcmeUser.id,
     isPrimary: true,
   });
 
   await db.insert(schema.clientContacts).values({
     clientId: bob.id,
+    name: "Client Bob",
+    email: "client-bob@saas.dev",
     userId: clientBobUser.id,
     isPrimary: true,
   });
