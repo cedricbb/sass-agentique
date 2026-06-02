@@ -180,6 +180,26 @@ Les deux actions :
 
 Erreur générique : tout throw du service produit `{ ok: false, error: { code: "INVITATION_ERROR" } }` sans distinguer `INVALID_TOKEN` / `TOKEN_EXPIRED` / `TOKEN_ALREADY_CONSUMED` (non-divulgation).
 
+### `addClientContactAction` (Server Action admin — R4.6f2)
+
+```ts
+import { addClientContactAction } from "@/app/actions/clients";
+
+const result = await addClientContactAction(formData);
+```
+
+Server Action Next.js. Crée un contact pré-invitation depuis la fiche client admin. Retourne `{ ok: true }` ou `{ ok: false, error: code }`.
+
+Champs FormData attendus : `clientId` (UUID), `name` (string, min 1), `email` (email valide), `role` (string, optionnel), `isPrimary` (checkbox — présent = `true`, absent = `false`).
+
+Contrôles appliqués (dans l'ordre) :
+1. `requireAdmin()` — redirect vers /login si session invalide
+2. `addClientContactSchema` — Zod parse FormData ; `isPrimary` converti en boolean via `transform`
+3. Anti-IDOR existence client — `getClientById(clientId)` ; lève `INVALID_INPUT` si client introuvable
+4. Anti-doublon email — `listClientContacts(clientId)` ; lève `EMAIL_ALREADY_EXISTS` si email déjà présent sur ce client
+5. `addClientContact({ ...parsed, userId: null })` — userId forcé à `null` (l'admin crée toujours un contact sans user lié ; la liaison vient au set-password)
+6. `revalidatePath("/admin/clients/[id]")` — rafraîchit la section contacts
+
 ### `inviteCustomerAction` (Server Action admin)
 
 ```ts
@@ -193,7 +213,7 @@ Server Action Next.js. Retourne `{ ok: true, data: { expiresAt } }` ou `{ ok: fa
 Contrôles appliqués (dans l'ordre) :
 1. `requireAdmin()` — redirect vers /login si session invalide
 2. `inviteCustomerSchema` — Zod UUID sur `clientId` + `contactId` ; lève `VALIDATION_ERROR`
-3. Vérification anti-IDOR — `getClientContactWithUser(contactId)` suivi d'un check `contact.clientId === clientId` ; lève `INVALID_INPUT` si mismatch
+3. Vérification anti-IDOR — `listClientContacts(clientId).find(c => c.id === contactId)` ; lève `INVALID_INPUT` si contact introuvable ou n'appartient pas au client
 4. `createInvitation({ clientId, contactId, email, invitedBy })` — DELETE old + INSERT new + envoi email
 
 ### `sendCustomerInvitationEmail`
@@ -232,7 +252,9 @@ Fallback console.log si ni `SMTP_HOST` ni `RESEND_API_KEY` n'est configuré.
 
 ### Section "Accès portail" — fiche client admin
 
-La page `/admin/clients/[id]` affiche un tableau des contacts du client avec une colonne **Statut portail** et une colonne **Action**.
+La page `/admin/clients/[id]` affiche un bouton **"Ajouter un contact"** (R4.6f2) en en-tête de section, suivi d'un tableau des contacts du client avec une colonne **Statut portail** et une colonne **Action**.
+
+**Bouton "Ajouter un contact"** (R4.6f2) : ouvre `AddClientContactDialog`. Visible pour tous les clients, indépendamment du nombre de contacts existants.
 
 **Priorité de détection des états (dans l'ordre) :**
 
@@ -247,9 +269,42 @@ La page `/admin/clients/[id]` affiche un tableau des contacts du client avec une
 **Date de liaison** : provient de `customer_invitations.consumedAt` (date effective de liaison), **pas** de `users.createdAt` (peut être très antérieure si user préexistant lié via `linkExistingAccount`). Si plusieurs invitations consommées historiques existent pour ce contact, la plus récente est prise (`ORDER BY consumedAt DESC LIMIT 1`).
 
 Pour chaque contact, le chargement est parallèle via `Promise.all` :
-1. `getClientContactWithUser(contact.id)` — user lié (JOIN userId → users)
+1. `listClientContacts(clientId)` — liste tous les contacts (R4.6f2 : remplace `getClientContactWithUser` pour supporter les contacts sans userId)
 2. `getActiveInvitationByContact(contact.id)` — invitation active
 3. `getLastConsumedInvitationByContact(contact.id)` — uniquement si `contact.userId !== null` (sinon `Promise.resolve(null)`)
+
+### `AddClientContactDialog` (R4.6f2)
+
+Composant client (`"use client"`). Ouvre un Dialog shadcn (pas AlertDialog — formulaire multi-champs) depuis la fiche client admin.
+
+**Champs du formulaire :**
+- **Nom** (input text, required, min 1)
+- **Email** (input email, required, format valide)
+- **Rôle** (Select shadcn avec valeurs : "Décideur", "Comptable", "Chef de projet", "Technique", "Autre")
+- **Contact principal** (Checkbox shadcn, default `false`)
+
+**Logique Select "Autre"** : quand l'utilisateur sélectionne "Autre", un second input texte "Précisez le rôle" apparaît. La valeur envoyée à la Server Action est :
+- Select = valeur prédéfinie → cette valeur directement
+- Select = "Autre" + input rempli → la valeur saisie
+- Select = "Autre" + input vide → champ `role` absent du FormData (role = null côté serveur)
+- Aucune sélection → champ `role` absent (role = null)
+
+La logique "Autre + input" est entièrement UI-only. Le serveur reçoit uniquement une string ou rien.
+
+Appelle `addClientContactAction(formData)` via `useTransition`. Toast shadcn en feedback (succès ou erreur). Ferme le dialog au succès.
+
+```
+admin → [AddClientContactDialog] → addClientContactAction
+  → requireAdmin() + zod addClientContactSchema
+  → getClientById(clientId) — anti-IDOR existence
+  → listClientContacts(clientId) — anti-doublon email
+  → addClientContact({ name, email, role, isPrimary, clientId, userId: null })
+  → revalidatePath("/admin/clients/[id]")
+  → contact apparaît avec statut "À inviter" dans le tableau
+
+admin → [InviteCustomerDialog] → inviteCustomerAction
+  → createInvitation → sendCustomerInvitationEmail
+```
 
 ### `InviteCustomerDialog`
 
@@ -299,21 +354,22 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 | `packages/services/src/invitation.service.ts` | `createInvitation`, `getInvitationByToken`, `consumeInvitation`, `getActiveInvitationByContact`, `getLastConsumedInvitationByContact` |
 | `packages/services/src/auth.service.ts` | `setInitialPassword`, `linkExistingAccount` (flow customer R4.6c) |
 | `packages/services/src/email.service.ts` | `sendCustomerInvitationEmail` (template email) |
-| `packages/services/src/client.service.ts` | `getClientContactWithUser` (JOIN contact ↔ user pour IDOR check + email) |
+| `packages/services/src/client.service.ts` | `getClientContactWithUser`, `listClientContacts`, `addClientContact` (JOIN contact ↔ user, liste contacts par client, ajout contact) |
 | `packages/services/src/index.ts` | Exporte `invitation.service`, `client.service`, `auth.service` |
 | `packages/db/src/schema.ts` | Table `customerInvitations` + colonnes `clientContacts.userId`, `clientContacts.name`, `clientContacts.email` + types |
 | `packages/db/migrations/0013_steady_senator_kelly.sql` | Migration DDL : `user_id` nullable + FK SET NULL + index non-unique |
 | `packages/db/migrations/0014_client_contacts_name_email.sql` | Migration DDL (R4.6f1) : `name` + `email` NOT NULL avec backfill depuis `users` |
 | `apps/web/app/actions/auth.ts` | `setInitialPasswordAction`, `linkExistingAccountAction` (Server Actions customer) |
-| `apps/web/app/actions/clients.ts` | `inviteCustomerAction` (Server Action admin) |
+| `apps/web/app/actions/clients.ts` | `inviteCustomerAction` + `addClientContactAction` (Server Actions admin) |
 | `apps/web/app/(auth)/set-password/page.tsx` | Server Component : validation token + branch UI (form password / form lien) |
 | `apps/web/app/(auth)/portal-invitation-help/page.tsx` | Page statique aide — "Contactez votre administrateur" |
 | `apps/web/components/auth/PasswordSetupForm.tsx` | Composant partagé password + confirm (set-password + reset-password) |
 | `apps/web/components/auth/ResetPasswordForm.tsx` | Wrapper `PasswordSetupForm` (refactorisé R4.6c) |
 | `apps/web/middleware.ts` | `/set-password` + `/portal-invitation-help` dans `PUBLIC_ROUTES` |
-| `apps/web/lib/schemas/client.schemas.ts` | `inviteCustomerSchema` (Zod UUID clientId + contactId) |
-| `apps/web/app/(admin)/admin/clients/[id]/page.tsx` | Section "Accès portail" + tableau contacts + statut portail |
+| `apps/web/lib/schemas/client.schemas.ts` | `inviteCustomerSchema` (UUID clientId + contactId) + `addClientContactSchema` (R4.6f2 : name, email, role, isPrimary, clientId) |
+| `apps/web/app/(admin)/admin/clients/[id]/page.tsx` | Section "Accès portail" + bouton "Ajouter un contact" + tableau contacts + statut portail |
 | `apps/web/app/(admin)/admin/clients/_components/InviteCustomerDialog.tsx` | Dialog confirmation invitation |
+| `apps/web/app/(admin)/admin/clients/_components/AddClientContactDialog.tsx` | Dialog formulaire ajout contact (R4.6f2) |
 
 ## Tests e2e Playwright (R4.6d)
 
@@ -326,7 +382,11 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 | A — Nouveau user | `e2e-newuser-${Date.now()}@test.dev` | `acme-studio` | Token valide + email absent de `users` → form password (`set-new`) → `/account/` |
 | B — User existant | `e2e-existing-${Date.now()}@test.dev` | `bob-indep` | Création compte via `/register` → token → form "Lier mon compte existant" (`link-existing`) → `/account/` |
 
-**Setup service layer** : les contacts et invitations sont créés via `addClientContact({ clientId, name, email })` + `createInvitation` (service layer direct), sans passer par l'UI admin. Depuis R4.6f1, `addClientContact` n'exige plus de `userId` pré-existant — `name` et `email` sont requis directement.
+**Setup via UI (R4.6f2)** : les contacts sont créés via le vrai flow UI admin (helpers `addContactViaUI` + `inviteContactViaUI`) plutôt que via service layer direct. Le setup R4.6f2 :
+1. Login admin → navigate vers la fiche client
+2. Clic "Ajouter un contact" → remplissage du dialog → submit → attente toast succès → contact visible "À inviter"
+3. Clic "Inviter au portail" → AlertDialog confirmer → toast "Invitation envoyée"
+4. `getInvitationTokenForContact(email)` — interception token DB
 
 **Interception du token** : `getInvitationTokenForContact(email)` — query DB Drizzle dans `resolve-seed-ids.ts`. Retourne le token de la dernière invitation active pour l'email donné, throw si aucune.
 
@@ -335,7 +395,8 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 **Helpers e2e utilisés** (apps/web/tests/e2e/helpers/resolve-seed-ids.ts) :
 - `getInvitationTokenForContact(email)` — query `customer_invitations WHERE email = ? AND consumedAt IS NULL ORDER BY createdAt DESC LIMIT 1`
 - `resolveClientIdBySlug(slug)` — query `clients WHERE slug = ?`
-- `resolveAdminId()` — query `users WHERE role = 'admin' LIMIT 1`
+
+Note : `resolveAdminId()` supprimé du helper — plus utilisé après refacto R4.6f2 (l'admin est identifié via login UI, pas via lookup DB direct).
 
 ## Liens vers tests
 
@@ -355,11 +416,16 @@ customer → POST (Server Action) linkExistingAccountAction(token)
 
 `packages/db/src/__tests__/schema.test.ts` — tests DB : présence table + colonnes + exports.
 
-`apps/web/app/actions/__tests__/clients.test.ts` — tests Server Action `inviteCustomerAction` (4 cas) + `inviteCustomerSchema` (2 cas) :
-- Success : contact valide → `createInvitation` appelé, retourne `{ ok: true, data: { expiresAt } }`
-- IDOR : contact.clientId ≠ clientId → `fail("INVALID_INPUT")`, `createInvitation` non appelé
-- Auth : session invalide → redirect rethrown
-- Validation : UUID invalide → `VALIDATION_ERROR`
+`apps/web/app/actions/__tests__/clients.test.ts` — tests Server Action `inviteCustomerAction` (4 cas) + `inviteCustomerSchema` (2 cas) + `addClientContactAction` (5 cas R4.6f2) :
+- `inviteCustomerAction` — Success : contact valide → `createInvitation` appelé, retourne `{ ok: true, data: { expiresAt } }`
+- `inviteCustomerAction` — IDOR : contact introuvable ou contact.clientId ≠ clientId → `fail("INVALID_INPUT")`, `createInvitation` non appelé
+- `inviteCustomerAction` — Auth : session invalide → redirect rethrown
+- `inviteCustomerAction` — Validation : UUID invalide → `VALIDATION_ERROR`
+- `addClientContactAction` — Success : contact créé avec `userId: null`, retourne `{ ok: true }`
+- `addClientContactAction` — Client introuvable : `INVALID_INPUT`
+- `addClientContactAction` — Doublon email : `EMAIL_ALREADY_EXISTS`
+- `addClientContactAction` — Non authentifié : redirect rethrown
+- `addClientContactAction` — Input invalide : `VALIDATION_ERROR`
 
 `apps/web/app/(admin)/admin/clients/_components/__tests__/InviteCustomerDialog.test.tsx` — tests composant (4 cas) :
 - Titre "Inviter" vs "Renvoyer" selon `hasActiveInvitation`
