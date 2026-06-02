@@ -21,7 +21,7 @@ export type AddContactInput = {
   email: string;
   userId?: string | null;
   isPrimary?: boolean;
-  role?: string;
+  role?: string | null;
 };
 export type UpdateContactPatch = Partial<NewClientContact>;
 
