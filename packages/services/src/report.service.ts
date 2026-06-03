@@ -1,5 +1,6 @@
 import { db, type Report, type NewReport, reportKindEnum, reports } from "@saas/db";
 import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
+import { dispatchNotification } from "./notification.service";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -140,7 +141,15 @@ export async function markReportIssued(
     .set({ issuedAt: issuedAt ?? new Date(), updatedAt: new Date() })
     .where(and(eq(reports.id, id), isNull(reports.issuedAt)))
     .returning();
-  return updated[0] ?? report;
+  const finalReport = updated[0] ?? report;
+  if (updated[0]) {
+    dispatchNotification("report.issued", {
+      clientId: finalReport.clientId,
+      entityId: finalReport.id,
+      tenantId: finalReport.ownerId,
+    }).catch((e) => console.error(JSON.stringify({ event: "report.issued", message: (e as Error).message })));
+  }
+  return finalReport;
 }
 
 export async function deleteReport(
