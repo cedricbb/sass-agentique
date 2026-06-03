@@ -1,4 +1,4 @@
-export const CUSTOMER_VISIBLE_CONTRACT_STATUSES = ["active", "past_due", "canceled"] as const;
+export const CUSTOMER_VISIBLE_CONTRACT_STATUSES = ["active", "past_due"] as const;
 
 export type CustomerVisibleContractStatus = (typeof CUSTOMER_VISIBLE_CONTRACT_STATUSES)[number];
 

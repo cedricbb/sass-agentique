@@ -71,6 +71,7 @@ import {
   InvalidContractTransitionError,
   ContractNotInStripeAutoModeError,
 } from "../maintenance-contract.service";
+import { inArray } from "drizzle-orm";
 import { computeContractBilledAmount } from "../maintenance-contract.shared";
 import { getStripeService } from "../stripe.service";
 
@@ -485,6 +486,14 @@ describe("maintenance-contract.service", () => {
       const result = await listContractsForCustomerPortal("client-1");
 
       expect(result).toEqual(contracts);
+    });
+
+    it("asserts_inarray_excludes_canceled", async () => {
+      dbMock.orderBy.mockResolvedValueOnce([]);
+
+      await listContractsForCustomerPortal("client-1");
+
+      expect(inArray).toHaveBeenCalledWith("status", ["active", "past_due"]);
     });
 
     it("orders_by_status_asc_then_started_at_desc", async () => {
