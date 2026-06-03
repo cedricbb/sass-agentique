@@ -335,6 +335,7 @@ Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec p
 - **Rapports** : accès aux rapports de livraison (`/account/reports`) ; téléchargement PDF scopé via `GET /api/account/reports/[id]/file` (requireCustomer + guard issuedAt + guard ownership, non-divulgation 404). Voir `docs/customer-portal-reports.md`.
 - **Contrats de maintenance** : services dédiés portail (`listContractsForCustomerPortal`, `getContractByIdForClient`) avec scope `clientId` strict, guard UUID sans query DB, statuts visibles `active`+`past_due`. Helper pur `computeContractBilledAmount` (zéro dépendance DB, consommable Client Component). Couverture e2e complète (7 tests : liste+détail nominal, empty state, guards 404 UUID/non-UUID/cross-client/canceled). Voir `docs/customer-portal-contracts.md`.
 - **Profil & sécurité** : gestion du profil et des paramètres 2FA client (existants).
+- **Infra notifications email (R5-B.1)** : infrastructure partagée pour les emails auto customer — singleton Resend lazy, dispatch map `quote.sent` / `invoice.sent` / `report.issued` (handlers câblés en B.2-B.4), helper `getNotifiableContacts` (filtre structurel `userId IS NOT NULL`). Voir `docs/email-notifications.md`.
 
 ### Spike R2 — Stockage PDF (expérimental)
 
@@ -365,6 +366,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `payment.service` | Enregistrement des paiements |
 | `report.service` | Rapports de projet et de livraison |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
+| `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
 
 ### Plans de facturation (pré-R3 — `config/plans.ts`)
 
