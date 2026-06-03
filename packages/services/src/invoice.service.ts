@@ -5,6 +5,7 @@ import {
   quotes, quoteItems, invoices, invoiceItems,
 } from "@saas/db";
 import { eq, and, inArray, desc, like } from "drizzle-orm";
+import { dispatchNotification } from "./notification.service";
 
 type Db = typeof db;
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -172,6 +173,12 @@ export async function transitionInvoiceStatus(
     .set({ status: newStatus, updatedAt: new Date(), ...timestamps })
     .where(eq(invoices.id, id))
     .returning();
+
+  if (newStatus === "sent" && row) {
+    dispatchNotification("invoice.sent", { clientId: row.clientId, entityId: row.id, tenantId: row.ownerId })
+      .catch((err) => console.error(JSON.stringify({ event: "invoice.sent", message: (err as Error).message })));
+  }
+
   return row ?? null;
 }
 
