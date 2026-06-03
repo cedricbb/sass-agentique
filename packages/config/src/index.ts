@@ -2,7 +2,6 @@ import { z } from "zod";
 import { config } from "dotenv";
 import path from "path";
 
-// Load .env from current directory or root
 config({ path: path.resolve(process.cwd(), ".env") });
 config({ path: path.resolve(process.cwd(), "../../.env") });
 
@@ -10,19 +9,19 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.string().default("3000"),
-  // Auth — Phase 1
   SESSION_SECRET: z.string().min(32).optional(),
   APP_URL: z.string().url().optional(),
-  // Email — Phase 1
   RESEND_API_KEY: z.string().optional(),
-  // SMTP (MailHog / dev) — prioritaire sur Resend si défini
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional().default(1025),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  // TOTP — Phase 4
   TOTP_ISSUER: z.string().optional().default("SaaS Agentique"),
-});
+  NOTIFICATIONS_ENABLED: z.string().optional(),
+}).refine(
+  (data) => data.NOTIFICATIONS_ENABLED !== "true" || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
+  { message: "RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
+);
 
 const _env = envSchema.safeParse(process.env);
 
