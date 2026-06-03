@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@react-email/components": "^1.0.8",
+    "@react-email/render": "^2.0.4",
     "@saas/config": "workspace:*",
     "@saas/db": "workspace:*",
     "@types/bcryptjs": "^3.0.0",
