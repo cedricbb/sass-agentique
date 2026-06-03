@@ -7,11 +7,21 @@ const mockListContracts = vi.hoisted(() => vi.fn())
 const mockListPrestations = vi.hoisted(() => vi.fn())
 const mockFormatCurrency = vi.hoisted(() => vi.fn((n: number) => `${n.toFixed(2)} €`))
 const mockFormatDate = vi.hoisted(() => vi.fn(() => "01/01/2024"))
+const mockNotFound = vi.hoisted(() => vi.fn())
+const mockGetContractByIdForClient = vi.hoisted(() => vi.fn())
+const mockComputeContractBilledAmount = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/auth", () => ({ requireCustomer: mockRequireCustomer }))
 vi.mock("@saas/services", () => ({
-  maintenanceContractService: { listContractsForCustomerPortal: mockListContracts },
+  maintenanceContractService: {
+    listContractsForCustomerPortal: mockListContracts,
+    getContractByIdForClient: (...args: unknown[]) => mockGetContractByIdForClient(...args),
+  },
   listPrestations: mockListPrestations,
+}))
+vi.mock("@saas/services/maintenance-contract.shared", () => ({
+  computeContractBilledAmount: (...args: unknown[]) => mockComputeContractBilledAmount(...args),
+  CUSTOMER_VISIBLE_CONTRACT_STATUSES: ["active", "past_due"],
 }))
 vi.mock("@/lib/format", () => ({ formatCurrency: mockFormatCurrency, formatDate: mockFormatDate }))
 vi.mock("@/components/ui/badge", () => ({
@@ -25,10 +35,16 @@ vi.mock("@/components/ui/card", () => ({
     React.createElement("div", props, children as React.ReactNode),
 }))
 vi.mock("next/link", () => ({
-  default: ({ children, href }: Record<string, unknown>) =>
-    React.createElement("a", { href }, children as React.ReactNode),
+  default: ({ children, href, ...rest }: Record<string, unknown>) =>
+    React.createElement("a", { href, ...rest }, children as React.ReactNode),
 }))
-vi.mock("next/navigation", () => ({ usePathname: () => "/account/contracts" }))
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/account/contracts",
+  notFound: () => {
+    mockNotFound()
+    throw new Error("NEXT_NOT_FOUND")
+  },
+}))
 vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: "light", setTheme: vi.fn() }),
 }))
@@ -138,6 +154,8 @@ describe("CustomerContractsPage", () => {
     expect(html).toContain("Prix mensuel")
     expect(html).toContain("Depuis le")
     expect(html).toContain('data-testid="contract-row"')
+    expect(html).toContain('data-testid="contract-link"')
+    expect(html).toContain('href="/account/contracts/contract-uuid-1"')
   })
 
   it("renders_empty_state_when_no_contracts", async () => {
@@ -209,5 +227,61 @@ describe("CustomerShell", () => {
     const { PAGE_TITLES } = await import("@/components/layout/CustomerShell")
 
     expect(PAGE_TITLES["contracts"]).toBe("Mes contrats")
+  })
+})
+
+const mockContractDetail = {
+  id: "contract-uuid-1",
+  clientId: "client-uuid-1",
+  prestationId: "prestation-uuid-1",
+  billingMode: "stripe_auto" as const,
+  status: "active" as const,
+  monthlyPriceEurCents: 9900,
+  startedAt: new Date("2024-01-15"),
+  canceledAt: null,
+}
+
+describe("CustomerContractDetailPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRequireCustomer.mockResolvedValue({ client: mockClient })
+    mockListPrestations.mockResolvedValue([mockPrestation])
+    mockGetContractByIdForClient.mockResolvedValue(mockContractDetail)
+    mockComputeContractBilledAmount.mockReturnValue({ monthsBilled: 12, billedAmountEurCents: 118800 })
+    mockFormatCurrency.mockImplementation((n: number) => `${n.toFixed(2)} EUR`)
+    mockFormatDate.mockReturnValue("15/01/2024")
+  })
+
+  it("renders_contract_detail_with_all_fields", async () => {
+    const { default: CustomerContractDetailPage } = await import("../[id]/page")
+    const element = await CustomerContractDetailPage({ params: Promise.resolve({ id: "contract-uuid-1" }) })
+    const html = renderToStaticMarkup(element)
+
+    expect(html).toContain('data-testid="contract-detail-title"')
+    expect(html).toContain("Maintenance Pro")
+    expect(html).toContain('data-testid="contract-detail-status"')
+    expect(html).toContain("Actif")
+    expect(html).toContain('data-testid="contract-billed-amount"')
+    expect(html).toContain("Stripe (auto)")
+    expect(html).toContain("/ mois HT")
+    expect(html).toContain('data-testid="contract-back"')
+  })
+
+  it("detail_calls_notfound_for_canceled_contract", async () => {
+    mockGetContractByIdForClient.mockResolvedValue({ ...mockContractDetail, status: "canceled" })
+    const { default: CustomerContractDetailPage } = await import("../[id]/page")
+    await expect(
+      CustomerContractDetailPage({ params: Promise.resolve({ id: "contract-uuid-1" }) })
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it("detail_calls_notfound_when_contract_null", async () => {
+    mockGetContractByIdForClient.mockResolvedValue(null)
+    const { default: CustomerContractDetailPage } = await import("../[id]/page")
+    await expect(
+      CustomerContractDetailPage({ params: Promise.resolve({ id: "invalid-id" }) })
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(mockNotFound).toHaveBeenCalled()
   })
 })
