@@ -589,9 +589,24 @@ async function main() {
     })
     .returning({ id: schema.users.id });
 
+  const [clientGlobexUser] = await db
+    .insert(schema.users)
+    .values({
+      email: "client-globex@saas.dev",
+      hashedPassword: clientPassword,
+      name: "Client Globex",
+      role: "client",
+      emailVerified: true,
+    })
+    .onConflictDoUpdate({
+      target: schema.users.email,
+      set: { role: "client", name: "Client Globex" },
+    })
+    .returning({ id: schema.users.id });
+
   await db
     .delete(schema.clientContacts)
-    .where(inArray(schema.clientContacts.clientId, [acme.id, bob.id]));
+    .where(inArray(schema.clientContacts.clientId, [acme.id, bob.id, globex.id]));
 
   await db.insert(schema.clientContacts).values({
     clientId: acme.id,
@@ -609,12 +624,21 @@ async function main() {
     isPrimary: true,
   });
 
-  console.log("✅ 2 client users créés + contacts liés");
+  await db.insert(schema.clientContacts).values({
+    clientId: globex.id,
+    name: "Client Globex",
+    email: "client-globex@saas.dev",
+    userId: clientGlobexUser.id,
+    isPrimary: true,
+  });
+
+  console.log("✅ 3 client users créés + contacts liés");
 
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin   : admin@saas.dev / admin1234");
   console.log("  Client  : client-acme@saas.dev / client1234");
   console.log("  Client  : client-bob@saas.dev / client1234");
+  console.log("  Client  : client-globex@saas.dev / client1234");
 
   await client.end();
 }
