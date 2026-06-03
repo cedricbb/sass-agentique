@@ -203,7 +203,7 @@ export async function transitionQuoteStatus(
     .returning();
 
   if (newStatus === "sent" && row) {
-    dispatchNotification("quote.sent", { clientId: row.clientId, entityId: row.id, tenantId: row.ownerId }).catch(() => {});
+    dispatchNotification("quote.sent", { clientId: row.clientId, entityId: row.id, tenantId: row.ownerId }).catch((err) => console.error(JSON.stringify({ event: "quote.sent", message: (err as Error).message })));
   }
 
   return row ?? null;
