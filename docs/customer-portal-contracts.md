@@ -141,6 +141,7 @@ Re-exportée depuis `maintenance-contract.service` pour les couches amont (Serve
 ```
 packages/services/src/__tests__/maintenance-contract.service.test.ts
 apps/web/app/(customer)/account/contracts/__tests__/page.test.tsx
+apps/web/tests/e2e/customer-contracts.spec.ts
 ```
 
 `maintenance-contract.service.test.ts` (8 cas) :
@@ -152,3 +153,14 @@ apps/web/app/(customer)/account/contracts/__tests__/page.test.tsx
 - Liste : colonnes, empty state, badges statut, labels billingMode, prix HT, lien `contract-link`
 - Détail : rendu complet des champs, `notFound()` sur contrat `canceled`, `notFound()` sur contrat `null`
 - Shell/Sidebar : entrée nav "Mes contrats", titre page
+
+`customer-contracts.spec.ts` (7 tests e2e Playwright — storageStates acme/globex) :
+- T1 — Liste + détail nominal Acme : navigation link prestation → page détail complète (titre, statut, montant `/\d+,\d{2} € HT/`)
+- T2 — Empty state Globex : `data-testid="contracts-empty"` visible ("Aucun contrat actif")
+- T3 — 404 UUID inexistant (Acme + URL random UUID non présent en DB)
+- T4 — 404 non-UUID (Acme + URL `not-a-uuid`)
+- T5 — 404 cross-client (Acme tente URL UUID d'un contrat Bob)
+- T6 — 404 canceled defense-in-depth (Globex tente URL UUID de son propre contrat `canceled`)
+- T7 — Sidebar 6 items dont "Mes contrats" (vérification runtime du menu)
+
+Helper : `resolveContractIdByClientAndStatus(clientSlug, status)` dans `tests/e2e/helpers/resolve-seed-ids.ts` — résout l'UUID DB d'un contrat seed par `clients.slug` + `contract.status`.

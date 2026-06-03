@@ -333,7 +333,7 @@ Hook `use-data-table-state` partagé pour la gestion d'état des tableaux avec p
 - **Devis** : vue des devis du client (`/account/quotes`), lecture seule. Guards séquentiels : UUID valide → non-draft → ownership (non-divulgation 404). Voir `docs/customer-portal-quotes.md`.
 - **Factures** : vue des factures du client (`/account/invoices`), lecture seule.
 - **Rapports** : accès aux rapports de livraison (`/account/reports`) ; téléchargement PDF scopé via `GET /api/account/reports/[id]/file` (requireCustomer + guard issuedAt + guard ownership, non-divulgation 404). Voir `docs/customer-portal-reports.md`.
-- **Contrats de maintenance** : services dédiés portail (`listContractsForCustomerPortal`, `getContractByIdForClient`) avec scope `clientId` strict, guard UUID sans query DB, statuts visibles `active`+`past_due`. Helper pur `computeContractBilledAmount` (zéro dépendance DB, consommable Client Component). Voir `docs/customer-portal-contracts.md`.
+- **Contrats de maintenance** : services dédiés portail (`listContractsForCustomerPortal`, `getContractByIdForClient`) avec scope `clientId` strict, guard UUID sans query DB, statuts visibles `active`+`past_due`. Helper pur `computeContractBilledAmount` (zéro dépendance DB, consommable Client Component). Couverture e2e complète (7 tests : liste+détail nominal, empty state, guards 404 UUID/non-UUID/cross-client/canceled). Voir `docs/customer-portal-contracts.md`.
 - **Profil & sécurité** : gestion du profil et des paramètres 2FA client (existants).
 
 ### Spike R2 — Stockage PDF (expérimental)
@@ -465,7 +465,7 @@ pnpm test   # Exécute les 47 fichiers via vitest workspace
 
 ### Tests E2E (Playwright)
 
-11 specs Playwright sur Chromium avec helpers partagés :
+12 specs Playwright sur Chromium avec helpers partagés :
 
 | Fichier | Scope |
 |---------|-------|
@@ -480,6 +480,7 @@ pnpm test   # Exécute les 47 fichiers via vitest workspace
 | `tests/e2e/customer-quotes.spec.ts` | Portail client — isolation cross-client devis, guard draft, guard UUID |
 | `tests/e2e/customer-invoices.spec.ts` | Portail client — isolation cross-client factures |
 | `tests/e2e/customer-reports.spec.ts` | Portail client — isolation cross-client rapports, stream PDF |
+| `tests/e2e/customer-contracts.spec.ts` | Portail client — contrats : liste, détail nominal, guards 404, cross-client, canceled defense-in-depth, sidebar |
 
 Helpers E2E (`tests/e2e/helpers/`) :
 
@@ -488,7 +489,7 @@ Helpers E2E (`tests/e2e/helpers/`) :
 | `tests/e2e/helpers/auth.ts` | Authentification et session de test |
 | `tests/e2e/helpers/data.ts` | Fixtures et création de données de test |
 | `tests/e2e/helpers/contracts.ts` | Helpers dédiés aux contrats de maintenance |
-| `tests/e2e/helpers/resolve-seed-ids.ts` | `resolveQuoteId` / `resolveInvoiceId` / `resolveReportId` — UUID réels depuis numéros seed |
+| `tests/e2e/helpers/resolve-seed-ids.ts` | `resolveQuoteId` / `resolveInvoiceId` / `resolveReportId` / `resolveContractIdByClientAndStatus` — UUID réels depuis numéros seed |
 
 ```bash
 pnpm test:e2e   # Requiert une DB Postgres active et le build Next.js
