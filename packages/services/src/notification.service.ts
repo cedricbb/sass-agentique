@@ -1,9 +1,12 @@
 import { Resend } from "resend";
 import { env } from "@saas/config";
-import { db, clientContacts, quotes, clients } from "@saas/db";
+import { db, clientContacts, quotes, clients, invoices, reports } from "@saas/db";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { computeQuoteTtc } from "./quote.shared";
+import { computeInvoiceTtc } from "./invoice.shared";
 import { renderQuoteSentHtml } from "./emails/QuoteSentEmail";
+import { renderInvoiceSentHtml } from "./emails/InvoiceSentEmail";
+import { renderReportIssuedHtml } from "./emails/ReportIssuedEmail";
 
 export type NotificationEvent = "quote.sent" | "invoice.sent" | "report.issued";
 export type NotificationPayload = { clientId: string; entityId: string; tenantId: string };
@@ -71,10 +74,98 @@ async function handleQuoteSentNotification(payload: NotificationPayload): Promis
   }
 }
 
+const REPORT_KIND_LABELS: Record<string, string> = {
+  delivery: "Livraison",
+  monthly: "Mensuel",
+  audit: "Audit",
+  other: "Autre",
+};
+
+async function handleReportIssuedNotification(payload: NotificationPayload): Promise<void> {
+  const [report] = await db.select().from(reports).where(eq(reports.id, payload.entityId));
+  if (!report) {
+    console.warn("[notification.service] report not found for report.issued", { entityId: payload.entityId });
+    return;
+  }
+
+  const [client] = await db.select().from(clients).where(eq(clients.id, payload.clientId));
+  if (!client) {
+    console.warn("[notification.service] client not found for report.issued", { clientId: payload.clientId });
+    return;
+  }
+
+  const contacts = await getNotifiableContacts(payload.clientId);
+  if (contacts.length === 0) {
+    console.warn("[notification.service] no notifiable contacts for report.issued", { clientId: payload.clientId });
+    return;
+  }
+
+  const kindLabel = REPORT_KIND_LABELS[report.kind] ?? report.kind;
+  const issuedAtFormatted = report.issuedAt
+    ? new Intl.DateTimeFormat("fr-FR").format(report.issuedAt)
+    : "";
+  const ctaUrl = `${env.APP_URL ?? "http://localhost:3001"}/account/reports/${report.id}`;
+  const html = await renderReportIssuedHtml({
+    reportTitle: report.title,
+    kindLabel,
+    clientName: client.name,
+    issuedAtFormatted,
+    ctaUrl,
+  });
+
+  for (const contact of contacts) {
+    await sendNotificationEmail({
+      to: contact.email,
+      subject: `Rapport ${kindLabel} "${report.title}" disponible`,
+      html,
+    });
+  }
+}
+
+async function handleInvoiceSentNotification(payload: NotificationPayload): Promise<void> {
+  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, payload.entityId));
+  if (!invoice) {
+    console.warn("[notification.service] invoice not found for invoice.sent", { entityId: payload.entityId });
+    return;
+  }
+
+  const [client] = await db.select().from(clients).where(eq(clients.id, payload.clientId));
+  if (!client) {
+    console.warn("[notification.service] client not found for invoice.sent", { clientId: payload.clientId });
+    return;
+  }
+
+  const contacts = await getNotifiableContacts(payload.clientId);
+  if (contacts.length === 0) {
+    console.warn("[notification.service] no notifiable contacts for invoice.sent", { clientId: payload.clientId });
+    return;
+  }
+
+  const { totalTtcCents } = computeInvoiceTtc(invoice);
+  const totalTtcFormatted = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(totalTtcCents / 100);
+  const dueDateFormatted = invoice.dueAt ? new Intl.DateTimeFormat("fr-FR").format(invoice.dueAt) : null;
+  const ctaUrl = `${env.APP_URL ?? "http://localhost:3001"}/account/invoices/${invoice.id}`;
+  const html = await renderInvoiceSentHtml({
+    invoiceNumber: invoice.number,
+    clientName: client.name,
+    totalTtcFormatted,
+    dueDateFormatted,
+    ctaUrl,
+  });
+
+  for (const contact of contacts) {
+    await sendNotificationEmail({
+      to: contact.email,
+      subject: `Nouvelle facture ${invoice.number} disponible`,
+      html,
+    });
+  }
+}
+
 export const DISPATCH_MAP: Record<NotificationEvent, ((payload: NotificationPayload) => Promise<void>) | null> = {
   "quote.sent": handleQuoteSentNotification,
-  "invoice.sent": null,
-  "report.issued": null,
+  "invoice.sent": handleInvoiceSentNotification,
+  "report.issued": handleReportIssuedNotification,
 };
 
 export async function dispatchNotification(
