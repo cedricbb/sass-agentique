@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Prestation } from "@saas/db"
 import { STATUS_LABELS, STATUS_VARIANT, BILLING_MODE_LABELS } from "./_lib/labels"
+import type { CustomerVisibleContractStatus } from "@saas/services/maintenance-contract.shared"
 
 function buildPrestationNameMap(prestations: Prestation[]): Record<string, string> {
   return Object.fromEntries(prestations.map((p) => [p.id, p.name]))
@@ -58,10 +59,10 @@ export default async function CustomerContractsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Badge
-                      variant={STATUS_VARIANT[contract.status] as "success" | "destructive"}
+                      variant={STATUS_VARIANT[contract.status as CustomerVisibleContractStatus]}
                       data-testid="contract-status-badge"
                     >
-                      {STATUS_LABELS[contract.status]}
+                      {STATUS_LABELS[contract.status as CustomerVisibleContractStatus]}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">

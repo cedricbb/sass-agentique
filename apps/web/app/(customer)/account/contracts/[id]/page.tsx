@@ -16,7 +16,7 @@ export default async function CustomerContractDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
-}): Promise<JSX.Element> {
+}): Promise<React.ReactNode> {
   const { id } = await params
   const scope = await requireCustomer()
   const contract = await maintenanceContractService.getContractByIdForClient(id, scope.client.id)
