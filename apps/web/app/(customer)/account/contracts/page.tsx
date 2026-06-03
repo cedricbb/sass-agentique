@@ -1,25 +1,12 @@
 import React from "react"
+import Link from "next/link"
 import { requireCustomer } from "@/lib/auth"
 import { maintenanceContractService, listPrestations } from "@saas/services"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Prestation } from "@saas/db"
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "Actif",
-  past_due: "Paiement en attente",
-}
-
-const STATUS_VARIANT: Record<string, string> = {
-  active: "success",
-  past_due: "destructive",
-}
-
-const BILLING_MODE_LABELS: Record<string, string> = {
-  stripe_auto: "Stripe (auto)",
-  manual_invoice: "Facturation manuelle",
-}
+import { STATUS_LABELS, STATUS_VARIANT, BILLING_MODE_LABELS } from "./_lib/labels"
 
 function buildPrestationNameMap(prestations: Prestation[]): Record<string, string> {
   return Object.fromEntries(prestations.map((p) => [p.id, p.name]))
@@ -61,7 +48,13 @@ export default async function CustomerContractsPage() {
               {contracts.map((contract) => (
                 <tr key={contract.id} className="border-b last:border-0" data-testid="contract-row">
                   <td className="px-4 py-3">
-                    {prestationNames[contract.prestationId] ?? "—"}
+                    <Link
+                      href={`/account/contracts/${contract.id}`}
+                      className="font-medium text-primary hover:underline"
+                      data-testid="contract-link"
+                    >
+                      {prestationNames[contract.prestationId] ?? "—"}
+                    </Link>
                   </td>
                   <td className="px-4 py-3">
                     <Badge
