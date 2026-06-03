@@ -234,17 +234,3 @@ describe("handler_email_dispatch", () => {
     expect(mockEmailsSend).not.toHaveBeenCalled();
   });
 });
-
-function buildDbMock(
-  quoteResult: unknown[],
-  clientResult: unknown[],
-  contactsResult: unknown[],
-) {
-  const mockWhere = vi.fn()
-    .mockResolvedValueOnce(quoteResult)
-    .mockResolvedValueOnce(clientResult)
-    .mockResolvedValueOnce(contactsResult);
-  const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-  const mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
-  return { select: mockSelect };
-}
