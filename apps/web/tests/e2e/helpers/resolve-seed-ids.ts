@@ -1,5 +1,5 @@
 import { getInvoiceByNumber, getQuoteByNumber, getReportByTitle, getClientBySlug } from "@saas/services";
-import { db, customerInvitations, users } from "@saas/db";
+import { db, customerInvitations, users, maintenanceContracts } from "@saas/db";
 import { eq, and, isNull, desc } from "drizzle-orm";
 
 export async function resolveInvoiceId(invoiceNumber: string): Promise<string> {
@@ -44,5 +44,25 @@ export async function resolveAdminId(): Promise<string> {
     .where(eq(users.email, "admin@saas.dev"))
     .limit(1);
   if (!row) throw new Error("Admin user not found in DB");
+  return row.id;
+}
+
+export async function resolveContractIdByClientAndStatus(
+  clientSlug: "acme" | "bob" | "globex",
+  status: "active" | "past_due" | "canceled",
+): Promise<string> {
+  const client = await getClientBySlug(clientSlug);
+  if (!client) throw new Error(`Client with slug "${clientSlug}" not found`);
+  const [row] = await db
+    .select({ id: maintenanceContracts.id })
+    .from(maintenanceContracts)
+    .where(
+      and(
+        eq(maintenanceContracts.clientId, client.id),
+        eq(maintenanceContracts.status, status),
+      ),
+    )
+    .limit(1);
+  if (!row) throw new Error(`No contract found for ${clientSlug}/${status}`);
   return row.id;
 }
