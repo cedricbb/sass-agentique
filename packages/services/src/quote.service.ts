@@ -10,6 +10,7 @@ import {
 } from "@saas/db";
 import { eq, and, inArray, desc, like } from "drizzle-orm";
 import { CUSTOMER_VISIBLE_QUOTE_STATUSES } from "./quote.shared";
+import { dispatchNotification } from "./notification.service";
 export { computeQuoteTtc, type QuoteAmounts, CUSTOMER_VISIBLE_QUOTE_STATUSES, type CustomerVisibleQuoteStatus } from "./quote.shared";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -200,6 +201,11 @@ export async function transitionQuoteStatus(
     .set({ status: newStatus, updatedAt: new Date(), ...timestamps })
     .where(eq(quotes.id, id))
     .returning();
+
+  if (newStatus === "sent" && row) {
+    dispatchNotification("quote.sent", { clientId: row.clientId, entityId: row.id, tenantId: row.ownerId }).catch(() => {});
+  }
+
   return row ?? null;
 }
 
