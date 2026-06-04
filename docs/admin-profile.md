@@ -62,3 +62,21 @@ changeUserPassword(userId: string, oldPassword: string, newPassword: string): Pr
 - `apps/web/lib/schemas/__tests__/profile.schemas.test.ts` — 3 cas `changePasswordSchema`
 - `apps/web/app/actions/__tests__/profile.test.ts` — 3 cas `changeAdminPasswordAction`
 - `apps/web/components/profile/__tests__/ChangePasswordButton.test.tsx` — tests UI composant
+- `apps/web/tests/e2e/admin-profile-password.spec.ts` — 4 tests Playwright bout-en-bout (T1–T4)
+
+## Tests E2E Playwright
+
+Projet Playwright : `admin-portal` (storageState admin dans `tests/e2e/.auth/admin.json`).
+
+| Test | Scénario | Validation |
+|------|----------|-----------|
+| `T1_change_password_success_and_relogin` | Changement réussi + re-login avec nouveau mdp | Toast "Mot de passe modifié" + `waitForURL(/\/admin/)` après re-login |
+| `T2_wrong_old_password_shows_error` | Ancien mdp incorrect | Message inline "Mot de passe actuel incorrect" |
+| `T3_zod_validation_short_password` | Nouveau mdp < 8 chars | Message "Au moins 8 caractères" (validation Zod côté UI) |
+| `T4_session_valid_after_change_navigate_clients` | Navigation post-changement sans re-login | URL reste `/admin/clients`, pas de redirect vers `/login` |
+
+**Stratégie reset T1/T4** : bloc `try/finally` — le mot de passe admin est remis à `admin1234` via `resetPasswordViaDialog` même en cas d'échec intermédiaire, préservant les autres specs e2e qui utilisent `admin@saas.dev:admin1234`.
+
+```bash
+npx playwright test admin-profile-password --project=admin-portal
+```
