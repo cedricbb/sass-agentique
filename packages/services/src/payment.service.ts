@@ -3,6 +3,21 @@ import { eq, sql, asc, desc, ilike, and } from "drizzle-orm";
 import * as invoiceService from "./invoice.service";
 import { computeInvoiceTtc } from "./invoice.shared";
 
+export type PaymentWithInvoiceInfo = Payment & {
+  invoiceNumber: string;
+};
+
+export async function listPaymentsForCustomerPortal(
+  clientId: string,
+): Promise<PaymentWithInvoiceInfo[]> {
+  return db
+    .select({ ...payments, invoiceNumber: invoices.number })
+    .from(payments)
+    .innerJoin(invoices, eq(payments.invoiceId, invoices.id))
+    .where(eq(invoices.clientId, clientId))
+    .orderBy(desc(payments.paidAt)) as Promise<PaymentWithInvoiceInfo[]>;
+}
+
 export interface ListAllPaymentsParams {
   limit?: number;
   offset?: number;

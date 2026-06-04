@@ -22,7 +22,7 @@ let dbMock = makeDrizzleMock();
 vi.mock("@saas/db", () => ({
   get db() { return dbMock; },
   payments: { id: "id", invoiceId: "invoiceId", amountEurCents: "amountEurCents", paidAt: "paidAt", method: "method", externalRef: "externalRef" },
-  invoices: { id: "id", status: "status", totalEurCents: "totalEurCents", vatRateBps: "vatRateBps" },
+  invoices: { id: "id", status: "status", totalEurCents: "totalEurCents", vatRateBps: "vatRateBps", clientId: "clientId", number: "number" },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -55,6 +55,7 @@ import {
   computeInvoiceBalance,
   recomputePaidAtForInvoice,
   PaymentDeletionOnPaidInvoiceError,
+  listPaymentsForCustomerPortal,
 } from "../payment.service";
 import * as invoiceService from "../invoice.service";
 
@@ -314,6 +315,70 @@ describe("recomputePaidAtForInvoice", () => {
     const result2 = await recomputePaidAtForInvoice("inv-1");
     expect(result2).toEqual({ wasMarkedAsPaid: false });
     expect(invoiceService.transitionInvoiceStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe("listPaymentsForCustomerPortal", () => {
+  it("returns_only_payments_for_given_client_ordered_by_paid_at_desc", async () => {
+    const data = [
+      { id: "p2", invoiceId: "inv-1", amountEurCents: 2000, paidAt: new Date("2026-02-01"), invoiceNumber: "INV-002" },
+      { id: "p1", invoiceId: "inv-1", amountEurCents: 1000, paidAt: new Date("2026-01-01"), invoiceNumber: "INV-001" },
+    ];
+    dbMock.orderBy.mockResolvedValueOnce(data);
+
+    const result = await listPaymentsForCustomerPortal("client-A");
+    expect(result).toEqual(data);
+    expect(dbMock.orderBy).toHaveBeenCalled();
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+
+  it("returns_payment_fields_with_invoice_number", async () => {
+    const data = [
+      { id: "p1", invoiceId: "inv-1", amountEurCents: 5000, paidAt: new Date("2026-01-01"), method: "bank_transfer", externalRef: null, invoiceNumber: "INV-042" },
+    ];
+    dbMock.orderBy.mockResolvedValueOnce(data);
+
+    const result = await listPaymentsForCustomerPortal("client-A");
+    expect(result[0]).toHaveProperty("invoiceNumber", "INV-042");
+    expect(result[0]).toHaveProperty("id", "p1");
+    expect(result[0]).toHaveProperty("invoiceId", "inv-1");
+    expect(result[0]).toHaveProperty("amountEurCents", 5000);
+  });
+
+  it("returns_empty_array_when_no_payments_for_client", async () => {
+    dbMock.orderBy.mockResolvedValueOnce([]);
+
+    const result = await listPaymentsForCustomerPortal("client-empty");
+    expect(result).toEqual([]);
+  });
+
+  it("excludes_payments_from_other_clients_invoices", async () => {
+    const clientAData = [
+      { id: "p1", invoiceId: "inv-A", amountEurCents: 1000, invoiceNumber: "INV-A-001" },
+    ];
+    dbMock.orderBy.mockResolvedValueOnce(clientAData);
+
+    const result = await listPaymentsForCustomerPortal("client-A");
+    expect(result.every(p => p.invoiceId === "inv-A")).toBe(true);
+    expect(result.find(p => p.invoiceId === "inv-B")).toBeUndefined();
+  });
+
+  it("uses_inner_join_with_client_id_filter", async () => {
+    const { eq: eqMock, desc: descMock } = await import("drizzle-orm");
+    dbMock.orderBy.mockResolvedValueOnce([]);
+
+    await listPaymentsForCustomerPortal("client-X");
+
+    expect(dbMock.innerJoin).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ op: "eq" }),
+    );
+    expect(dbMock.where).toHaveBeenCalledWith(
+      expect.objectContaining({ op: "eq", args: expect.arrayContaining(["clientId", "client-X"]) }),
+    );
+    expect(dbMock.orderBy).toHaveBeenCalledWith(
+      expect.objectContaining({ op: "desc" }),
+    );
   });
 });
 
