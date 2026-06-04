@@ -13,9 +13,11 @@ import {
   Linkedin,
   Twitter,
   Instagram,
+  Lock,
 } from "lucide-react";
 import { ProfileEditButton } from "@/components/profile/ProfileEditButton";
 import { SocialLinksEditButton } from "@/components/profile/SocialLinksEditButton";
+import { ChangePasswordButton } from "@/components/profile/ChangePasswordButton";
 
 function getInitials(name: string | null, email: string): string {
   if (name) {
@@ -223,6 +225,26 @@ export default async function AdminProfilePage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* ── Sécurité ──────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl border bg-card p-5 lg:p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-foreground">Sécurité</h4>
+          <ChangePasswordButton />
+        </div>
+
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Lock size={16} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Mot de passe</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Modifier votre mot de passe administrateur.
+            </p>
+          </div>
         </div>
       </div>
 
