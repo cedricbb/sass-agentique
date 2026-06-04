@@ -395,6 +395,39 @@ export async function setInitialPassword(
   });
 }
 
+// ── Change password ───────────────────────────────────────────────────────────
+
+export async function changeUserPassword(
+  userId: string,
+  oldPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const [user] = await db
+    .select({ id: users.id, hashedPassword: users.hashedPassword })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  if (!user.hashedPassword) {
+    throw new Error("INVALID_PASSWORD");
+  }
+
+  const valid = await bcrypt.compare(oldPassword, user.hashedPassword);
+  if (!valid) {
+    throw new Error("INVALID_PASSWORD");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+  await db
+    .update(users)
+    .set({ hashedPassword, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
 // ── Link existing account (invitation flow) ───────────────────────────────────
 
 export type LinkExistingAccountInput = {

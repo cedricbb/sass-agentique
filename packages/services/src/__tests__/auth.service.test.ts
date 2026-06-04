@@ -87,6 +87,7 @@ import {
   resendVerificationEmail,
   setInitialPassword,
   linkExistingAccount,
+  changeUserPassword,
 } from "../auth.service";
 import { createTotpChallenge } from "../totp.service";
 import { consumeInvitation } from "../invitation.service";
@@ -427,6 +428,48 @@ describe("auth.service", () => {
       await setInitialPassword({ token: "valid-token", password: "pass123456" });
 
       expect(dbMock.transaction).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ── changeUserPassword ────────────────────────────────────────────────────────
+
+  describe("changeUserPassword", () => {
+    it("throws USER_NOT_FOUND when user does not exist", async () => {
+      dbMock.where.mockResolvedValueOnce([]);
+
+      await expect(
+        changeUserPassword("user-1", "oldpass", "newpass12"),
+      ).rejects.toThrow("USER_NOT_FOUND");
+    });
+
+    it("throws INVALID_PASSWORD when user has no hashed password", async () => {
+      dbMock.where.mockResolvedValueOnce([{ id: "user-1", hashedPassword: null }]);
+
+      await expect(
+        changeUserPassword("user-1", "oldpass", "newpass12"),
+      ).rejects.toThrow("INVALID_PASSWORD");
+    });
+
+    it("throws INVALID_PASSWORD when old password is wrong", async () => {
+      dbMock.where.mockResolvedValueOnce([{ id: "user-1", hashedPassword: "stored-hash" }]);
+      vi.mocked(bcrypt.compare).mockResolvedValueOnce(false as never);
+
+      await expect(
+        changeUserPassword("user-1", "wrong", "newpass12"),
+      ).rejects.toThrow("INVALID_PASSWORD");
+    });
+
+    it("hashes new password and updates user", async () => {
+      dbMock.where.mockResolvedValueOnce([{ id: "user-1", hashedPassword: "stored-hash" }]);
+      vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as never);
+      vi.mocked(bcrypt.hash).mockResolvedValueOnce("new-hashed" as never);
+
+      await changeUserPassword("user-1", "oldpass", "newpass12");
+
+      expect(bcrypt.hash).toHaveBeenCalledWith("newpass12", 12);
+      expect(dbMock.set).toHaveBeenCalledWith(
+        expect.objectContaining({ hashedPassword: "new-hashed" }),
+      );
     });
   });
 
