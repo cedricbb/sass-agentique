@@ -32,6 +32,7 @@ vi.mock("drizzle-orm", () => ({
   desc: vi.fn((...args: unknown[]) => ({ op: "desc", args })),
   ilike: vi.fn((...args: unknown[]) => ({ op: "ilike", args })),
   and: vi.fn((...args: unknown[]) => ({ op: "and", args })),
+  getTableColumns: vi.fn((table: Record<string, unknown>) => table),
 }));
 
 vi.mock("../invoice.service", () => ({
