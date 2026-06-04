@@ -320,7 +320,7 @@ Le projet pivote vers un modèle solo-admin sans multi-tenant. Voir `docs/pivot-
 - **Rapports** : pages liste et génération (`/admin/reports`), stockage des fichiers sur Cloudflare R2, Server Actions (`actions/reports.ts`).
 - **Tâches agents IA** : monitoring en temps réel des tâches (`/admin/agent-tasks`), API Route dédiée (`api/admin/agent-tasks/`), vue des logs et statuts.
 - **Utilisateurs** : gestion des comptes admin et client (`/admin/users`), opérations ban/unban.
-- **Profil admin** : édition du profil utilisateur (`/admin/profile`), mise à jour des informations personnelles.
+- **Profil admin** : édition du profil utilisateur (`/admin/profile`), mise à jour des informations personnelles et changement de mot de passe (vérification ancien mdp requis). Voir `docs/admin-profile.md`.
 - **Dashboard** : tableau de bord principal (`/admin`) avec graphiques analytiques — `MonthlyRevenueChart` (revenus mensuels) et `InvoiceStatusBreakdownChart` (ventilation des statuts de facturation). Données agrégées via `lib/dashboard/`.
 
 - **Header admin — UserMenuDropdown** : avatar avec initiales (name ou email fallback) + email visible + item "Déconnexion". Composant `AdminUserMenuDropdown` (`components/admin/`), `LogoutButton` partagé dans `components/auth/`, `logoutAction` dans `actions/auth.ts`. Redirect vers `/login` après logout. Voir `docs/admin-user-menu.md`.
@@ -352,7 +352,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 
 | Service | Responsabilité |
 |---------|----------------|
-| `auth.service` | Register, login, logout, vérification email, reset password |
+| `auth.service` | Register, login, logout, vérification email, reset password, changement de mot de passe |
 | `email.service` | Envoi d'emails via Nodemailer (dev) ou Resend (prod) |
 | `totp.service` | Génération et validation TOTP, codes de secours |
 | `stripe.service` | Customer, checkout, portail, abonnements |
