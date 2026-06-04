@@ -23,6 +23,12 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/,
     },
     {
+      name: "admin-portal",
+      use: { ...devices["Desktop Chrome"], storageState: "tests/e2e/.auth/admin.json" },
+      testMatch: /admin-.*\.spec\.ts/,
+      dependencies: ["setup"],
+    },
+    {
       name: "customer-portal",
       use: { ...devices["Desktop Chrome"] },
       testIgnore: /auth\.setup\.ts/,
