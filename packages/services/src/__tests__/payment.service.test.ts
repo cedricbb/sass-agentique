@@ -364,7 +364,7 @@ describe("listPaymentsForCustomerPortal", () => {
   });
 
   it("uses_inner_join_with_client_id_filter", async () => {
-    const { eq: eqMock, desc: descMock } = await import("drizzle-orm");
+    await import("drizzle-orm");
     dbMock.orderBy.mockResolvedValueOnce([]);
 
     await listPaymentsForCustomerPortal("client-X");

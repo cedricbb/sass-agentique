@@ -1,5 +1,5 @@
 import { db, type Payment, type NewPayment, payments, invoices } from "@saas/db";
-import { eq, sql, asc, desc, ilike, and } from "drizzle-orm";
+import { eq, sql, asc, desc, ilike, and, getTableColumns } from "drizzle-orm";
 import * as invoiceService from "./invoice.service";
 import { computeInvoiceTtc } from "./invoice.shared";
 
@@ -11,7 +11,7 @@ export async function listPaymentsForCustomerPortal(
   clientId: string,
 ): Promise<PaymentWithInvoiceInfo[]> {
   return db
-    .select({ ...payments, invoiceNumber: invoices.number })
+    .select({ ...getTableColumns(payments), invoiceNumber: invoices.number })
     .from(payments)
     .innerJoin(invoices, eq(payments.invoiceId, invoices.id))
     .where(eq(invoices.clientId, clientId))
