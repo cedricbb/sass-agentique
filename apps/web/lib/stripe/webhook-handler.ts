@@ -31,6 +31,14 @@ export async function handleStripeWebhook(
     return NextResponse.json({ error: "service unavailable" }, { status: 503 });
   }
 
+  const contentLengthHeader = request.headers.get("content-length");
+  if (contentLengthHeader) {
+    const declaredBytes = Number.parseInt(contentLengthHeader, 10);
+    if (Number.isFinite(declaredBytes) && declaredBytes > MAX_WEBHOOK_PAYLOAD_BYTES) {
+      return NextResponse.json({ error: "payload too large" }, { status: 413 });
+    }
+  }
+
   const rawBody = await request.text();
   const signature = request.headers.get("stripe-signature");
 
@@ -42,7 +50,7 @@ export async function handleStripeWebhook(
     return NextResponse.json({ error: "empty body" }, { status: 400 });
   }
 
-  if (rawBody.length > MAX_WEBHOOK_PAYLOAD_BYTES) {
+  if (Buffer.byteLength(rawBody, "utf8") > MAX_WEBHOOK_PAYLOAD_BYTES) {
     return NextResponse.json({ error: "payload too large" }, { status: 413 });
   }
 
