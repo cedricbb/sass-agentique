@@ -11,3 +11,7 @@ export const SEED_REPORT_KIND_LABELS: Record<string, string> = {
   audit: "Audit",
   other: "Autre",
 };
+
+export const SEED_PAYMENT_INVOICE_NUMBER_ACME = "INV-2026-004";
+export const SEED_PAYMENT_AMOUNT_TTC_ACME = /200,00.*TTC/;
+export const SEED_PAYMENT_METHOD_LABEL_ACME = "Virement bancaire";
