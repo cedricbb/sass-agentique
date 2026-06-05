@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { NextRequest } from "next/server";
 
 vi.mock("inngest/next", () => ({
   serve: vi.fn(() => ({
@@ -20,7 +21,7 @@ vi.mock("@saas/workflows", () => ({
 describe("Inngest runtime wiring", () => {
   it("inngest_serve_handler_returns_manifest_on_get", async () => {
     const { GET } = await import("@/app/api/inngest/route");
-    const response = await GET(new Request("http://localhost/api/inngest"), { params: Promise.resolve({}) });
+    const response = await GET(new NextRequest("http://localhost/api/inngest"), { params: Promise.resolve({}) });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toHaveProperty("functions");
