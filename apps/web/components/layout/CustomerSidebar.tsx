@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Receipt, FileBarChart, FileSignature, User } from "lucide-react";
+import { Home, FileText, Receipt, FileBarChart, FileSignature, User, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/account", label: "Accueil", icon: Home },
   { href: "/account/quotes", label: "Mes devis", icon: FileText },
   { href: "/account/invoices", label: "Mes factures", icon: Receipt },
+  { href: "/account/payments", label: "Mes paiements", icon: CreditCard },
   { href: "/account/reports", label: "Mes rapports", icon: FileBarChart },
   { href: "/account/contracts", label: "Mes contrats", icon: FileSignature },
   { href: "/account/profile", label: "Mon profil", icon: User },

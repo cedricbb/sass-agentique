@@ -101,6 +101,7 @@ vi.mock("lucide-react", () => ({
   FileBarChart: () => null,
   FileSignature: () => null,
   User: () => null,
+  CreditCard: () => null,
   Menu: () => null,
   PanelLeftClose: () => null,
   PanelLeftOpen: () => null,
@@ -218,7 +219,7 @@ describe("CustomerSidebar", () => {
 
     expect(contractsItem).toBeDefined()
     expect(contractsItem?.label).toBe("Mes contrats")
-    expect(NAV_ITEMS.indexOf(contractsItem!)).toBe(4)
+    expect(NAV_ITEMS.indexOf(contractsItem!)).toBe(5)
   })
 })
 

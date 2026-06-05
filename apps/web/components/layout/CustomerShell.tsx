@@ -35,6 +35,7 @@ export const PAGE_TITLES: Record<string, string> = {
   account: "Accueil",
   quotes: "Mes devis",
   invoices: "Mes factures",
+  payments: "Mes paiements",
   reports: "Mes rapports",
   contracts: "Mes contrats",
   profile: "Mon profil",
