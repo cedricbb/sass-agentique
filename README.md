@@ -433,6 +433,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `apps/web/lib/__tests__/use-data-table-state.test.tsx` | Hook état data-table (pagination, tri, filtres) |
 | `apps/web/lib/schemas/__tests__/client.schemas.test.ts` | Validation schémas Zod client |
 | `apps/web/lib/storage/__tests__/r2.test.ts` | Client R2 — upload, delete, stream PDF |
+| `apps/web/lib/stripe/__tests__/webhook-handler.test.ts` | Webhook handler Stripe — toggle, signature, idempotence, dispatch Inngest. Voir `docs/stripe-webhook-handler.md`. |
 | `apps/web/components/billing/__tests__/billing-utils.test.ts` | Utilitaires billing |
 | `apps/web/components/ui/__tests__/badge.test.tsx` | Composant Badge (variantes, rendu) |
 | `apps/web/components/ui/data-table/__tests__/data-table.test.tsx` | Composant DataTable |
