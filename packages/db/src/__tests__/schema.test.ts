@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getTableName } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import {
   users,
   sessions,
@@ -396,6 +397,33 @@ describe("schema — table customer_invitations", () => {
     ]) {
       expect(cols).toContain(col);
     }
+  });
+});
+
+describe("schema — maintenance_contracts index partial", () => {
+  it("index_partial_owner_client_active_existe_avec_where", () => {
+    const config = getTableConfig(maintenanceContracts);
+    const idx = config.indexes.find(
+      (i) => i.config.name === "maintenance_contracts_owner_client_active_unique"
+    );
+    expect(idx).toBeDefined();
+    expect(idx!.config.where).toBeDefined();
+  });
+
+  it("ancien_index_owner_client_unique_supprime", () => {
+    const config = getTableConfig(maintenanceContracts);
+    const idx = config.indexes.find(
+      (i) => i.config.name === "maintenance_contracts_owner_client_unique"
+    );
+    expect(idx).toBeUndefined();
+  });
+
+  it("stripe_sub_unique_inchange", () => {
+    const config = getTableConfig(maintenanceContracts);
+    const idx = config.indexes.find(
+      (i) => i.config.name === "maintenance_contracts_stripe_sub_unique"
+    );
+    expect(idx).toBeDefined();
   });
 });
 

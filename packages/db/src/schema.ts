@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -353,7 +354,9 @@ export const maintenanceContracts = pgTable("maintenance_contracts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("maintenance_contracts_owner_client_unique").on(table.ownerId, table.clientId),
+  uniqueIndex("maintenance_contracts_owner_client_active_unique")
+    .on(table.ownerId, table.clientId)
+    .where(sql`status <> 'canceled'`),
   uniqueIndex("maintenance_contracts_stripe_sub_unique")
     .on(table.stripeSubscriptionId),
   index("maintenance_contracts_owner_id_idx").on(table.ownerId),
