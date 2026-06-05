@@ -6,6 +6,7 @@ const {
   mockCheckoutSessionsCreate,
   mockPortalSessionsCreate,
   mockSubscriptionsUpdate,
+  mockWebhooksConstructEvent,
   StripeError,
 } = vi.hoisted(() => {
   process.env.STRIPE_SECRET_KEY = "sk_test_mock";
@@ -24,6 +25,7 @@ const {
     mockCheckoutSessionsCreate: vi.fn(),
     mockPortalSessionsCreate: vi.fn(),
     mockSubscriptionsUpdate: vi.fn(),
+    mockWebhooksConstructEvent: vi.fn(),
     StripeError,
   };
 });
@@ -34,6 +36,7 @@ vi.mock("stripe", () => {
     checkout: { sessions: { create: mockCheckoutSessionsCreate } },
     billingPortal: { sessions: { create: mockPortalSessionsCreate } },
     subscriptions: { update: mockSubscriptionsUpdate },
+    webhooks: { constructEvent: mockWebhooksConstructEvent },
   }));
   (StripeMock as any).errors = { StripeError };
   return { default: StripeMock };
@@ -44,6 +47,9 @@ import {
   StripeServiceError,
   getStripeService,
   __resetStripeServiceForTests,
+  getStripeClient,
+  __resetStripeClientForTests,
+  verifyWebhookSignature,
 } from "../stripe.service";
 import type { CreateCheckoutSessionParams } from "../stripe.service";
 
@@ -52,27 +58,25 @@ describe("StripeService", () => {
 
   beforeEach(() => {
     __resetStripeServiceForTests();
+    __resetStripeClientForTests();
     process.env.STRIPE_SECRET_KEY = "sk_test_mock";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_mock";
     service = new StripeService();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    delete process.env.STRIPE_WEBHOOK_SECRET;
   });
 
   describe("constructor", () => {
-    it("throws StripeServiceError when STRIPE_SECRET_KEY is missing", () => {
+    it("does not throw when STRIPE_SECRET_KEY is missing (lazy init)", () => {
       delete process.env.STRIPE_SECRET_KEY;
-      expect(() => new StripeService()).toThrow(StripeServiceError);
-      try {
-        new StripeService();
-      } catch (e: any) {
-        expect(e.code).toBe("stripe/config_error");
-      }
+      expect(() => new StripeService()).not.toThrow();
     });
   });
 
-  describe("lazy singleton", () => {
+  describe("lazy singleton (getStripeService)", () => {
     it("getStripeService() returns a StripeService instance", () => {
       expect(getStripeService()).toBeInstanceOf(StripeService);
     });
@@ -90,10 +94,82 @@ describe("StripeService", () => {
       expect(a).not.toBe(b);
     });
 
-    it("getStripeService() throws when STRIPE_SECRET_KEY is missing", () => {
+    it("getStripeService() does not throw when STRIPE_SECRET_KEY is missing (lazy — throws on method call)", () => {
       delete process.env.STRIPE_SECRET_KEY;
       __resetStripeServiceForTests();
-      expect(() => getStripeService()).toThrow(StripeServiceError);
+      expect(() => getStripeService()).not.toThrow();
+    });
+  });
+
+  describe("getStripeClient", () => {
+    beforeEach(() => {
+      __resetStripeClientForTests();
+    });
+
+    it("get_stripe_client_returns_stripe_instance", () => {
+      process.env.STRIPE_SECRET_KEY = "sk_test_x";
+      const client = getStripeClient();
+      expect(client).toBeDefined();
+    });
+
+    it("get_stripe_client_throws_config_error_when_key_missing", () => {
+      delete process.env.STRIPE_SECRET_KEY;
+      expect(() => getStripeClient()).toThrow(StripeServiceError);
+      try {
+        getStripeClient();
+      } catch (e: any) {
+        expect(e.code).toBe("stripe/config_error");
+      }
+    });
+
+    it("get_stripe_client_reinstantiates_on_key_change", () => {
+      process.env.STRIPE_SECRET_KEY = "sk_test_a";
+      const a = getStripeClient();
+      process.env.STRIPE_SECRET_KEY = "sk_test_b";
+      const b = getStripeClient();
+      expect(a).not.toBe(b);
+    });
+
+    it("reset_stripe_client_for_tests_clears_singleton", () => {
+      process.env.STRIPE_SECRET_KEY = "sk_test_x";
+      const a = getStripeClient();
+      __resetStripeClientForTests();
+      const b = getStripeClient();
+      expect(a).not.toBe(b);
+    });
+  });
+
+  describe("verifyWebhookSignature", () => {
+    it("verify_webhook_signature_returns_event_on_valid_sig", () => {
+      const mockEvent = { id: "evt_1", type: "customer.created", object: "event" };
+      mockWebhooksConstructEvent.mockReturnValueOnce(mockEvent);
+      const result = verifyWebhookSignature("body", "t=1,v1=abc");
+      expect(result).toEqual(mockEvent);
+    });
+
+    it("verify_webhook_signature_throws_invalid_signature", () => {
+      mockWebhooksConstructEvent.mockImplementationOnce(() => {
+        throw new Error("No signatures found matching the expected signature");
+      });
+      expect(() => verifyWebhookSignature("body", "bad_sig")).toThrow(StripeServiceError);
+      mockWebhooksConstructEvent.mockImplementationOnce(() => {
+        throw new Error("No signatures found matching the expected signature");
+      });
+      try {
+        verifyWebhookSignature("body", "bad_sig");
+      } catch (e: any) {
+        expect(e.code).toBe("stripe/invalid_signature");
+      }
+    });
+
+    it("verify_webhook_signature_throws_config_error_when_secret_missing", () => {
+      delete process.env.STRIPE_WEBHOOK_SECRET;
+      expect(() => verifyWebhookSignature("body", "sig")).toThrow(StripeServiceError);
+      try {
+        verifyWebhookSignature("body", "sig");
+      } catch (e: any) {
+        expect(e.code).toBe("stripe/config_error");
+      }
     });
   });
 

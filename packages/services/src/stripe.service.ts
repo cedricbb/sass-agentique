@@ -31,7 +31,10 @@ export type CreateCheckoutSessionParams =
       cancelUrl: string;
     };
 
-function buildStripeClient(): Stripe {
+let _stripeClient: Stripe | null = null;
+let _stripeClientKey: string | null = null;
+
+export function getStripeClient(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new StripeServiceError(
@@ -39,7 +42,36 @@ function buildStripeClient(): Stripe {
       "stripe/config_error"
     );
   }
-  return new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
+  if (!_stripeClient || _stripeClientKey !== secretKey) {
+    _stripeClient = new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
+    _stripeClientKey = secretKey;
+  }
+  return _stripeClient;
+}
+
+export function __resetStripeClientForTests(): void {
+  _stripeClient = null;
+  _stripeClientKey = null;
+}
+
+export function verifyWebhookSignature(
+  rawBody: string | Buffer,
+  signature: string,
+): Stripe.Event {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new StripeServiceError(
+      "STRIPE_WEBHOOK_SECRET is not defined",
+      "stripe/config_error"
+    );
+  }
+  try {
+    return getStripeClient().webhooks.constructEvent(rawBody, signature, webhookSecret);
+  } catch (err) {
+    if (err instanceof StripeServiceError) throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new StripeServiceError(message, "stripe/invalid_signature", err);
+  }
 }
 
 function wrapStripeError(err: unknown): StripeServiceError {
@@ -55,10 +87,8 @@ function wrapStripeError(err: unknown): StripeServiceError {
 }
 
 export class StripeService {
-  private stripe: Stripe;
-
-  constructor() {
-    this.stripe = buildStripeClient();
+  private get stripe(): Stripe {
+    return getStripeClient();
   }
 
   async createCustomer(input: {
