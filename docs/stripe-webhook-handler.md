@@ -34,10 +34,12 @@ Tous les autres types sont reçus, enregistrés en DB via idempotence, puis reto
 ```
 POST /api/stripe/webhooks
   1. STRIPE_WEBHOOKS_ENABLED !== "true"         → 503 service unavailable
-  2. await request.text()  (raw string, HMAC)
+  2a. content-length header présent
+        ET declaredBytes > 512 KB               → 413 payload too large  (sans buffering)
+  2b. await request.text()  (raw string, HMAC)
   3. stripe-signature header absent              → 400 missing signature
   4. body vide                                   → 400 empty body
-  5. body > 512 KB                               → 413 payload too large
+  5. Buffer.byteLength(rawBody, "utf8") > 512 KB → 413 payload too large
   6. verifyWebhookSignature(rawBody, signature)
        stripe/config_error                       → 503 service unavailable
        stripe/invalid_signature                  → 400 invalid request (message générique)
@@ -53,13 +55,18 @@ POST /api/stripe/webhooks
 
 **Séparation route / handler** : `route.ts` délègue immédiatement à `handleStripeWebhook(request)`. La logique dans `webhook-handler.ts` est une fonction pure importable en test sans monter un serveur Next.js.
 
-**Contrainte raw body** : `await request.text()` est requis avant toute validation. `req.json()` invaliderait la vérification HMAC car Stripe signe le payload brut.
+**Contrainte raw body** : `await request.text()` est requis avant la vérification HMAC. `req.json()` invaliderait la signature car Stripe signe le payload brut. Le prefilter Content-Length court-circuite ce buffering uniquement quand le header révèle un dépassement sans ambiguïté.
 
 **Toggle par appel** : `process.env.STRIPE_WEBHOOKS_ENABLED` est relu à chaque requête (pas en singleton), ce qui permet d'activer/désactiver sans redémarrage.
 
 **Exclusion middleware auth** : la route est exclue du middleware d'authentification (même pattern que `/api/inngest`). Stripe n'envoie pas de session utilisateur — un blocage du middleware provoquerait des retries inutiles puis un abandon définitif de l'event.
 
-**Payload size limit** : 512 KB (`MAX_WEBHOOK_PAYLOAD_BYTES`). Défense contre les attaques DoS via payloads surdimensionnés, évaluée avant la vérification HMAC.
+**Payload size limit — double garde** : 512 KB (`MAX_WEBHOOK_PAYLOAD_BYTES`), deux contrôles complémentaires :
+
+- **Prefilter Content-Length** (étape 2a) : si le header `content-length` est présent et dépasse 512 KB, retourne immédiatement 413 *sans* bufferiser le body. Neutralise les attaques DoS où un attaquant envoie plusieurs MB — Next.js Route Handler accepte jusqu'à 12 MB par défaut, suffisant pour épuiser la mémoire process.
+- **Guard post-buffering** (étape 5) : `Buffer.byteLength(rawBody, "utf8")` sur le body déjà lu. Couverture des requêtes qui mentent sur `Content-Length` (déclarent 100 octets, envoient 10 MB). Stripe envoie toujours un `Content-Length` correct ; cette garde est une défense de fond générique.
+
+Les deux gardes retournent le même status 413 et le même body `{ error: "payload too large" }`.
 
 **Error message safety** : les erreurs de signature retournent `{ error: "invalid request" }` sans jamais exposer le message du SDK Stripe — prévention de fuite d'information vers un attaquant qui sonde le endpoint.
 
