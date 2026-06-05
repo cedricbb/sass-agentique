@@ -356,7 +356,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `auth.service` | Register, login, logout, vérification email, reset password, changement de mot de passe |
 | `email.service` | Envoi d'emails via Nodemailer (dev) ou Resend (prod) |
 | `totp.service` | Génération et validation TOTP, codes de secours |
-| `stripe.service` | Customer, checkout, portail, abonnements |
+| `stripe.service` | Lazy singleton `getStripeClient()`, `verifyWebhookSignature()`, customer, checkout, portail, abonnements |
 | `stripe-event.service` | Idempotence webhooks Stripe : `recordStripeEvent`, `markStripeEventProcessed`, `getStripeEvent`. Voir `docs/stripe-webhook-idempotence.md`. |
 | `admin.service` | Opérations admin : liste utilisateurs, ban, gestion clients |
 | `profile.service` | CRUD profil utilisateur |
@@ -564,6 +564,8 @@ RESEND_API_KEY="<clé-resend-pour-prod>"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_PUBLISHABLE_KEY="pk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
+# Activer le webhook endpoint Stripe (requis pour STRIPE_SECRET_KEY et STRIPE_WEBHOOK_SECRET)
+STRIPE_WEBHOOKS_ENABLED="false"
 
 # 2FA
 TOTP_ISSUER="SaaS Agentique"
