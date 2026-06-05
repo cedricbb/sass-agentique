@@ -28,8 +28,11 @@ import {
   billingModeEnum,
   maintenanceStatusEnum,
   customerInvitations,
+  stripeEvents,
   type CustomerInvitation,
   type NewCustomerInvitation,
+  type StripeEvent,
+  type NewStripeEvent,
 } from "../schema";
 
 describe("schema — exports", () => {
@@ -432,6 +435,47 @@ describe("schema — exports", () => {
     expect(customerInvitations).toBeDefined();
     const _row = {} as CustomerInvitation;
     const _insert = {} as NewCustomerInvitation;
+    expect(_row).toBeDefined();
+    expect(_insert).toBeDefined();
+  });
+});
+
+describe("schema — table stripe_events", () => {
+  it("schema_stripe_events_table_name", () => {
+    expect(getTableName(stripeEvents)).toBe("stripe_events");
+  });
+
+  it("schema_stripe_events_columns", () => {
+    const cols = Object.keys(stripeEvents);
+    for (const col of ["id", "eventId", "type", "payloadJson", "receivedAt", "processedAt", "createdAt"]) {
+      expect(cols).toContain(col);
+    }
+  });
+
+  it("schema_stripe_events_event_id_unique_index", () => {
+    const config = getTableConfig(stripeEvents);
+    const idx = config.indexes.find(
+      (i) => i.config.name === "stripe_events_event_id_unique"
+    );
+    expect(idx).toBeDefined();
+    expect(idx!.config.unique).toBe(true);
+  });
+
+  it("schema_stripe_events_type_and_processed_at_indexes", () => {
+    const config = getTableConfig(stripeEvents);
+    const typeIdx = config.indexes.find(
+      (i) => i.config.name === "stripe_events_type_idx"
+    );
+    const processedAtIdx = config.indexes.find(
+      (i) => i.config.name === "stripe_events_processed_at_idx"
+    );
+    expect(typeIdx).toBeDefined();
+    expect(processedAtIdx).toBeDefined();
+  });
+
+  it("schema_stripe_events_types_exported", () => {
+    const _row = {} as StripeEvent;
+    const _insert = {} as NewStripeEvent;
     expect(_row).toBeDefined();
     expect(_insert).toBeDefined();
   });

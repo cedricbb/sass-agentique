@@ -392,3 +392,21 @@ export const customerInvitations = pgTable("customer_invitations", {
 
 export type CustomerInvitation = typeof customerInvitations.$inferSelect;
 export type NewCustomerInvitation = typeof customerInvitations.$inferInsert;
+
+// ── Stripe Events ─────────────────────────────────────────────────────────────
+export const stripeEvents = pgTable("stripe_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: text("event_id").notNull(),
+  type: text("type").notNull(),
+  payloadJson: jsonb("payload_json").notNull(),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("stripe_events_event_id_unique").on(table.eventId),
+  index("stripe_events_type_idx").on(table.type),
+  index("stripe_events_processed_at_idx").on(table.processedAt),
+]);
+
+export type StripeEvent = typeof stripeEvents.$inferSelect;
+export type NewStripeEvent = typeof stripeEvents.$inferInsert;
