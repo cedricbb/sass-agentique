@@ -357,6 +357,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `email.service` | Envoi d'emails via Nodemailer (dev) ou Resend (prod) |
 | `totp.service` | Génération et validation TOTP, codes de secours |
 | `stripe.service` | Customer, checkout, portail, abonnements |
+| `stripe-event.service` | Idempotence webhooks Stripe : `recordStripeEvent`, `markStripeEventProcessed`, `getStripeEvent`. Voir `docs/stripe-webhook-idempotence.md`. |
 | `admin.service` | Opérations admin : liste utilisateurs, ban, gestion clients |
 | `profile.service` | CRUD profil utilisateur |
 | `client.service` | CRUD entités clients (company / individual), contacts |
@@ -407,6 +408,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/auth.service.test.ts` | Authentification |
 | `packages/services/src/__tests__/totp.service.test.ts` | 2FA / TOTP |
 | `packages/services/src/__tests__/stripe.service.test.ts` | Stripe billing |
+| `packages/services/src/__tests__/stripe-event.service.test.ts` | Idempotence webhooks Stripe |
 | `packages/services/src/__tests__/admin.service.test.ts` | Opérations admin |
 | `packages/services/src/__tests__/client.service.test.ts` | CRUD clients |
 | `packages/services/src/__tests__/project.service.test.ts` | CRUD projets |
