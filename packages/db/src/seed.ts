@@ -455,14 +455,6 @@ async function main() {
     },
     {
       ownerId: seedAdminId,
-      invoiceId: inv3.id,
-      amountEurCents: 6000,
-      method: "bank_transfer",
-      externalRef: "vir_seed_003",
-      paidAt: new Date("2026-02-20T00:00:00Z"),
-    },
-    {
-      ownerId: seedAdminId,
       invoiceId: inv1.id,
       amountEurCents: 8000,
       method: "other",
@@ -478,7 +470,7 @@ async function main() {
     },
   ]);
 
-  console.log("✅ 5 paiements créés (3 méthodes, multi-invoices)");
+  console.log("✅ 4 paiements créés (3 méthodes, multi-invoices)");
 
   // ── Reports ─────────────────────────────────────────────────────────────────
   await db.delete(schema.reports).where(
