@@ -61,3 +61,4 @@ Pas de page détail paiement (décision produit) — pas de route `getPaymentByI
 
 - `packages/services/src/__tests__/payment.service.test.ts` — 5 tests service (isolation cross-client, tri, champ invoiceNumber)
 - `apps/web/app/(customer)/account/payments/__tests__/page.test.tsx` — 7 tests UI (tableau, empty state, badges méthode, lien facture, suffixe TTC, sidebar nav, shell title)
+- `apps/web/tests/e2e/customer-payments.spec.ts` — 4 tests e2e Playwright (liste nominal Acme, empty state Globex, sidebar 7 items, isolation cross-client)
