@@ -20,7 +20,7 @@ vi.mock("@saas/workflows", () => ({
 describe("Inngest runtime wiring", () => {
   it("inngest_serve_handler_returns_manifest_on_get", async () => {
     const { GET } = await import("@/app/api/inngest/route");
-    const response = await GET(new Request("http://localhost/api/inngest"));
+    const response = await GET(new Request("http://localhost/api/inngest"), { params: Promise.resolve({}) });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toHaveProperty("functions");
