@@ -90,6 +90,18 @@ describe("schéma Zod env", () => {
   });
 });
 
+const stripeEnvSchema = z.object({
+  STRIPE_WEBHOOKS_ENABLED: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+}).refine(
+  (data) => data.STRIPE_WEBHOOKS_ENABLED !== "true" || (!!data.STRIPE_SECRET_KEY && data.STRIPE_SECRET_KEY.length > 0),
+  { message: "STRIPE_SECRET_KEY is required when STRIPE_WEBHOOKS_ENABLED=true" },
+).refine(
+  (data) => data.STRIPE_WEBHOOKS_ENABLED !== "true" || (!!data.STRIPE_WEBHOOK_SECRET && data.STRIPE_WEBHOOK_SECRET.length > 0),
+  { message: "STRIPE_WEBHOOK_SECRET is required when STRIPE_WEBHOOKS_ENABLED=true" },
+);
+
 describe("RESEND_API_KEY conditional validation", () => {
   it("rejects_missing_resend_key_when_notifications_enabled", () => {
     const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true" });
@@ -108,6 +120,36 @@ describe("RESEND_API_KEY conditional validation", () => {
 
   it("rejects_empty_resend_key_when_notifications_enabled", () => {
     const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true", RESEND_API_KEY: "" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("STRIPE_SECRET_KEY conditional validation", () => {
+  it("rejects_missing_stripe_keys_when_webhooks_enabled", () => {
+    const result = stripeEnvSchema.safeParse({ STRIPE_WEBHOOKS_ENABLED: "true" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts_missing_stripe_keys_when_webhooks_disabled", () => {
+    const result = stripeEnvSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts_valid_stripe_keys_when_webhooks_enabled", () => {
+    const result = stripeEnvSchema.safeParse({
+      STRIPE_WEBHOOKS_ENABLED: "true",
+      STRIPE_SECRET_KEY: "sk_test_xxx",
+      STRIPE_WEBHOOK_SECRET: "whsec_xxx",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects_empty_stripe_secret_key_when_webhooks_enabled", () => {
+    const result = stripeEnvSchema.safeParse({
+      STRIPE_WEBHOOKS_ENABLED: "true",
+      STRIPE_SECRET_KEY: "",
+      STRIPE_WEBHOOK_SECRET: "whsec_xxx",
+    });
     expect(result.success).toBe(false);
   });
 });
