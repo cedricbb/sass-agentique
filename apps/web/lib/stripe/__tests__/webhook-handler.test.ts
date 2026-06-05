@@ -35,11 +35,13 @@ function makeRequest(options: {
   body?: string;
   signature?: string | null;
   enabled?: string;
+  contentLength?: string | null;
 }): NextRequest {
   const {
     body = '{"id":"evt_1","type":"payment_intent.succeeded","object":"event"}',
     signature = "t=12345,v1=abc",
     enabled = "true",
+    contentLength = undefined,
   } = options;
 
   vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", enabled);
@@ -50,6 +52,9 @@ function makeRequest(options: {
   };
   if (signature !== null) {
     headers["stripe-signature"] = signature;
+  }
+  if (contentLength !== undefined && contentLength !== null) {
+    headers["content-length"] = contentLength;
   }
 
   return new NextRequest(url, {
@@ -226,6 +231,51 @@ describe("handleStripeWebhook", () => {
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toBe("internal error");
+  });
+
+  it("webhook_returns_413_prefilter_content_length", async () => {
+    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
+    const req = makeRequest({ contentLength: "600000" });
+    const textSpy = vi.spyOn(req, "text");
+    const res = await handleStripeWebhook(req);
+    expect(res.status).toBe(413);
+    const body = await res.json();
+    expect(body.error).toBe("payload too large");
+    expect(textSpy).not.toHaveBeenCalled();
+  });
+
+  it("webhook_returns_413_oversized_body_without_content_length", async () => {
+    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
+    const oversizedBody = "x".repeat(512 * 1024 + 1);
+    const req = makeRequest({ body: oversizedBody });
+    const res = await handleStripeWebhook(req);
+    expect(res.status).toBe(413);
+    const body = await res.json();
+    expect(body.error).toBe("payload too large");
+  });
+
+  it("webhook_passes_prefilter_with_small_content_length", async () => {
+    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
+    mockVerify.mockImplementation(() => {
+      throw new StripeServiceError("bad sig", "stripe/invalid_signature");
+    });
+    const req = makeRequest({ contentLength: "100" });
+    const res = await handleStripeWebhook(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid request");
+  });
+
+  it("webhook_skips_prefilter_on_non_numeric_content_length", async () => {
+    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
+    mockVerify.mockImplementation(() => {
+      throw new StripeServiceError("bad sig", "stripe/invalid_signature");
+    });
+    const req = makeRequest({ contentLength: "abc" });
+    const res = await handleStripeWebhook(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid request");
   });
 
   it("middleware_excludes_stripe_webhook_route", async () => {
