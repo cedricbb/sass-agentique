@@ -59,7 +59,7 @@ Index secondaires : `stripe_events_type_idx` (filtrage par type), `stripe_events
 
 ```
 POST /api/stripe/webhooks
-  → vérification signature (A.2)
+  → verifyWebhookSignature(rawBody, signature) [stripe.service.ts — A.2]
   → recordStripeEvent()
       ┌─ inserted=true  → enqueue Inngest (A.3)
       └─ inserted=false → return 200 (no-op)
