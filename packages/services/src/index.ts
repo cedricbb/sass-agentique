@@ -16,3 +16,4 @@ export { getReportByTitle } from "./report.service";
 export * as maintenanceContractService from "./maintenance-contract.service";
 export * from "./invitation.service";
 export * from "./notification.service";
+export * from "./stripe-event.service";
