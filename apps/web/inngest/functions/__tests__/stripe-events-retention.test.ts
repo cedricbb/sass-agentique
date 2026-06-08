@@ -8,7 +8,6 @@ vi.mock("@saas/services", () => ({
   STRIPE_EVENTS_RETENTION_DAYS: 90,
 }));
 
-let capturedConfig: { id: string };
 let capturedTrigger: { cron: string };
 let capturedHandler: () => Promise<unknown>;
 
@@ -16,11 +15,10 @@ vi.mock("@saas/workflows", () => ({
   inngest: {
     createFunction: vi.fn(
       (
-        config: typeof capturedConfig,
+        config: { id: string },
         trigger: typeof capturedTrigger,
         handler: typeof capturedHandler,
       ) => {
-        capturedConfig = config;
         capturedTrigger = trigger;
         capturedHandler = handler;
         return { id: config.id };
