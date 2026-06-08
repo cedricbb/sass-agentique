@@ -69,8 +69,7 @@ export function verifyWebhookSignature(
     return getStripeClient().webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     if (err instanceof StripeServiceError) throw err;
-    const message = err instanceof Error ? err.message : String(err);
-    throw new StripeServiceError(message, "stripe/invalid_signature", err);
+    throw new StripeServiceError("Webhook signature verification failed", "stripe/invalid_signature", err);
   }
 }
 

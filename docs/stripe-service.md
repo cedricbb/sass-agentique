@@ -29,7 +29,8 @@ import { verifyWebhookSignature } from "@saas/services";
 const rawBody = await req.text();
 const signature = req.headers.get("stripe-signature") ?? "";
 
-// Lève StripeServiceError("stripe/invalid_signature") si la signature est invalide
+// Lève StripeServiceError("Webhook signature verification failed", "stripe/invalid_signature")
+//   si la signature est invalide — message générique opaque, détails SDK dans .cause
 // Lève StripeServiceError("stripe/config_error") si STRIPE_WEBHOOK_SECRET est absent
 const event = verifyWebhookSignature(rawBody, signature);
 ```
@@ -53,7 +54,7 @@ getStripeClient()
 
 **Détection de changement de clé** : le module stocke `_stripeClientKey` en parallèle du client. Si `STRIPE_SECRET_KEY` change entre deux appels (pattern courant en test via `vi.stubEnv`), le client est re-créé silencieusement.
 
-**`verifyWebhookSignature`** : délègue à `stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET)`. Les erreurs SDK Stripe sont interceptées et re-levées en `StripeServiceError` typées pour isoler les callers de l'API SDK.
+**`verifyWebhookSignature`** : délègue à `stripe.webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET)`. Les erreurs SDK Stripe sont interceptées et re-levées en `StripeServiceError` typées pour isoler les callers de l'API SDK. Le `message` de l'erreur est **toujours** `"Webhook signature verification failed"` (générique, opaque) — les détails SDK verbatim (tolérance timestamp, format attendu, état des signatures) sont préservés dans `StripeServiceError.cause` pour le logging serveur, mais ne transitent jamais vers le caller non authentifié.
 
 **`StripeService` class** : conservée pour compatibilité, le constructeur n'instancie plus le client (lazy). L'accès SDK interne passe par un getter privé `get stripe()` → `getStripeClient()`.
 
@@ -63,5 +64,5 @@ Si `STRIPE_WEBHOOKS_ENABLED === "true"`, le schéma exige `STRIPE_SECRET_KEY` et
 
 ## Liens vers tests
 
-- `packages/services/src/__tests__/stripe.service.test.ts` — singleton, lazy init, re-instanciation sur changement clé, `__resetStripeClientForTests`, `verifyWebhookSignature` (valid / invalid / config_error)
+- `packages/services/src/__tests__/stripe.service.test.ts` — singleton, lazy init, re-instanciation sur changement clé, `__resetStripeClientForTests`, `verifyWebhookSignature` (valid / invalid / config_error / generic-message-not-sdk-verbatim)
 - `packages/config/src/__tests__/env.test.ts` — refines Zod conditionnels `STRIPE_WEBHOOKS_ENABLED`

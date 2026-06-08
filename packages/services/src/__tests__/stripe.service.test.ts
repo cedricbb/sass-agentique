@@ -162,6 +162,21 @@ describe("StripeService", () => {
       }
     });
 
+    it("verify_webhook_signature_throws_generic_message_not_sdk_verbatim", () => {
+      const sdkError = new Error("No signatures found matching the expected signature for payload. Are you passing the raw request body...");
+      mockWebhooksConstructEvent.mockImplementationOnce(() => {
+        throw sdkError;
+      });
+      try {
+        verifyWebhookSignature("body", "bad_sig");
+        expect.fail("should have thrown");
+      } catch (e: any) {
+        expect(e).toBeInstanceOf(StripeServiceError);
+        expect(e.message).toBe("Webhook signature verification failed");
+        expect(e.cause).toBe(sdkError);
+      }
+    });
+
     it("verify_webhook_signature_throws_config_error_when_secret_missing", () => {
       delete process.env.STRIPE_WEBHOOK_SECRET;
       expect(() => verifyWebhookSignature("body", "sig")).toThrow(StripeServiceError);
