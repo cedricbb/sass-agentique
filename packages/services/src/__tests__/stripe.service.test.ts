@@ -49,6 +49,8 @@ import {
   __resetStripeServiceForTests,
   getStripeClient,
   __resetStripeClientForTests,
+  __getStripeClientKeyHashForTests,
+  hashSecretKey,
   verifyWebhookSignature,
 } from "../stripe.service";
 import type { CreateCheckoutSessionParams } from "../stripe.service";
@@ -136,6 +138,18 @@ describe("StripeService", () => {
       __resetStripeClientForTests();
       const b = getStripeClient();
       expect(a).not.toBe(b);
+    });
+
+    it("get_stripe_client_stores_hash_not_raw_key", () => {
+      const rawKey = "sk_test_hash_check";
+      process.env.STRIPE_SECRET_KEY = rawKey;
+      getStripeClient();
+      const stored = __getStripeClientKeyHashForTests();
+      expect(stored).not.toBeNull();
+      expect(stored).not.toBe(rawKey);
+      expect(stored).toHaveLength(64);
+      expect(stored).toMatch(/^[0-9a-f]{64}$/);
+      expect(stored).toBe(hashSecretKey(rawKey));
     });
   });
 

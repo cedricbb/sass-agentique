@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { createHash } from "crypto";
 
 export class StripeServiceError extends Error {
   code: string;
@@ -32,7 +33,11 @@ export type CreateCheckoutSessionParams =
     };
 
 let _stripeClient: Stripe | null = null;
-let _stripeClientKey: string | null = null;
+let _stripeClientKeyHash: string | null = null;
+
+export function hashSecretKey(key: string): string {
+  return createHash("sha256").update(key).digest("hex");
+}
 
 export function getStripeClient(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -42,16 +47,21 @@ export function getStripeClient(): Stripe {
       "stripe/config_error"
     );
   }
-  if (!_stripeClient || _stripeClientKey !== secretKey) {
+  const currentHash = hashSecretKey(secretKey);
+  if (!_stripeClient || _stripeClientKeyHash !== currentHash) {
     _stripeClient = new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
-    _stripeClientKey = secretKey;
+    _stripeClientKeyHash = currentHash;
   }
   return _stripeClient;
 }
 
 export function __resetStripeClientForTests(): void {
   _stripeClient = null;
-  _stripeClientKey = null;
+  _stripeClientKeyHash = null;
+}
+
+export function __getStripeClientKeyHashForTests(): string | null {
+  return _stripeClientKeyHash;
 }
 
 export function verifyWebhookSignature(
