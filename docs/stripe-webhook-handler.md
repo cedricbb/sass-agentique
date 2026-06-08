@@ -84,3 +84,4 @@ console.error(JSON.stringify({
 ## Liens vers tests
 
 - `apps/web/lib/stripe/__tests__/webhook-handler.test.ts` — couverture exhaustive de tous les scénarios (toggle, missing/empty/oversized body, invalid signature, config error, idempotence, event ignoré, dispatch Inngest, erreur interne)
+- `apps/web/lib/stripe/__tests__/webhook-integration.test.ts` — tests d'intégration chaîne complète : mock uniquement au niveau Stripe SDK (`constructEvent`) et drizzle (`db.insert/select/update`), tout le reste s'exécute réellement ; couvre happy paths PI.succeeded + PI.failed, idempotence replay cross-call, wrap `StripeSignatureVerificationError → StripeServiceError`, event inconnu

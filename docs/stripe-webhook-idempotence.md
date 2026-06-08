@@ -98,3 +98,4 @@ POST /api/stripe/webhooks
 - `packages/db/src/__tests__/schema.test.ts` — structure DDL, colonnes, index, types exportés ; inclut `possede_un_unique_index_sur_external_ref` (payments)
 - `packages/services/src/__tests__/stripe-event.service.test.ts` — insert, conflict, update, lookup
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — guard amount ≤ 0 (`skips_when_amount_is_zero`, `skips_when_amount_is_negative`), reason discrimination, happy path non-régression
+- `apps/web/lib/stripe/__tests__/webhook-integration.test.ts` — teste l'idempotence réelle de bout en bout : 2 POST consécutifs avec le même `eventId` → 2e retourne `already_processed`, `inngest.send` appelé une seule fois au total ; la logique `onConflictDoNothing` + fallback SELECT est exercée sans mock drizzle métier
