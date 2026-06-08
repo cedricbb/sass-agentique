@@ -15,7 +15,12 @@ vi.mock("inngest/next", () => ({
 }));
 
 vi.mock("@saas/workflows", () => ({
-  inngest: { id: "saas-agentique" },
+  inngest: {
+    id: "saas-agentique",
+    createFunction: vi.fn((_config: unknown, _trigger: unknown, _handler: unknown) => ({
+      id: _config,
+    })),
+  },
 }));
 
 describe("Inngest runtime wiring", () => {
@@ -35,10 +40,10 @@ describe("Inngest runtime wiring", () => {
     expect(typeof route.PUT).toBe("function");
   });
 
-  it("inngest_functions_registry_exports_empty_array", async () => {
+  it("inngest_functions_registry_exports_array", async () => {
     const { inngestFunctions } = await import("@/inngest/functions/index");
     expect(Array.isArray(inngestFunctions)).toBe(true);
-    expect(inngestFunctions).toHaveLength(0);
+    expect(inngestFunctions.length).toBeGreaterThanOrEqual(1);
   });
 
   it("next_config_transpiles_workflows_package", async () => {
