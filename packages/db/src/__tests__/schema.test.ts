@@ -266,6 +266,14 @@ describe("schema — table payments", () => {
       expect(cols).toContain(col);
     }
   });
+  it("possede_un_unique_index_sur_external_ref", () => {
+    const config = getTableConfig(payments);
+    const idx = config.indexes.find(
+      (i) => i.config.name === "payments_external_ref_unique"
+    );
+    expect(idx).toBeDefined();
+    expect(idx!.config.unique).toBe(true);
+  });
 });
 
 describe("schema — enum quoteStatus", () => {

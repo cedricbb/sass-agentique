@@ -301,6 +301,7 @@ export const payments = pgTable("payments", {
 }, (table) => [
   index("payments_invoice_id_idx").on(table.invoiceId),
   index("payments_owner_id_idx").on(table.ownerId),
+  uniqueIndex("payments_external_ref_unique").on(table.externalRef),
 ]);
 
 export type Quote = typeof quotes.$inferSelect;
