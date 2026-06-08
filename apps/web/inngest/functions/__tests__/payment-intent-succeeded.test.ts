@@ -187,7 +187,7 @@ describe("paymentIntentSucceededHandler", () => {
   it("handler_registered_in_inngest_functions", async () => {
     const { inngestFunctions } = await import("@/inngest/functions/index");
     expect(Array.isArray(inngestFunctions)).toBe(true);
-    expect(inngestFunctions).toHaveLength(1);
+    expect(inngestFunctions).toHaveLength(2);
   });
 
   it("function_config_id_and_retries", async () => {
