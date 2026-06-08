@@ -1,5 +1,7 @@
 import { db, stripeEvents, type StripeEvent } from "@saas/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, lt } from "drizzle-orm";
+
+export const STRIPE_EVENTS_RETENTION_DAYS = 90;
 
 export type StripeEventRecord = StripeEvent;
 
@@ -48,4 +50,22 @@ export async function getStripeEvent(
     .limit(1);
 
   return rows[0] ?? null;
+}
+
+export async function deleteStaleStripeEvents(
+  olderThanDays: number,
+): Promise<{ deletedCount: number }> {
+  if (olderThanDays <= 0) {
+    throw new Error("olderThanDays must be > 0");
+  }
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+  const deleted = await db
+    .delete(stripeEvents)
+    .where(lt(stripeEvents.receivedAt, cutoffDate))
+    .returning();
+
+  return { deletedCount: deleted.length };
 }
