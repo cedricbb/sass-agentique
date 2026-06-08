@@ -142,6 +142,48 @@ describe("paymentIntentSucceededHandler", () => {
     expect(result).toMatchObject({ status: "processed" });
   });
 
+  it("skips_when_amount_is_zero", async () => {
+    await import("@/inngest/functions/payment-intent-succeeded");
+    const step = makeStep();
+    const event = makeEvent({ amount: 0 });
+
+    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
+
+    const result = await capturedHandler({ event, step });
+
+    expect(mockMarkStripeEventProcessed).toHaveBeenCalledWith("evt_test456");
+    expect(mockCreatePayment).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ status: "skipped", reason: "invalid_amount" });
+  });
+
+  it("skips_when_amount_is_negative", async () => {
+    await import("@/inngest/functions/payment-intent-succeeded");
+    const step = makeStep();
+    const event = makeEvent({ amount: -100 });
+
+    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
+
+    const result = await capturedHandler({ event, step });
+
+    expect(mockMarkStripeEventProcessed).toHaveBeenCalledWith("evt_test456");
+    expect(mockCreatePayment).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ status: "skipped", reason: "invalid_amount" });
+  });
+
+  it("skips_with_no_invoice_id_reason_when_both_missing", async () => {
+    await import("@/inngest/functions/payment-intent-succeeded");
+    const step = makeStep();
+    const event = makeEvent({ amount: 0, noMetadata: true });
+
+    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
+
+    const result = await capturedHandler({ event, step });
+
+    expect(mockMarkStripeEventProcessed).toHaveBeenCalledWith("evt_test456");
+    expect(mockCreatePayment).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ status: "skipped", reason: "no_invoice_id_metadata" });
+  });
+
   it("handler_registered_in_inngest_functions", async () => {
     const { inngestFunctions } = await import("@/inngest/functions/index");
     expect(Array.isArray(inngestFunctions)).toBe(true);

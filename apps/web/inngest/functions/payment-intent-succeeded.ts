@@ -11,9 +11,10 @@ export const paymentIntentSucceededHandler = inngest.createFunction(
 
     const invoiceId = paymentIntent.metadata?.invoiceId;
 
-    if (!invoiceId) {
+    if (!invoiceId || paymentIntent.amount <= 0) {
       await markStripeEventProcessed(stripeEvent.id);
-      return { status: "skipped" as const, reason: "no_invoice_id_metadata", eventId: stripeEvent.id };
+      const reason = !invoiceId ? "no_invoice_id_metadata" : "invalid_amount";
+      return { status: "skipped" as const, reason, eventId: stripeEvent.id };
     }
 
     const invoice = await step.run("get-invoice", () => getInvoiceById(invoiceId));
