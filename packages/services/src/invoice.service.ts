@@ -108,6 +108,8 @@ export async function listInvoices(opts?: ListInvoicesOptions): Promise<Invoice[
     .orderBy(desc(invoices.createdAt));
 }
 
+// TODO(multi-tenant): ajouter filtre ownerId lors du passage multi-client.
+// Currently safe: single-admin MVP + trust boundary verifyWebhookSignature.
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
   if (!UUID_RE.test(id)) return null;
   const [row] = await db
