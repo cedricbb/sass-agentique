@@ -44,4 +44,6 @@ Thumbs.db
 .readme-cache.json
 codebase.md
 .npmrc
+.aidigestignore
+.aidigestminify
 

@@ -1,15 +1,14 @@
 # ==============================
 # .aidigestignore
-# Fichiers exclus de l'analyse AI (aidigest, codebase generators, etc.)
+# Fichiers totalement exclus du digest AI (npx ai-digest)
 # ==============================
 
-# --- Dépendances ---
+# --- Dependances & package managers ---
 node_modules/
 .pnpm-store/
-
-# --- Lock files ---
 pnpm-lock.yaml
 package-lock.json
+.npmrc
 
 # --- Build outputs ---
 dist/
@@ -22,24 +21,26 @@ apps/web/out/
 *.tsbuildinfo
 .next/cache/
 
-# --- Fichiers générés ---
+# --- Fichiers generes ---
 apps/web/next-env.d.ts
 codebase.md
 .readme-cache.json
 
-# --- Migrations Drizzle (SQL auto-généré + snapshots) ---
+# --- Migrations Drizzle (SQL auto-genere + snapshots JSON) ---
 packages/db/migrations/
 
-# --- Tests outputs ---
+# --- Tests outputs & reports ---
 playwright-report/
 test-results/
+.last-run.json
 
 # --- Environnement & secrets ---
 .env
 .env.local
 .env.*.local
+.env.example
 
-# --- IDE & éditeurs ---
+# --- IDE & editeurs ---
 .idea/
 .vscode/
 *.swp
@@ -53,7 +54,7 @@ Thumbs.db
 # --- Logs ---
 *.log
 
-# --- Assets binaires (images, fonts, media) ---
+# --- Assets binaires ---
 *.png
 *.jpg
 *.jpeg
@@ -72,17 +73,42 @@ Thumbs.db
 *.wav
 *.pdf
 
-# --- Claude Code local settings ---
+# --- Claude Code settings ---
 .claude/
 
-# --- CI/CD (pas de logique métier) ---
+# --- CI/CD (pas de logique metier) ---
 .github/
 
 # --- Infrastructure (docker configs) ---
 infra/
 
-# --- Config Turbo / tooling racine (peu utile pour analyse AI) ---
-turbo.json
+# --- Git ---
+.git/
+
+# --- Agency state / swarm logs ---
+agency-state/
+.swarm/
+
+# --- E2E tests Playwright (tests d'integration, pas d'architecture) ---
+tests/e2e/
+apps/web/tests/e2e/
 playwright.config.ts
+apps/web/playwright.config.ts
+
+# --- Unit tests (lisibles via .aidigestminify) ---
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+vitest.setup.ts
+apps/web/vitest.setup.ts
+
+# --- Config tooling racine (peu utile pour analyse architecture) ---
+turbo.json
 vitest.workspace.ts
 postcss.config.mjs
+apps/web/postcss.config.mjs
+apps/web/components.json
+apps/web/eslint.config.mjs
+eslint.config.mjs
