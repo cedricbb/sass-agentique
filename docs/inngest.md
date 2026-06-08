@@ -80,7 +80,7 @@ Expose trois verbes HTTP nécessaires au protocole Inngest : `GET` pour le manif
 
 **Registre des fonctions** (`apps/web/inngest/functions/index.ts`) :
 
-Peuplé en B.1 avec `paymentIntentSucceededHandler`, étendu en B.2 avec `paymentIntentFailedHandler`. Un serve handler sans fonctions est valide — Inngest retourne un manifest vide et répond 200.
+Peuplé en B.1 avec `paymentIntentSucceededHandler`, étendu en B.2 avec `paymentIntentFailedHandler`, étendu en R7 A.1 avec `stripeEventsRetentionCron`. Un serve handler sans fonctions est valide — Inngest retourne un manifest vide et répond 200.
 
 **Variables d'environnement :**
 
@@ -138,6 +138,18 @@ Chemins de sortie :
 
 **Contrat sécurité** : le handler fait confiance au payload car `verifyWebhookSignature` (A.2) a validé que l'event provient de notre compte Stripe. Un acteur tiers ne peut pas forger une signature valide avec notre `STRIPE_WEBHOOK_SECRET`. `metadata.invoiceId` est donc traité comme fiable dans ce contexte.
 
+**Cron `stripeEventsRetentionCron`** (`apps/web/inngest/functions/stripe-events-retention.ts`) :
+
+Déclenché quotidiennement à 03:00 UTC (04:00/05:00 Europe/Paris). Purge les lignes `stripe_events` dont `createdAt < NOW() - 90 jours` afin de respecter la politique de rétention RGPD sur `payloadJson` (PII Stripe).
+
+| Paramètre | Valeur |
+|---|---|
+| Schedule cron | `0 3 * * *` |
+| Rétention | `STRIPE_EVENTS_RETENTION_DAYS = 90` (constante exportée depuis `@saas/services`) |
+| Retour | `{ status: "completed", deletedCount: number }` |
+
+La constante `STRIPE_EVENTS_RETENTION_DAYS` est exportée depuis `packages/services/src/stripe-event.service.ts` comme source de vérité unique — ni l'appel cron ni les tests ne hardcodent `90`.
+
 **Handler `paymentIntentFailedHandler`** (`apps/web/inngest/functions/payment-intent-failed.ts`) :
 
 Déclenché par `stripe/payment-intent.failed`. Rôle v1 : observabilité uniquement (pas d'insertion `payments`, pas de notification email, pas d'update statut invoice).
@@ -165,6 +177,8 @@ Décision R6 lock — non implémenté en v1 (arbitrage produit requis avant imp
 
 ## Liens vers tests
 
-- `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre, manifest 200
+- `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre (3 fonctions), manifest 200
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — happy path, skip no_invoice_id, skip invoice_not_found, propagation erreurs
 - `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — log structuré happy path, erreur markStripeEventProcessed non-bloquante
+- `apps/web/inngest/functions/__tests__/stripe-events-retention.test.ts` — schedule cron `0 3 * * *`, deletedCount loggé, appel `deleteStaleStripeEvents` avec `STRIPE_EVENTS_RETENTION_DAYS`
+- `packages/services/src/__tests__/stripe-event.service.test.ts` — couverture `deleteStaleStripeEvents` (purge rows, rows récentes préservées, 0 lignes, constante exportée)
