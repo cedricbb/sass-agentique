@@ -76,7 +76,7 @@ Expose trois verbes HTTP nécessaires au protocole Inngest : `GET` pour le manif
 
 **Registre des fonctions** (`apps/web/inngest/functions/index.ts`) :
 
-Tableau vide en A.3. Peuplé en B.1 (`payment_intent.succeeded`) et B.2 (`payment_intent.failed`). Un serve handler sans fonctions est valide — Inngest retourne un manifest vide et répond 200.
+Peuplé en B.1 avec `paymentIntentSucceededHandler`. Un serve handler sans fonctions est valide — Inngest retourne un manifest vide et répond 200.
 
 **Variables d'environnement :**
 
@@ -87,17 +87,50 @@ Tableau vide en A.3. Peuplé en B.1 (`payment_intent.succeeded`) et B.2 (`paymen
 
 En mode dev contre le Dev Server local (`inngest dev`), les deux variables sont optionnelles — Inngest fonctionne sans authentification.
 
-**Flow Stripe webhook (cible A.4 + B.x) :**
+**Flow Stripe webhook (A.4 + B.1) :**
 
 ```
 POST /api/stripe/webhooks
-  → recordStripeEvent()     [idempotence — stripe-webhook-idempotence.md]
-      ┌─ inserted=true  → inngest.send("stripe/payment_intent.succeeded", ...)
-      └─ inserted=false → 200 no-op
-  → GET /api/inngest         [Inngest dispatch vers handler B.x]
-  → markStripeEventProcessed(eventId)
+  → verifyWebhookSignature()  [garantit que l'event vient de notre compte Stripe]
+  → recordStripeEvent()       [idempotence — stripe-webhook-idempotence.md]
+      ┌─ inserted=true  → inngest.send("stripe/payment-intent.succeeded", { event })
+      └─ inserted=false → 200 already_processed (pas de dispatch)
+  → Inngest dispatch → paymentIntentSucceededHandler
+      ├─ step "get-invoice"    → getInvoiceById(metadata.invoiceId)
+      ├─ step "create-payment" → paymentService.createPayment(...)
+      └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée]
 ```
+
+**Handler `paymentIntentSucceededHandler`** (`apps/web/inngest/functions/payment-intent-succeeded.ts`) :
+
+| Paramètre `createPayment` | Valeur |
+|---|---|
+| `invoiceId` | `paymentIntent.metadata.invoiceId` |
+| `ownerId` | `invoice.ownerId` (résolu via DB) |
+| `amountEurCents` | `paymentIntent.amount` (cents TTC Stripe) |
+| `method` | `"stripe_card"` |
+| `externalRef` | `paymentIntent.id` |
+| `paidAt` | `new Date(paymentIntent.created * 1000)` |
+
+Chemins de sortie :
+
+| Cas | Retour | Effet |
+|---|---|---|
+| `metadata.invoiceId` absent | `{ status: "skipped", reason: "no_invoice_id_metadata" }` | `markStripeEventProcessed` |
+| Invoice introuvable | `{ status: "skipped", reason: "invoice_not_found" }` | log structuré + `markStripeEventProcessed` |
+| Happy path | `{ status: "processed", invoiceId, paymentIntentId, invoiceMarkedAsPaid }` | insert payment + mark processed |
+| `createPayment` throws | propagation → Inngest retry (max 3) | — |
+| `markStripeEventProcessed` throws | log structuré (non-bloquant) | — |
+
+**Idempotence** — 3 niveaux de défense :
+
+1. `recordStripeEvent` (unique constraint DB) : bloque les retries webhook Stripe avant dispatch.
+2. `recordStripeEvent` retourne `inserted: false` → 200, pas de `inngest.send`.
+3. `step.run("create-payment", ...)` : Inngest mémorise le résultat du step par ID — un retry rejoue sans re-exécuter le step.
+
+**Contrat sécurité** : le handler fait confiance au payload car `verifyWebhookSignature` (A.2) a validé que l'event provient de notre compte Stripe. Un acteur tiers ne peut pas forger une signature valide avec notre `STRIPE_WEBHOOK_SECRET`. `metadata.invoiceId` est donc traité comme fiable dans ce contexte.
 
 ## Liens vers tests
 
-- `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre vide, manifest 200
+- `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre, manifest 200
+- `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — happy path, skip no_invoice_id, skip invoice_not_found, propagation erreurs
