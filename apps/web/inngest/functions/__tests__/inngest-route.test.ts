@@ -23,6 +23,12 @@ vi.mock("@saas/workflows", () => ({
   },
 }));
 
+vi.mock("@saas/services", () => ({
+  getInvoiceById: vi.fn(),
+  paymentService: { createPayment: vi.fn() },
+  markStripeEventProcessed: vi.fn(),
+}));
+
 describe("Inngest runtime wiring", () => {
   it("inngest_serve_handler_returns_manifest_on_get", async () => {
     const { GET } = await import("@/app/api/inngest/route");
