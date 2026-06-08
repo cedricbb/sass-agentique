@@ -55,6 +55,24 @@ Index secondaires : `stripe_events_type_idx` (filtrage par type), `stripe_events
 
 **Séparation des concerns** : ce service est distinct de `stripe.service.ts` (SDK client, sync products/prices, checkout, portail). Les deux coexistent sans dépendance circulaire.
 
+**Defense-in-depth — `payments.external_ref` unique constraint** :
+
+La table `payments` porte un index unique `payments_external_ref_unique` sur `external_ref` (= `PaymentIntent.id` Stripe). Cet index est une couche de sécurité supplémentaire : si Inngest crash entre l'exécution d'un step `createPayment` et la persistance de son résultat, un retry tenterait d'insérer le même `external_ref` → la DB refuse avec une violation de contrainte, qui se propage comme erreur Inngest jusqu'au DLQ (3 retries max). PostgreSQL autorise plusieurs NULL dans un index unique : les paiements manuels (`external_ref = null`) ne sont pas affectés.
+
+**Guard amount ≤ 0** :
+
+Le handler `payment-intent-succeeded` rejette les PaymentIntents avec `amount <= 0` avant tout accès DB :
+
+```typescript
+if (!invoiceId || paymentIntent.amount <= 0) {
+  await markStripeEventProcessed(stripeEvent.id);
+  const reason = !invoiceId ? "no_invoice_id_metadata" : "invalid_amount";
+  return { status: "skipped", reason, eventId: stripeEvent.id };
+}
+```
+
+Stripe émet rarement des PI à 0 (vérifications, trials $0) — ce guard évite qu'un montant nul ne corrompe `computeInvoiceBalance`.
+
 **Flow webhook cible (A.4 + B.x)** :
 
 ```
@@ -63,8 +81,10 @@ POST /api/stripe/webhooks
   → recordStripeEvent()
       ┌─ inserted=true  → enqueue Inngest (A.3)
       └─ inserted=false → return 200 (no-op)
-  → Inngest fn (B.x) exécute le handler métier
-  → markStripeEventProcessed(eventId)
+  → Inngest fn payment-intent-succeeded
+      → guard: !invoiceId || amount <= 0 → skip (markStripeEventProcessed + return)
+      → createPayment() [payments_external_ref_unique protège contre doublon DB]
+      → markStripeEventProcessed(eventId)
 ```
 
 **Observabilité** : `received_at` est posé à l'insert, `processed_at` après handler success. Les events avec `processed_at IS NULL` après N minutes indiquent un handler bloqué.
@@ -75,5 +95,6 @@ POST /api/stripe/webhooks
 
 ## Liens vers tests
 
-- `packages/db/src/__tests__/schema.test.ts` — structure DDL, colonnes, index, types exportés
+- `packages/db/src/__tests__/schema.test.ts` — structure DDL, colonnes, index, types exportés ; inclut `possede_un_unique_index_sur_external_ref` (payments)
 - `packages/services/src/__tests__/stripe-event.service.test.ts` — insert, conflict, update, lookup
+- `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — guard amount ≤ 0 (`skips_when_amount_is_zero`, `skips_when_amount_is_negative`), reason discrimination, happy path non-régression
