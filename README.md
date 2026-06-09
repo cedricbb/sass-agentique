@@ -365,7 +365,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `prestation.service` | CRUD catalogue de prestations (one-shot / recurring) |
 | `quote.service` | Génération et gestion des devis |
 | `invoice.service` | CRUD factures |
-| `payment.service` | Enregistrement des paiements ; `listPaymentsForCustomerPortal` (portail client, cross-client isolation via JOIN) |
+| `payment.service` | Enregistrement des paiements ; `recomputePaidAtForInvoice` (réconciliation état payé, idempotente, réutilisable) ; `listPaymentsForCustomerPortal` (portail client, cross-client isolation via JOIN). Voir `docs/payment.service.md`. |
 | `report.service` | Rapports de projet et de livraison |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
 | `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
