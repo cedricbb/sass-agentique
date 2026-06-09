@@ -121,24 +121,9 @@ export async function createPayment(
       .values(input)
       .returning();
 
-    const balance = await computeInvoiceBalance(input.invoiceId, tx);
+    const { wasMarkedAsPaid } = await recomputePaidAtForInvoice(input.invoiceId, tx);
 
-    let invoiceMarkedAsPaid = false;
-
-    if (balance.isFullyPaid) {
-      const [inv] = await tx
-        .select({ status: invoices.status })
-        .from(invoices)
-        .where(eq(invoices.id, input.invoiceId))
-        .limit(1);
-
-      if (inv && inv.status !== "paid") {
-        await invoiceService.transitionInvoiceStatus(input.invoiceId, "paid");
-        invoiceMarkedAsPaid = true;
-      }
-    }
-
-    return { payment, invoiceMarkedAsPaid };
+    return { payment: payment!, invoiceMarkedAsPaid: wasMarkedAsPaid };
   });
 }
 
@@ -178,7 +163,7 @@ export async function recomputePaidAtForInvoice(
       .where(eq(invoices.id, invoiceId))
       .limit(1);
 
-    if (inv && inv.status !== "paid") {
+    if (inv && invoiceService.canTransitionInvoice(inv.status as invoiceService.InvoiceStatus, "paid")) {
       await invoiceService.transitionInvoiceStatus(invoiceId, "paid");
       return { wasMarkedAsPaid: true };
     }

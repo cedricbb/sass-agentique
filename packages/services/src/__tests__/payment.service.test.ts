@@ -37,6 +37,16 @@ vi.mock("drizzle-orm", () => ({
 
 vi.mock("../invoice.service", () => ({
   transitionInvoiceStatus: vi.fn(),
+  canTransitionInvoice: vi.fn((from: string, to: string) => {
+    const valid: Record<string, string[]> = {
+      draft: ["sent", "cancelled"],
+      sent: ["paid", "overdue", "cancelled"],
+      overdue: ["paid", "cancelled"],
+      paid: [],
+      cancelled: [],
+    };
+    return (valid[from] ?? []).includes(to);
+  }),
 }));
 
 vi.mock("../invoice.shared", () => ({
@@ -293,6 +303,34 @@ describe("computeInvoiceBalance", () => {
 });
 
 describe("recomputePaidAtForInvoice", () => {
+  it("recompute_noop_on_draft_invoice", async () => {
+    dbMock.limit
+      .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
+      .mockResolvedValueOnce([{ status: "draft" }]);
+    dbMock.where
+      .mockReturnValueOnce(dbMock)
+      .mockResolvedValueOnce([{ sum: 1200 }])
+      .mockReturnValueOnce(dbMock);
+
+    const result = await recomputePaidAtForInvoice("inv-1");
+    expect(result).toEqual({ wasMarkedAsPaid: false });
+    expect(invoiceService.transitionInvoiceStatus).not.toHaveBeenCalled();
+  });
+
+  it("recompute_noop_on_cancelled_invoice", async () => {
+    dbMock.limit
+      .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
+      .mockResolvedValueOnce([{ status: "cancelled" }]);
+    dbMock.where
+      .mockReturnValueOnce(dbMock)
+      .mockResolvedValueOnce([{ sum: 1200 }])
+      .mockReturnValueOnce(dbMock);
+
+    const result = await recomputePaidAtForInvoice("inv-1");
+    expect(result).toEqual({ wasMarkedAsPaid: false });
+    expect(invoiceService.transitionInvoiceStatus).not.toHaveBeenCalled();
+  });
+
   it("calls transitionInvoiceStatus if fully paid and not already paid; no-op otherwise", async () => {
     dbMock.limit
       .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
