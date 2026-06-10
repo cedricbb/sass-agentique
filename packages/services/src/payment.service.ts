@@ -97,7 +97,7 @@ export async function computeInvoiceBalance(
   });
 
   const [row] = await runner
-    .select({ sum: sql<number>`COALESCE(SUM(${payments.amountEurCents}), 0)::int` })
+    .select({ sum: sql<number>`COALESCE(SUM(${payments.amountCents}), 0)::int` })
     .from(payments)
     .where(eq(payments.invoiceId, invoiceId));
 

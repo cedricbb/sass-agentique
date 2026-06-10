@@ -21,7 +21,7 @@ let dbMock = makeDrizzleMock();
 
 vi.mock("@saas/db", () => ({
   get db() { return dbMock; },
-  payments: { id: "id", invoiceId: "invoiceId", amountEurCents: "amountEurCents", paidAt: "paidAt", method: "method", externalRef: "externalRef" },
+  payments: { id: "id", invoiceId: "invoiceId", amountCents: "amountCents", paidAt: "paidAt", method: "method", externalRef: "externalRef" },
   invoices: { id: "id", status: "status", totalEurCents: "totalEurCents", vatRateBps: "vatRateBps", clientId: "clientId", number: "number" },
 }));
 
@@ -94,7 +94,7 @@ describe("listPaymentsByInvoice", () => {
 
 describe("getPaymentById", () => {
   it("returns payment if found", async () => {
-    const payment = { id: "p1", amountEurCents: 1000 };
+    const payment = { id: "p1", amountCents: 1000 };
     dbMock.limit.mockResolvedValueOnce([payment]);
 
     const result = await getPaymentById("p1");
@@ -110,10 +110,10 @@ describe("getPaymentById", () => {
 });
 
 describe("createPayment", () => {
-  const INPUT = { invoiceId: "inv-1", amountEurCents: 500, method: "bank_transfer", paidAt: new Date() } as any;
+  const INPUT = { invoiceId: "inv-1", amountCents: 500, method: "bank_transfer", paidAt: new Date() } as any;
 
   it("inserts and returns invoiceMarkedAsPaid: false when paidCents < totalCents", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 500 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 500 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit.mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }]);
     dbMock.where
@@ -127,7 +127,7 @@ describe("createPayment", () => {
   });
 
   it("calls transitionInvoiceStatus and returns invoiceMarkedAsPaid: true when fully paid", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 1200 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 1200 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit
       .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
@@ -137,13 +137,13 @@ describe("createPayment", () => {
       .mockResolvedValueOnce([{ sum: 1200 }])
       .mockReturnValueOnce(dbMock);
 
-    const result = await createPayment({ ...INPUT, amountEurCents: 1200 });
+    const result = await createPayment({ ...INPUT, amountCents: 1200 });
     expect(result.invoiceMarkedAsPaid).toBe(true);
     expect(invoiceService.transitionInvoiceStatus).toHaveBeenCalledWith("inv-1", "paid");
   });
 
   it("tolerates over-payment and triggers paid transition", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 2000 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 2000 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit
       .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
@@ -153,12 +153,12 @@ describe("createPayment", () => {
       .mockResolvedValueOnce([{ sum: 2000 }])
       .mockReturnValueOnce(dbMock);
 
-    const result = await createPayment({ ...INPUT, amountEurCents: 2000 });
+    const result = await createPayment({ ...INPUT, amountCents: 2000 });
     expect(result.invoiceMarkedAsPaid).toBe(true);
   });
 
   it("does NOT call transitionInvoiceStatus if invoice already paid", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 1200 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 1200 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit
       .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
@@ -168,26 +168,26 @@ describe("createPayment", () => {
       .mockResolvedValueOnce([{ sum: 1200 }])
       .mockReturnValueOnce(dbMock);
 
-    const result = await createPayment({ ...INPUT, amountEurCents: 1200 });
+    const result = await createPayment({ ...INPUT, amountCents: 1200 });
     expect(result.invoiceMarkedAsPaid).toBe(false);
     expect(invoiceService.transitionInvoiceStatus).not.toHaveBeenCalled();
   });
 
   it("does NOT auto-paid when paidCents covers HT but not TTC", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 1000 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 1000 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit.mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }]);
     dbMock.where
       .mockReturnValueOnce(dbMock)
       .mockResolvedValueOnce([{ sum: 1000 }]);
 
-    const result = await createPayment({ ...INPUT, amountEurCents: 1000 });
+    const result = await createPayment({ ...INPUT, amountCents: 1000 });
     expect(result.invoiceMarkedAsPaid).toBe(false);
     expect(invoiceService.transitionInvoiceStatus).not.toHaveBeenCalled();
   });
 
   it("auto-paid when paidCents covers TTC exactly", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 1200 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 1200 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit
       .mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }])
@@ -197,13 +197,13 @@ describe("createPayment", () => {
       .mockResolvedValueOnce([{ sum: 1200 }])
       .mockReturnValueOnce(dbMock);
 
-    const result = await createPayment({ ...INPUT, amountEurCents: 1200 });
+    const result = await createPayment({ ...INPUT, amountCents: 1200 });
     expect(result.invoiceMarkedAsPaid).toBe(true);
     expect(invoiceService.transitionInvoiceStatus).toHaveBeenCalledWith("inv-1", "paid");
   });
 
   it("auto-paid on accumulated payments reaching TTC", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 1000 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 1000 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit
       .mockResolvedValueOnce([{ totalEurCents: 5000, vatRateBps: 2000 }])
@@ -213,20 +213,20 @@ describe("createPayment", () => {
       .mockResolvedValueOnce([{ sum: 6000 }])
       .mockReturnValueOnce(dbMock);
 
-    const result = await createPayment({ ...INPUT, amountEurCents: 1000 });
+    const result = await createPayment({ ...INPUT, amountCents: 1000 });
     expect(result.invoiceMarkedAsPaid).toBe(true);
     expect(invoiceService.transitionInvoiceStatus).toHaveBeenCalledWith("inv-1", "paid");
   });
 
   it("uses db.transaction", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 100 };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 100 };
     dbMock.returning.mockResolvedValueOnce([payment]);
     dbMock.limit.mockResolvedValueOnce([{ totalEurCents: 1000, vatRateBps: 2000 }]);
     dbMock.where
       .mockReturnValueOnce(dbMock)
       .mockResolvedValueOnce([{ sum: 100 }]);
 
-    await createPayment({ ...INPUT, amountEurCents: 100 });
+    await createPayment({ ...INPUT, amountCents: 100 });
     expect(dbMock.transaction).toHaveBeenCalledTimes(1);
   });
 });
@@ -360,8 +360,8 @@ describe("recomputePaidAtForInvoice", () => {
 describe("listPaymentsForCustomerPortal", () => {
   it("returns_only_payments_for_given_client_ordered_by_paid_at_desc", async () => {
     const data = [
-      { id: "p2", invoiceId: "inv-1", amountEurCents: 2000, paidAt: new Date("2026-02-01"), invoiceNumber: "INV-002" },
-      { id: "p1", invoiceId: "inv-1", amountEurCents: 1000, paidAt: new Date("2026-01-01"), invoiceNumber: "INV-001" },
+      { id: "p2", invoiceId: "inv-1", amountCents: 2000, paidAt: new Date("2026-02-01"), invoiceNumber: "INV-002" },
+      { id: "p1", invoiceId: "inv-1", amountCents: 1000, paidAt: new Date("2026-01-01"), invoiceNumber: "INV-001" },
     ];
     dbMock.orderBy.mockResolvedValueOnce(data);
 
@@ -373,7 +373,7 @@ describe("listPaymentsForCustomerPortal", () => {
 
   it("returns_payment_fields_with_invoice_number", async () => {
     const data = [
-      { id: "p1", invoiceId: "inv-1", amountEurCents: 5000, paidAt: new Date("2026-01-01"), method: "bank_transfer", externalRef: null, invoiceNumber: "INV-042" },
+      { id: "p1", invoiceId: "inv-1", amountCents: 5000, paidAt: new Date("2026-01-01"), method: "bank_transfer", externalRef: null, invoiceNumber: "INV-042" },
     ];
     dbMock.orderBy.mockResolvedValueOnce(data);
 
@@ -381,7 +381,7 @@ describe("listPaymentsForCustomerPortal", () => {
     expect(result[0]).toHaveProperty("invoiceNumber", "INV-042");
     expect(result[0]).toHaveProperty("id", "p1");
     expect(result[0]).toHaveProperty("invoiceId", "inv-1");
-    expect(result[0]).toHaveProperty("amountEurCents", 5000);
+    expect(result[0]).toHaveProperty("amountCents", 5000);
   });
 
   it("returns_empty_array_when_no_payments_for_client", async () => {
@@ -393,7 +393,7 @@ describe("listPaymentsForCustomerPortal", () => {
 
   it("excludes_payments_from_other_clients_invoices", async () => {
     const clientAData = [
-      { id: "p1", invoiceId: "inv-A", amountEurCents: 1000, invoiceNumber: "INV-A-001" },
+      { id: "p1", invoiceId: "inv-A", amountCents: 1000, invoiceNumber: "INV-A-001" },
     ];
     dbMock.orderBy.mockResolvedValueOnce(clientAData);
 
@@ -440,12 +440,12 @@ describe("listAllPayments", () => {
   });
 
   it("returns Payment[] with all fields present", async () => {
-    const payment = { id: "p1", invoiceId: "inv-1", amountEurCents: 5000, method: "bank_transfer", paidAt: new Date() };
+    const payment = { id: "p1", invoiceId: "inv-1", amountCents: 5000, method: "bank_transfer", paidAt: new Date() };
     dbMock.offset.mockResolvedValueOnce([payment]);
     const result = await listAllPayments();
     expect(result[0]).toHaveProperty("id");
     expect(result[0]).toHaveProperty("invoiceId");
-    expect(result[0]).toHaveProperty("amountEurCents");
+    expect(result[0]).toHaveProperty("amountCents");
     expect(result[0]).toHaveProperty("method");
     expect(result[0]).toHaveProperty("paidAt");
   });
