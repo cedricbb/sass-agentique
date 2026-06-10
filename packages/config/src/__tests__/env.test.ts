@@ -11,9 +11,9 @@ const envSchema = z.object({
 
 const notificationsEnvSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
-  NOTIFICATIONS_ENABLED: z.string().optional(),
+  NOTIFICATIONS_ENABLED: z.enum(["true", "false"]).transform(v => v === "true").default("false"),
 }).refine(
-  (data) => data.NOTIFICATIONS_ENABLED !== "true" || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
+  (data) => !data.NOTIFICATIONS_ENABLED || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
   { message: "RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
 );
 
@@ -103,6 +103,27 @@ const stripeEnvSchema = z.object({
 );
 
 describe("RESEND_API_KEY conditional validation", () => {
+  it("returns_boolean_true_when_notifications_enabled_is_true", () => {
+    const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true", RESEND_API_KEY: "re_x" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.NOTIFICATIONS_ENABLED).toBe(true);
+    }
+  });
+
+  it("defaults_to_false_when_notifications_enabled_is_undefined", () => {
+    const result = notificationsEnvSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.NOTIFICATIONS_ENABLED).toBe(false);
+    }
+  });
+
+  it("rejects_typo_value_for_notifications_enabled", () => {
+    const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "tru" });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects_missing_resend_key_when_notifications_enabled", () => {
     const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true" });
     expect(result.success).toBe(false);

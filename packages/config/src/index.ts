@@ -17,12 +17,12 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   TOTP_ISSUER: z.string().optional().default("SaaS Agentique"),
-  NOTIFICATIONS_ENABLED: z.string().optional(),
+  NOTIFICATIONS_ENABLED: z.enum(["true", "false"]).transform(v => v === "true").default("false"),
   STRIPE_WEBHOOKS_ENABLED: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 }).refine(
-  (data) => data.NOTIFICATIONS_ENABLED !== "true" || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
+  (data) => !data.NOTIFICATIONS_ENABLED || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
   { message: "RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
 ).refine(
   (data) => data.STRIPE_WEBHOOKS_ENABLED !== "true" || (!!data.STRIPE_SECRET_KEY && data.STRIPE_SECRET_KEY.length > 0),
