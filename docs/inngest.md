@@ -149,7 +149,7 @@ type PaymentIntentResult =
 |---|---|
 | `invoiceId` | `paymentIntent.metadata.invoiceId` |
 | `ownerId` | `invoice.ownerId` (résolu via DB) |
-| `amountEurCents` | `paymentIntent.amount` (cents TTC Stripe) |
+| `amountCents` | `paymentIntent.amount` (cents TTC Stripe) |
 | `method` | `"stripe_card"` |
 | `externalRef` | `paymentIntent.id` |
 | `paidAt` | `new Date(paymentIntent.created * 1000)` |

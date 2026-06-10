@@ -21,7 +21,7 @@ type PaymentWithInvoiceInfo = Payment & {
 };
 ```
 
-`amountEurCents` est TTC (cohérent avec `isFullyPaid` du service factures). La page divise par 100 via `formatCurrency(payment.amountEurCents / 100)`.
+`amountCents` est TTC (cohérent avec `isFullyPaid` du service factures). La page divise par 100 via `formatCurrency(payment.amountCents / 100)`.
 
 ## Architecture interne
 
