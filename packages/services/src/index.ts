@@ -16,4 +16,5 @@ export { getReportByTitle } from "./report.service";
 export * as maintenanceContractService from "./maintenance-contract.service";
 export * from "./invitation.service";
 export * from "./notification.service";
+export { getResendClient } from "./resend.client";
 export * from "./stripe-event.service";

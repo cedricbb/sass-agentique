@@ -53,7 +53,7 @@ describe("resend_singleton", () => {
       and: vi.fn(),
       isNotNull: vi.fn(),
     }));
-    const { getResendClient } = await import("../notification.service");
+    const { getResendClient } = await import("../resend.client");
     expect(getResendClient()).toBe(getResendClient());
   });
 
@@ -69,7 +69,7 @@ describe("resend_singleton", () => {
       and: vi.fn(),
       isNotNull: vi.fn(),
     }));
-    const { getResendClient } = await import("../notification.service");
+    const { getResendClient } = await import("../resend.client");
     expect(() => getResendClient()).toThrow();
   });
 });

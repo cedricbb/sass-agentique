@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { getResendClient } from "./resend.client";
 import { env } from "@saas/config";
 import { db, clientContacts, quotes, clients, invoices, reports } from "@saas/db";
 import { eq, and, isNotNull } from "drizzle-orm";
@@ -12,16 +12,6 @@ import { renderReportIssuedHtml } from "./emails/ReportIssuedEmail";
 export type NotificationEvent = "quote.sent" | "invoice.sent" | "report.issued";
 export type NotificationPayload = { clientId: string; entityId: string; tenantId: string };
 export type NotifiableContact = { id: string; name: string; email: string; userId: string };
-
-let resendInstance: Resend | null = null;
-
-export function getResendClient(): Resend {
-  if (resendInstance) return resendInstance;
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
-  resendInstance = new Resend(apiKey);
-  return resendInstance;
-}
 
 async function sendNotificationEmail(params: { to: string; subject: string; html: string }): Promise<void> {
   if (!env.RESEND_API_KEY) {

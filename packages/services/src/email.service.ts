@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { getResendClient } from "./resend.client";
 import nodemailer from "nodemailer";
 import { env } from "@saas/config";
 
@@ -36,7 +36,7 @@ async function sendEmail({ to, subject, html }: EmailPayload): Promise<void> {
 
   // 2. Resend configuré
   if (env.RESEND_API_KEY) {
-    const resend = new Resend(env.RESEND_API_KEY);
+    const resend = getResendClient();
     await resend.emails.send({ from: FROM, to, subject, html });
     return;
   }
