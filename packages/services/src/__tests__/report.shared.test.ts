@@ -1,7 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPORT_KIND_LABELS, REPORT_KINDS, type ReportKind } from "../report.shared";
+
+vi.mock("@saas/db", () => ({
+  db: {},
+  reports: {},
+}));
+
+vi.mock("../notification.service", () => ({
+  dispatchNotification: vi.fn(),
+}));
 
 describe("report.shared", () => {
   it("resolves_report_shared_exports", () => {
