@@ -1,10 +1,10 @@
-import { db, type Report, type NewReport, reportKindEnum, reports } from "@saas/db";
+import { db, type Report, type NewReport, reports } from "@saas/db";
 import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
 import { dispatchNotification } from "./notification.service";
+import type { ReportKind } from "./report.shared";
+export { REPORT_KINDS, type ReportKind, REPORT_KIND_LABELS } from "./report.shared";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export type ReportKind = (typeof reportKindEnum.enumValues)[number];
 
 export type UpdateReportPatch = Omit<Partial<NewReport>, "clientId" | "issuedAt">;
 
