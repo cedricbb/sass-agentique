@@ -101,15 +101,49 @@ POST /api/stripe/webhooks
       │                   inngest.send("stripe/payment-intent.failed",    { event })
       └─ inserted=false → 200 already_processed (pas de dispatch)
   → Inngest dispatch → paymentIntentSucceededHandler
-      ├─ step "get-invoice"    → getInvoiceById(metadata.invoiceId)
-      ├─ step "create-payment" → paymentService.createPayment(...)
-      └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée]
+      └─ step "handle-payment-intent-succeeded"
+             → handlePaymentIntentSucceeded(event, deps)
+                  ├─ getInvoiceById / createPayment / markStripeEventProcessed
+                  └─ → PaymentIntentResult sérialisable
   → Inngest dispatch → paymentIntentFailedHandler
       ├─ console.error(JSON.stringify({ event, outcome, eventId, ... }))  [log structuré]
       └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée]
 ```
 
-**Handler `paymentIntentSucceededHandler`** (`apps/web/inngest/functions/payment-intent-succeeded.ts`) :
+**Handler `paymentIntentSucceededHandler`** (pattern pure fn + thin wrapper) :
+
+La logique métier est extraite dans une fonction pure (calque pattern A.4 webhook-handler) :
+
+```
+apps/web/inngest/functions/payment-intent-succeeded.handler.ts  ← logique métier pure
+apps/web/inngest/functions/payment-intent-succeeded.ts          ← thin wrapper Inngest
+```
+
+Le wrapper délègue en un seul step :
+
+```typescript
+step.run("handle-payment-intent-succeeded", () =>
+  handlePaymentIntentSucceeded(event, {
+    getInvoiceById,
+    createPayment: paymentService.createPayment,
+    markStripeEventProcessed,
+  }),
+)
+```
+
+**Types exportés** (`payment-intent-succeeded.handler.ts`) :
+
+```typescript
+type PaymentIntentSucceededDeps = {
+  getInvoiceById: (id: string) => Promise<{ id: string; ownerId: string } | null>;
+  createPayment: (input: NewPaymentInput) => Promise<{ payment: unknown; invoiceMarkedAsPaid: boolean }>;
+  markStripeEventProcessed: (eventId: string) => Promise<unknown>;
+};
+
+type PaymentIntentResult =
+  | { status: "skipped"; reason: "no_invoice_id_metadata" | "invalid_amount" | "invoice_not_found" }
+  | { status: "processed"; invoiceId: string; paymentIntentId: string; invoiceMarkedAsPaid: boolean };
+```
 
 | Paramètre `createPayment` | Valeur |
 |---|---|
@@ -125,6 +159,7 @@ Chemins de sortie :
 | Cas | Retour | Effet |
 |---|---|---|
 | `metadata.invoiceId` absent | `{ status: "skipped", reason: "no_invoice_id_metadata" }` | `markStripeEventProcessed` |
+| `amount` <= 0 | `{ status: "skipped", reason: "invalid_amount" }` | `markStripeEventProcessed` |
 | Invoice introuvable | `{ status: "skipped", reason: "invoice_not_found" }` | log structuré + `markStripeEventProcessed` |
 | Happy path | `{ status: "processed", invoiceId, paymentIntentId, invoiceMarkedAsPaid }` | insert payment + mark processed |
 | `createPayment` throws | propagation → Inngest retry (max 3) | — |
@@ -134,7 +169,7 @@ Chemins de sortie :
 
 1. `recordStripeEvent` (unique constraint DB) : bloque les retries webhook Stripe avant dispatch.
 2. `recordStripeEvent` retourne `inserted: false` → 200, pas de `inngest.send`.
-3. `step.run("create-payment", ...)` : Inngest mémorise le résultat du step par ID — un retry rejoue sans re-exécuter le step.
+3. `step.run("handle-payment-intent-succeeded", ...)` : Inngest mémorise le résultat du step par ID — un retry rejoue sans re-exécuter le step.
 
 **Contrat sécurité** : le handler fait confiance au payload car `verifyWebhookSignature` (A.2) a validé que l'event provient de notre compte Stripe. Un acteur tiers ne peut pas forger une signature valide avec notre `STRIPE_WEBHOOK_SECRET`. `metadata.invoiceId` est donc traité comme fiable dans ce contexte.
 
@@ -178,7 +213,8 @@ Décision R6 lock — non implémenté en v1 (arbitrage produit requis avant imp
 ## Liens vers tests
 
 - `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre (3 fonctions), manifest 200
-- `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — happy path, skip no_invoice_id, skip invoice_not_found, propagation erreurs
+- `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — tests wrapper Inngest : happy path, skip no_invoice_id, skip invoice_not_found, propagation erreurs
+- `apps/web/inngest/functions/__tests__/payment-intent-succeeded.handler.test.ts` — tests directs de la pure fn (8 cas) : sans mock Inngest SDK, deps injectées explicitement
 - `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — log structuré happy path, erreur markStripeEventProcessed non-bloquante
 - `apps/web/inngest/functions/__tests__/stripe-events-retention.test.ts` — schedule cron `0 3 * * *`, deletedCount loggé, appel `deleteStaleStripeEvents` avec `STRIPE_EVENTS_RETENTION_DAYS`
 - `packages/services/src/__tests__/stripe-event.service.test.ts` — couverture `deleteStaleStripeEvents` (purge rows, rows récentes préservées, 0 lignes, constante exportée)
