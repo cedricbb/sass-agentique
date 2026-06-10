@@ -1,6 +1,6 @@
 import { getResendClient } from "./resend.client";
 import { env } from "@saas/config";
-import { db, clientContacts, quotes, clients, invoices, reports } from "@saas/db";
+import { db, clientContacts, quotes, clients, invoices, reports, users } from "@saas/db";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { computeQuoteTtc } from "./quote.shared";
 import { computeInvoiceTtc } from "./invoice.shared";
@@ -9,8 +9,9 @@ import { renderQuoteSentHtml } from "./emails/QuoteSentEmail";
 import { renderInvoiceSentHtml } from "./emails/InvoiceSentEmail";
 import { renderReportIssuedHtml } from "./emails/ReportIssuedEmail";
 
-export type NotificationEvent = "quote.sent" | "invoice.sent" | "report.issued";
+export type NotificationEvent = "quote.sent" | "invoice.sent" | "report.issued" | "payment.failed";
 export type NotificationPayload = { clientId: string; entityId: string; tenantId: string };
+export type AdminNotificationPayload = { invoiceId: string; tenantId: string };
 export type NotifiableContact = { id: string; name: string; email: string; userId: string };
 
 async function sendNotificationEmail(params: { to: string; subject: string; html: string }): Promise<void> {
@@ -146,15 +147,50 @@ async function handleInvoiceSentNotification(payload: NotificationPayload): Prom
   }
 }
 
-export const DISPATCH_MAP: Record<NotificationEvent, ((payload: NotificationPayload) => Promise<void>) | null> = {
-  "quote.sent": handleQuoteSentNotification,
-  "invoice.sent": handleInvoiceSentNotification,
-  "report.issued": handleReportIssuedNotification,
+async function handlePaymentFailedNotification(payload: AdminNotificationPayload): Promise<void> {
+  const [invoice] = await db.select().from(invoices).where(eq(invoices.id, payload.invoiceId));
+  if (!invoice) {
+    console.warn("[notification.service] invoice not found for payment.failed", { invoiceId: payload.invoiceId });
+    return;
+  }
+
+  const [client] = await db.select().from(clients).where(eq(clients.id, invoice.clientId));
+  if (!client) {
+    console.warn("[notification.service] client not found for payment.failed", { clientId: invoice.clientId });
+    return;
+  }
+
+  const [adminUser] = await db.select().from(users).where(eq(users.id, payload.tenantId));
+  if (!adminUser) {
+    console.warn("[notification.service] admin user not found for payment.failed", { tenantId: payload.tenantId });
+    return;
+  }
+
+  const { totalTtcCents } = computeInvoiceTtc(invoice);
+  const totalTtcFormatted = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(totalTtcCents / 100);
+
+  const html = `<h2>Échec de paiement — Facture ${invoice.number}</h2><p>Le paiement de la facture <strong>${invoice.number}</strong> pour le client <strong>${client.name}</strong> a échoué.</p><p>Montant TTC : ${totalTtcFormatted}</p><p>Vérifiez le tableau de bord Stripe pour plus de détails et relancez manuellement si nécessaire.</p>`;
+
+  await sendNotificationEmail({
+    to: adminUser.email,
+    subject: `Échec paiement facture ${invoice.number}`,
+    html,
+  });
+}
+
+type AnyNotificationPayload = NotificationPayload | AdminNotificationPayload;
+type NotificationHandler = (payload: AnyNotificationPayload) => Promise<void>;
+
+export const DISPATCH_MAP: Record<NotificationEvent, NotificationHandler | null> = {
+  "quote.sent": handleQuoteSentNotification as NotificationHandler,
+  "invoice.sent": handleInvoiceSentNotification as NotificationHandler,
+  "report.issued": handleReportIssuedNotification as NotificationHandler,
+  "payment.failed": handlePaymentFailedNotification as NotificationHandler,
 };
 
 export async function dispatchNotification(
   event: NotificationEvent,
-  payload: NotificationPayload,
+  payload: NotificationPayload | AdminNotificationPayload,
 ): Promise<void> {
   if (!env.NOTIFICATIONS_ENABLED) return;
   const handler = DISPATCH_MAP[event];
