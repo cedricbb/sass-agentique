@@ -17,15 +17,11 @@ import {
 import { uploadAndCreateReportAction } from "@/app/actions/reports";
 import { toastResult } from "@/lib/toast";
 import type { Client, Project } from "@saas/db";
+import { REPORT_KIND_LABELS, type ReportKind } from "@saas/services/report.shared";
 
-type ReportKind = "delivery" | "monthly" | "audit" | "other";
-
-const KIND_OPTIONS: { value: ReportKind; label: string }[] = [
-  { value: "delivery", label: "Livraison" },
-  { value: "monthly", label: "Mensuel" },
-  { value: "audit", label: "Audit" },
-  { value: "other", label: "Autre" },
-];
+const KIND_OPTIONS: { value: ReportKind; label: string }[] = Object.entries(REPORT_KIND_LABELS).map(
+  ([value, label]) => ({ value: value as ReportKind, label }),
+);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 

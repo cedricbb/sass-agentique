@@ -6,12 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "./_components/ReportActions";
 import { formatDate } from "@/lib/format";
 
-const KIND_LABELS: Record<string, string> = {
-  delivery: "Livraison",
-  monthly: "Mensuel",
-  audit: "Audit",
-  other: "Autre",
-};
+import { REPORT_KIND_LABELS as KIND_LABELS } from "@saas/services/report.shared";
 
 export const metadata: Metadata = { title: "Détail rapport — Admin" };
 

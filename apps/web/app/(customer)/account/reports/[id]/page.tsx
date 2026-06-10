@@ -3,14 +3,7 @@ import { requireCustomer, assertClientOwnership } from "@/lib/auth";
 import { getReportById } from "@saas/services/report.service";
 import { formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
-import type { ReportKind } from "@saas/services/report.service";
-
-const KIND_LABELS: Record<ReportKind, string> = {
-  delivery: "Livraison",
-  monthly: "Mensuel",
-  audit: "Audit",
-  other: "Autre",
-};
+import { REPORT_KIND_LABELS as KIND_LABELS } from "@saas/services/report.shared";
 
 export default async function CustomerReportDetailPage({
   params,

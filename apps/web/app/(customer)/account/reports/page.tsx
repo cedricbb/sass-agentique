@@ -4,14 +4,7 @@ import { formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import type { ReportKind } from "@saas/services/report.service";
-
-const KIND_LABELS: Record<ReportKind, string> = {
-  delivery: "Livraison",
-  monthly: "Mensuel",
-  audit: "Audit",
-  other: "Autre",
-};
+import { REPORT_KIND_LABELS as KIND_LABELS } from "@saas/services/report.shared";
 
 export default async function CustomerReportsPage() {
   const { client } = await requireCustomer();

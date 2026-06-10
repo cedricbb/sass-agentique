@@ -22,19 +22,13 @@ import {
 import { useDataTableState } from "@/lib/hooks/use-data-table-state";
 import { formatDate } from "@/lib/format";
 import type { Report } from "@saas/db";
+import { REPORT_KIND_LABELS as KIND_LABELS } from "@saas/services/report.shared";
 
 interface ReportsTableProps {
   data: Report[];
   clients: Pick<{ id: string; name: string }, "id" | "name">[];
   clientNames: Record<string, string>;
 }
-
-const KIND_LABELS: Record<string, string> = {
-  delivery: "Livraison",
-  monthly: "Mensuel",
-  audit: "Audit",
-  other: "Autre",
-};
 
 export function ReportsTable({ data, clients, clientNames }: ReportsTableProps) {
   const { pagination, sorting, search, setPagination, setSorting, setSearch } =
