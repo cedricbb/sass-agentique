@@ -9,7 +9,7 @@ export type PaymentIntentSucceededDeps = {
 type NewPaymentInput = {
   invoiceId: string;
   ownerId: string;
-  amountEurCents: number;
+  amountCents: number;
   method: "stripe_card" | "bank_transfer" | "other";
   externalRef: string;
   paidAt: Date;
@@ -57,7 +57,7 @@ export async function handlePaymentIntentSucceeded(
   const { invoiceMarkedAsPaid } = await deps.createPayment({
     invoiceId,
     ownerId: invoice.ownerId,
-    amountEurCents: paymentIntent.amount,
+    amountCents: paymentIntent.amount,
     method: "stripe_card",
     externalRef: paymentIntent.id,
     paidAt: new Date(paymentIntent.created * 1000),

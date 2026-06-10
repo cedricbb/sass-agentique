@@ -75,7 +75,7 @@ describe("paymentIntentSucceededHandler", () => {
     expect(mockCreatePayment).toHaveBeenCalledWith({
       invoiceId: "inv-uuid-123",
       ownerId: "owner-uuid-789",
-      amountEurCents: 10000,
+      amountCents: 10000,
       method: "stripe_card",
       externalRef: "pi_test123",
       paidAt: new Date(1700000000 * 1000),
