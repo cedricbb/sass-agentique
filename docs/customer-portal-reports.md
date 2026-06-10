@@ -84,12 +84,21 @@ Les rapports brouillons sont exclus à la source (SQL `WHERE issued_at IS NOT NU
 
 ### Kind labels
 
+Les libellés sont définis dans `packages/services/src/report.shared.ts` (module zéro-dépendance serveur, Pattern 11) et consommables depuis les Client Components via le subpath `@saas/services/report.shared` :
+
+```ts
+import { REPORT_KIND_LABELS, type ReportKind } from "@saas/services/report.shared"
+```
+
 | ReportKind | Libellé affiché |
 |---|---|
 | `delivery` | Livraison |
 | `monthly` | Mensuel |
 | `audit` | Audit |
 | `other` | Autre |
+
+`report.service.ts` ré-exporte `REPORT_KIND_LABELS`, `REPORT_KINDS` et `type ReportKind` depuis `report.shared.ts` pour la back-compat des callers serveur existants (`from "@saas/services"`).
+`notification.service.ts` consomme également la constante depuis `report.shared.ts` (doublon supprimé R7-D.2).
 
 ### Séparation admin / customer
 
@@ -106,7 +115,8 @@ Les routes admin et customer partagent `streamPdfFromR2` et `reportService.getRe
 ### Dépendances
 
 - `apps/web/lib/auth.ts` — `requireCustomer()` → `{ user, client }`, `assertClientOwnership()`
-- `packages/services/src/report.service.ts` — `getReportById(id)`, `listReportsByClient(clientId, opts)`, `getReportByTitle(title)` (e2e helper)
+- `packages/services/src/report.service.ts` — `getReportById(id)`, `listReportsByClient(clientId, opts)`, `getReportByTitle(title)` (e2e helper) ; ré-exporte `REPORT_KIND_LABELS`/`REPORT_KINDS`/`type ReportKind` depuis `report.shared.ts`
+- `packages/services/src/report.shared.ts` — module partagé zéro-dépendance server-only : `REPORT_KINDS`, `type ReportKind`, `REPORT_KIND_LABELS` ; accessible via `@saas/services/report.shared`
 - `apps/web/lib/storage/r2.ts` — `streamPdfFromR2(key)`, `R2NotFoundError`
 - `packages/db/src/seed.ts` — 4 rapports seed (Acme draft, Acme monthly émis, Bob monthly émis, Globex émis)
 - `apps/web/lib/test-constants.ts` — constantes `SEED_REPORT_TITLE_*` et `SEED_REPORT_KIND_LABELS` (partagés entre tests e2e et unitaires)
@@ -116,3 +126,4 @@ Les routes admin et customer partagent `streamPdfFromR2` et `reportService.getRe
 - `apps/web/tests/e2e/customer-reports.spec.ts` — 7 tests e2e Playwright (isolation cross-client, AC1–AC8), CI GitHub Actions job "E2E Tests"
 - `apps/web/app/api/account/reports/[id]/file/__tests__/route.test.ts` — 8 cas unitaires route stream (AC1–AC8)
 - `apps/web/tests/e2e/helpers/resolve-seed-ids.ts` — `resolveReportId(reportTitle)` pour résolution UUID seed
+- `packages/services/src/__tests__/report.shared.test.ts` — 3 tests contrats shared (back-compat re-export, zéro import server-only, complétude labels)

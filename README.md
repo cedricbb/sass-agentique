@@ -366,7 +366,8 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `quote.service` | Génération et gestion des devis |
 | `invoice.service` | CRUD factures |
 | `payment.service` | Enregistrement des paiements ; `recomputePaidAtForInvoice` (réconciliation état payé, idempotente, réutilisable) ; `listPaymentsForCustomerPortal` (portail client, cross-client isolation via JOIN). Voir `docs/payment.service.md`. |
-| `report.service` | Rapports de projet et de livraison |
+| `report.service` | Rapports de projet et de livraison ; ré-exporte `REPORT_KIND_LABELS`/`REPORT_KINDS`/`type ReportKind` depuis `report.shared.ts` (back-compat) |
+| `report.shared` (subpath `@saas/services/report.shared`) | Module zéro-dépendance server-only : `REPORT_KINDS`, `type ReportKind`, `REPORT_KIND_LABELS` — consommable depuis Client Components (Pattern 11) |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
 | `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
 
@@ -417,6 +418,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/invoice.service.test.ts` | Gestion factures |
 | `packages/services/src/__tests__/payment.service.test.ts` | Enregistrement paiements |
 | `packages/services/src/__tests__/report.service.test.ts` | Rapports |
+| `packages/services/src/__tests__/report.shared.test.ts` | Module partagé rapports (back-compat re-export, zéro dep server-only, complétude labels) |
 | `packages/services/src/__tests__/maintenance-contract.service.test.ts` | Contrats de maintenance |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
 
