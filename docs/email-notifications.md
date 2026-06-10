@@ -4,7 +4,7 @@
 
 Infrastructure partagée pour l'envoi d'emails automatiques aux contacts client. Posé en R5-B.1, câblé sur le premier événement réel en B.2 (`quote.sent`). Expose :
 
-- **`getResendClient()`** — lazy singleton `Resend` ; instancié une seule fois au premier appel, réutilisé ensuite.
+- **`getResendClient()`** — lazy singleton `Resend` exporté depuis `resend.client.ts` ; instancié au premier appel, réutilisé tant que `RESEND_API_KEY` ne change pas. Détection de rotation via SHA256 : si la clé change entre deux appels, une nouvelle instance est créée automatiquement.
 - **`dispatchNotification(event, payload)`** — point d'entrée unique pour déclencher un email à partir d'un événement métier. Évalué à chaque appel : no-op si `NOTIFICATIONS_ENABLED` est `false`.
 - **`getNotifiableContacts(clientId)`** — retourne les contacts d'un client ayant un compte portail actif (`userId IS NOT NULL`).
 - **`renderQuoteSentHtml(props)`** — rend le template React Email pour `quote.sent` en HTML.
@@ -48,17 +48,30 @@ const contacts: NotifiableContact[] = await getNotifiableContacts(clientId);
 
 ## Architecture interne
 
-### Singleton Resend (`getResendClient`)
+### Singleton Resend (`packages/services/src/resend.client.ts`)
+
+Consolidé en R7-D1 depuis les deux instanciations inline dans `email.service.ts` et `notification.service.ts`. Calque structurel du lazy singleton Stripe (R7 a2/a3).
 
 ```
-let resendInstance: Resend | null = null
+let _resendClient: Resend | null = null
+let _resendClientKeyHash: string | null = null
 
 getResendClient()
-  → if resendInstance return resendInstance
-  → read env.RESEND_API_KEY              // throw si absent
-  → resendInstance = new Resend(key)
-  → return resendInstance
+  → read env.RESEND_API_KEY              // throw "RESEND_API_KEY is not configured" si absent
+  → currentHash = SHA256(apiKey)
+  → if !_resendClient || _resendClientKeyHash !== currentHash
+      → _resendClient = new Resend(apiKey)
+      → _resendClientKeyHash = currentHash
+  → return _resendClient
+
+__resetResendClientForTests()
+  → _resendClient = null ; _resendClientKeyHash = null
+
+__getResendClientKeyHashForTests()
+  → return _resendClientKeyHash
 ```
+
+`getResendClient` est re-exporté depuis le barrel `@saas/services`. Les helpers `__*ForTests` sont consommés directement via chemin profond (`../resend.client`) depuis les tests internes du package — ils ne sont pas re-exportés dans le barrel.
 
 ### Dispatch map (`DISPATCH_MAP`)
 
@@ -225,7 +238,8 @@ Le hook est idempotent par construction : `markReportIssued` utilise une clause 
 
 | Fichier | Tests |
 |---------|-------|
-| `packages/services/src/__tests__/notification.service.test.ts` | Singleton Resend, dispatch no-op, contacts notifiables |
+| `packages/services/src/__tests__/resend.client.test.ts` | Lazy singleton : cache hit, rotation clé SHA256, throw clé absente, reset test-only |
+| `packages/services/src/__tests__/notification.service.test.ts` | Dispatch no-op, contacts notifiables, stub `resend.client` |
 | `packages/services/src/__tests__/quote-sent-notification.test.ts` | DISPATCH_MAP câblé, hook quote.service, handler email loop, `.catch` logué |
 | `packages/services/src/__tests__/quote-sent-email.test.tsx` | Rendu HTML template QuoteSentEmail, présence CTA |
 | `packages/services/src/__tests__/invoice-sent-notification.test.ts` | DISPATCH_MAP invoice.sent câblé, hook invoice.service, handler TTC+dueDate, `.catch` logué |
