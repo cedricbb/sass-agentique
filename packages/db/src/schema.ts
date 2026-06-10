@@ -292,7 +292,7 @@ export const payments = pgTable("payments", {
   ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   invoiceId: uuid("invoice_id").notNull()
     .references(() => invoices.id, { onDelete: "cascade" }),
-  amountEurCents: integer("amount_eur_cents").notNull(),
+  amountCents: integer("amount_cents").notNull(),
   method: paymentMethodEnum("method").notNull(),
   externalRef: text("external_ref"),
   paidAt: timestamp("paid_at").notNull(),

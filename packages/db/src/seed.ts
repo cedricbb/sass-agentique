@@ -441,14 +441,14 @@ async function main() {
     {
       ownerId: seedAdminId,
       invoiceId: inv2.id,
-      amountEurCents: 5000,
+      amountCents: 5000,
       method: "bank_transfer",
       paidAt: new Date("2026-03-20T00:00:00Z"),
     },
     {
       ownerId: seedAdminId,
       invoiceId: inv2.id,
-      amountEurCents: 10000,
+      amountCents: 10000,
       method: "stripe_card",
       externalRef: "pi_seed_002",
       paidAt: new Date("2026-04-15T00:00:00Z"),
@@ -456,7 +456,7 @@ async function main() {
     {
       ownerId: seedAdminId,
       invoiceId: inv1.id,
-      amountEurCents: 8000,
+      amountCents: 8000,
       method: "other",
       externalRef: "chk_seed_004",
       paidAt: new Date("2026-05-01T00:00:00Z"),
@@ -464,14 +464,14 @@ async function main() {
     {
       ownerId: seedAdminId,
       invoiceId: inv4.id,
-      amountEurCents: 20000,
+      amountCents: 20000,
       method: "bank_transfer",
       paidAt: new Date("2026-04-20T00:00:00Z"),
     },
     {
       ownerId: seedAdminId,
       invoiceId: inv3.id,
-      amountEurCents: 15000,
+      amountCents: 15000,
       method: "bank_transfer",
       externalRef: "vir_seed_003",
       paidAt: new Date("2026-05-10T00:00:00Z"),

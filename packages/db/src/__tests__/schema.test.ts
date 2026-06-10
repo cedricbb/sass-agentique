@@ -261,7 +261,7 @@ describe("schema — table payments", () => {
   });
   it("contient les colonnes attendues", () => {
     const cols = Object.keys(payments);
-    for (const col of ["id", "ownerId", "invoiceId", "amountEurCents", "method",
+    for (const col of ["id", "ownerId", "invoiceId", "amountCents", "method",
       "externalRef", "paidAt", "notes", "createdAt"]) {
       expect(cols).toContain(col);
     }
