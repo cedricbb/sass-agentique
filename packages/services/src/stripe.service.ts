@@ -18,7 +18,7 @@ export type CreateCheckoutSessionParams =
       mode: "payment";
       invoiceId: string;
       customerId: string;
-      amountEurCents: number;
+      amountCents: number;
       successUrl: string;
       cancelUrl: string;
       description?: string;
@@ -180,7 +180,7 @@ export class StripeService {
                   quantity: 1,
                   price_data: {
                     currency: "eur",
-                    unit_amount: params.amountEurCents,
+                    unit_amount: params.amountCents,
                     product_data: { name: params.description ?? "Payment" },
                   },
                 },

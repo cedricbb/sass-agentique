@@ -316,7 +316,7 @@ describe("StripeService", () => {
         mode: "payment",
         invoiceId: "inv_1",
         customerId: "cus_1",
-        amountEurCents: 999,
+        amountCents: 999,
         successUrl: "https://ok",
         cancelUrl: "https://cancel",
         description: "Invoice #42",
@@ -349,7 +349,7 @@ describe("StripeService", () => {
         mode: "payment",
         invoiceId: "inv_2",
         customerId: "cus_1",
-        amountEurCents: 500,
+        amountCents: 500,
         successUrl: "https://ok",
         cancelUrl: "https://cancel",
       });
