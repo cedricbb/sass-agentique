@@ -4,6 +4,7 @@ import { db, clientContacts, quotes, clients, invoices, reports } from "@saas/db
 import { eq, and, isNotNull } from "drizzle-orm";
 import { computeQuoteTtc } from "./quote.shared";
 import { computeInvoiceTtc } from "./invoice.shared";
+import { REPORT_KIND_LABELS } from "./report.shared";
 import { renderQuoteSentHtml } from "./emails/QuoteSentEmail";
 import { renderInvoiceSentHtml } from "./emails/InvoiceSentEmail";
 import { renderReportIssuedHtml } from "./emails/ReportIssuedEmail";
@@ -73,13 +74,6 @@ async function handleQuoteSentNotification(payload: NotificationPayload): Promis
     });
   }
 }
-
-const REPORT_KIND_LABELS: Record<string, string> = {
-  delivery: "Livraison",
-  monthly: "Mensuel",
-  audit: "Audit",
-  other: "Autre",
-};
 
 async function handleReportIssuedNotification(payload: NotificationPayload): Promise<void> {
   const [report] = await db.select().from(reports).where(eq(reports.id, payload.entityId));
