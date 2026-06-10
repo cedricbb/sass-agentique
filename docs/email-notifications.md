@@ -77,9 +77,10 @@ __getResendClientKeyHashForTests()
 
 ```ts
 const DISPATCH_MAP: Record<NotificationEvent, Handler | null> = {
-  "quote.sent":    handleQuoteSentNotification,    // câblé en B.2
-  "invoice.sent":  handleInvoiceSentNotification,  // câblé en B.3
-  "report.issued": handleReportIssuedNotification, // câblé en B.4
+  "quote.sent":      handleQuoteSentNotification,      // câblé en B.2
+  "invoice.sent":    handleInvoiceSentNotification,    // câblé en B.3
+  "report.issued":   handleReportIssuedNotification,   // câblé en B.4
+  "payment.failed":  handlePaymentFailedNotification,  // câblé en R7 F.3
 }
 ```
 
@@ -116,6 +117,26 @@ handleInvoiceSentNotification(payload)
   → renderInvoiceSentHtml(props)
   → for each contact: sendNotificationEmail(...)
 ```
+
+### Handler `payment.failed` (`handlePaymentFailedNotification`)
+
+Déclenché par le handler Inngest `paymentIntentFailedHandler` (R7 F.3) — pas via un service, directement depuis le wrapper Inngest.
+
+Destinataire : **admin uniquement** (`ownerId` de l'invoice). Le client reçoit déjà une notification Stripe directe sur sa carte refusée.
+
+```
+handlePaymentFailedNotification(payload)
+  → payload.invoiceId + payload.ownerId (fournis par le handler Inngest)
+  → récupère l'email admin via users.id = payload.ownerId
+  → sendNotificationEmail(to=adminEmail, subject=`Échec paiement facture {invoice.number}`, html=...)
+```
+
+Payload (`AdminNotificationPayload`) :
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `invoiceId` | `string` | ID de la facture concernée |
+| `ownerId` | `string` | ID de l'admin (owner du tenant) |
 
 ### Handler `report.issued` (`handleReportIssuedNotification`)
 
@@ -230,8 +251,9 @@ Le hook est idempotent par construction : `markReportIssued` utilise une clause 
 
 | Type | Valeurs |
 |------|---------|
-| `NotificationEvent` | `"quote.sent" \| "invoice.sent" \| "report.issued"` |
-| `NotificationPayload` | `{ clientId, entityId, tenantId }` |
+| `NotificationEvent` | `"quote.sent" \| "invoice.sent" \| "report.issued" \| "payment.failed"` |
+| `NotificationPayload` | `{ clientId, entityId, tenantId }` (événements client) ou `AdminNotificationPayload` (événements admin) |
+| `AdminNotificationPayload` | `{ invoiceId, ownerId }` — utilisé par `"payment.failed"` |
 | `NotifiableContact` | `{ id, name, email, userId }` — `userId` non-null par construction |
 
 ## Liens vers tests
@@ -246,3 +268,4 @@ Le hook est idempotent par construction : `markReportIssued` utilise une clause 
 | `packages/services/src/__tests__/invoice-sent-email.test.tsx` | Rendu HTML InvoiceSentEmail, dueDateFormatted nullable (pas de "null" littéral) |
 | `packages/services/src/__tests__/report-issued-notification.test.ts` | DISPATCH_MAP report.issued câblé, hook markReportIssued idempotent, handler email loop, `.catch` logué |
 | `packages/services/src/__tests__/report-issued-email.test.tsx` | Rendu HTML ReportIssuedEmail, CTA vers `/account/reports/{id}` (pas de lien PDF direct) |
+| `packages/services/src/__tests__/payment-failed-notification.test.ts` | DISPATCH_MAP câblé, skip si NOTIFICATIONS_ENABLED=false, email admin envoyé avec sujet contenant le numéro de facture |

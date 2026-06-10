@@ -107,6 +107,7 @@ POST /api/stripe/webhooks
                   └─ → PaymentIntentResult sérialisable
   → Inngest dispatch → paymentIntentFailedHandler
       ├─ console.error(JSON.stringify({ event, outcome, eventId, ... }))  [log structuré]
+      ├─ (si invoiceId présent) dispatchNotification("payment.failed", { invoiceId, ownerId })  [try/catch dédié]
       └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée]
 ```
 
@@ -187,7 +188,7 @@ La constante `STRIPE_EVENTS_RETENTION_DAYS` est exportée depuis `packages/servi
 
 **Handler `paymentIntentFailedHandler`** (`apps/web/inngest/functions/payment-intent-failed.ts`) :
 
-Déclenché par `stripe/payment-intent.failed`. Rôle v1 : observabilité uniquement (pas d'insertion `payments`, pas de notification email, pas d'update statut invoice).
+Déclenché par `stripe/payment-intent.failed`. Rôle v2 : log structuré + notification email admin sur échec de paiement.
 
 | Paramètre loggé | Valeur |
 |---|---|
@@ -199,22 +200,37 @@ Déclenché par `stripe/payment-intent.failed`. Rôle v1 : observabilité unique
 | `declineCode` | `paymentIntent.last_payment_error?.decline_code ?? null` |
 | `errorMessage` | `paymentIntent.last_payment_error?.message ?? null` |
 
+Séquence v2 (R7 F.3) :
+
+```
+1. Log structuré (console.error JSON)
+2. Si metadata.invoiceId présent :
+     getInvoiceById(invoiceId)
+     → si invoice trouvée : dispatchNotification("payment.failed", { invoiceId, ownerId: invoice.ownerId })
+     → try/catch dédié : l'échec de la notif est loggé mais ne bloque pas l'étape suivante
+3. markStripeEventProcessed(eventId)  [try/catch dédié, non-bloquant]
+```
+
 Chemins de sortie :
 
 | Cas | Retour | Effet |
 |---|---|---|
-| Happy path | `{ status: "logged", eventId }` | log structuré + `markStripeEventProcessed` |
+| `metadata.invoiceId` absent | `{ status: "logged", eventId }` | log structuré + markStripeEventProcessed |
+| Invoice introuvable | `{ status: "logged", eventId }` | log structuré (notif skippée) + markStripeEventProcessed |
+| Happy path (invoice trouvée) | `{ status: "logged", eventId }` | log + email admin + markStripeEventProcessed |
+| `dispatchNotification` throws | `{ status: "logged", eventId }` | log erreur notif (non-bloquant) + markStripeEventProcessed |
 | `markStripeEventProcessed` throws | `{ status: "logged", eventId }` | log structuré erreur (non-bloquant, pas de propagation) |
 
-Décision R6 lock — non implémenté en v1 (arbitrage produit requis avant impl) :
-- Email admin via `notification.service`
-- Update statut invoice `overdue` via webhook (aujourd'hui géré par cron overdue)
+Arbitrages actés (R7 F.3) :
+- **Destinataire email** : admin uniquement (`ownerId` de l'invoice). Le client reçoit déjà une notification Stripe directe sur sa carte refusée.
+- **Statut invoice** : NON transitionné à `overdue`. PI failed = paiement individuel raté (carte refusée) ; `overdue` = due date dépassée sans paiement. Sémantiques distinctes. Un cron dédié gérera `overdue` (sujet R8 potentiel).
+- **Pure fn extraction** : NON appliqué (inline, cohérent avec effort S et trivialité v1). Si la complexité dépasse 25 lignes métier → micro-fix f2b en sprint ultérieur.
 
 ## Liens vers tests
 
 - `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre (3 fonctions), manifest 200
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — tests wrapper Inngest : happy path, skip no_invoice_id, skip invoice_not_found, propagation erreurs
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.handler.test.ts` — tests directs de la pure fn (8 cas) : sans mock Inngest SDK, deps injectées explicitement
-- `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — log structuré happy path, erreur markStripeEventProcessed non-bloquante
+- `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — log structuré happy path, erreur markStripeEventProcessed non-bloquante, skip notif si invoiceId absent, notif non-bloquante sur throw dispatchNotification
 - `apps/web/inngest/functions/__tests__/stripe-events-retention.test.ts` — schedule cron `0 3 * * *`, deletedCount loggé, appel `deleteStaleStripeEvents` avec `STRIPE_EVENTS_RETENTION_DAYS`
 - `packages/services/src/__tests__/stripe-event.service.test.ts` — couverture `deleteStaleStripeEvents` (purge rows, rows récentes préservées, 0 lignes, constante exportée)
