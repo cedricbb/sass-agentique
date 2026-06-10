@@ -36,7 +36,7 @@ describe("stripeEventsRetentionCron", () => {
   it("retention_cron_registered_in_inngest_functions", async () => {
     const { inngestFunctions } = await import("@/inngest/functions/index");
     expect(Array.isArray(inngestFunctions)).toBe(true);
-    expect(inngestFunctions).toHaveLength(3);
+    expect(inngestFunctions).toHaveLength(4);
   });
 
   it("retention_cron_has_daily_schedule", async () => {
