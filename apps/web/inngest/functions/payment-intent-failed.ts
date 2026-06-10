@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { inngest } from "@saas/workflows";
-import { markStripeEventProcessed } from "@saas/services";
+import { markStripeEventProcessed, getInvoiceById, dispatchNotification } from "@saas/services";
 
 export const paymentIntentFailedHandler = inngest.createFunction(
   { id: "stripe-payment-intent-failed", retries: 3 },
@@ -21,6 +21,26 @@ export const paymentIntentFailedHandler = inngest.createFunction(
       errorMessage: paymentIntent.last_payment_error?.message ?? null,
     }));
 
+    const invoiceId = paymentIntent.metadata?.invoiceId;
+    let status: "logged" | "notified" = "logged";
+
+    if (invoiceId) {
+      try {
+        const invoice = await getInvoiceById(invoiceId);
+        if (invoice) {
+          await dispatchNotification("payment.failed", { invoiceId, tenantId: invoice.ownerId });
+          status = "notified";
+        }
+      } catch (err) {
+        console.error(JSON.stringify({
+          event: "stripe-payment-intent-failed",
+          outcome: "notification_error",
+          eventId: stripeEvent.id,
+          message: (err as Error).message,
+        }));
+      }
+    }
+
     try {
       await markStripeEventProcessed(stripeEvent.id);
     } catch (err) {
@@ -32,6 +52,6 @@ export const paymentIntentFailedHandler = inngest.createFunction(
       }));
     }
 
-    return { status: "logged" as const, eventId: stripeEvent.id };
+    return { status, eventId: stripeEvent.id };
   }
 );
