@@ -80,7 +80,7 @@ Expose trois verbes HTTP nécessaires au protocole Inngest : `GET` pour le manif
 
 **Registre des fonctions** (`apps/web/inngest/functions/index.ts`) :
 
-Peuplé en B.1 avec `paymentIntentSucceededHandler`, étendu en B.2 avec `paymentIntentFailedHandler`, étendu en R7 A.1 avec `stripeEventsRetentionCron`. Un serve handler sans fonctions est valide — Inngest retourne un manifest vide et répond 200.
+Peuplé en B.1 avec `paymentIntentSucceededHandler`, étendu en B.2 avec `paymentIntentFailedHandler`, étendu en R7 A.1 avec `stripeEventsRetentionCron`, étendu en R7 F.4 avec `stripeEventsPollFallbackCron`. Un serve handler sans fonctions est valide — Inngest retourne un manifest vide et répond 200.
 
 **Variables d'environnement :**
 
@@ -226,6 +226,44 @@ Arbitrages actés (R7 F.3) :
 - **Statut invoice** : NON transitionné à `overdue`. PI failed = paiement individuel raté (carte refusée) ; `overdue` = due date dépassée sans paiement. Sémantiques distinctes. Un cron dédié gérera `overdue` (sujet R8 potentiel).
 - **Pure fn extraction** : NON appliqué (inline, cohérent avec effort S et trivialité v1). Si la complexité dépasse 25 lignes métier → micro-fix f2b en sprint ultérieur.
 
+**Cron `stripeEventsPollFallbackCron`** (`apps/web/inngest/functions/stripe-events-poll-fallback.ts`) :
+
+Defense-in-depth : poll horaire de l'API Stripe `events.list` pour rattraper les `payment_intent.succeeded` manqués (downtime réseau, retry Stripe épuisé, signature corrompue par proxy). Déduplique via `stripe_events.eventId` (R6 A.1) et ré-injecte les events absents directement vers la pure fn `handlePaymentIntentSucceeded`.
+
+| Paramètre | Valeur |
+|---|---|
+| Schedule cron | `0 * * * *` (toutes les heures, UTC) |
+| Lookback window | `POLL_LOOKBACK_HOURS = 25` — couvre overlap +1h sur fenêtre horaire |
+| Types Stripe pollés | `payment_intent.succeeded` uniquement (Option Z : `.failed` géré manuellement via Dashboard, 90% du volume métier) |
+| Retries Inngest | `3` |
+| Retour | `{ status: "completed", totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId }` |
+
+Logique de traitement pour chaque event listé :
+
+```
+stripe.events.list({ type: "payment_intent.succeeded", created: { gte: cutoff } })
+  └─ pour chaque event (pagination via async iterator SDK) :
+       ├─ getStripeEvent(ev.id).processedAt non-null → alreadyProcessed++, continue
+       ├─ metadata.invoiceId absent → recordStripeEvent (si absent DB) + skippedNoInvoiceId++, continue
+       └─ event non traité, invoiceId présent :
+            → recordStripeEvent (si absent DB)
+            → handlePaymentIntentSucceeded({ data: { event: ev } }, deps)
+            → reInjected++
+```
+
+Comportements garantis :
+
+| Cas | Outcome | Log structuré |
+|---|---|---|
+| Event déjà dans DB avec `processedAt` | Ignoré | `alreadyProcessed++` |
+| Event sans `metadata.invoiceId` | Skipped silencieux | `skippedNoInvoiceId++` |
+| Event manqué avec invoiceId | Ré-injecté via pure fn | `reInjected++` |
+| `handlePaymentIntentSucceeded` throws | Inngest retry (max 3) | — |
+
+**Idempotence** : garantie naturellement par la contrainte UNIQUE `stripe_events.eventId` — `recordStripeEvent` ne duplique jamais un event. Le check `getStripeEvent` avant ré-injection constitue une garde explicite supplémentaire.
+
+**Périmètre scope** : uniquement `payment_intent.succeeded`. Le type `payment_intent.failed` est exclu (Option Z retenue — volume métier faible, gérable via Dashboard Stripe en cas de défaut). Aucun event Inngest custom envoyé — appel direct à la pure fn (Option A).
+
 ## Liens vers tests
 
 - `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre (3 fonctions), manifest 200
@@ -233,4 +271,5 @@ Arbitrages actés (R7 F.3) :
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.handler.test.ts` — tests directs de la pure fn (8 cas) : sans mock Inngest SDK, deps injectées explicitement
 - `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — log structuré happy path, erreur markStripeEventProcessed non-bloquante, skip notif si invoiceId absent, notif non-bloquante sur throw dispatchNotification
 - `apps/web/inngest/functions/__tests__/stripe-events-retention.test.ts` — schedule cron `0 3 * * *`, deletedCount loggé, appel `deleteStaleStripeEvents` avec `STRIPE_EVENTS_RETENTION_DAYS`
+- `apps/web/inngest/functions/__tests__/stripe-events-poll-fallback.test.ts` — 8 cas : enregistrement dans registre, config id/schedule/retries, skip event déjà traité, ré-injection event manqué, ordre recordStripeEvent avant handlePaymentIntentSucceeded, skip sans invoiceId, counters structurés retournés
 - `packages/services/src/__tests__/stripe-event.service.test.ts` — couverture `deleteStaleStripeEvents` (purge rows, rows récentes préservées, 0 lignes, constante exportée)
