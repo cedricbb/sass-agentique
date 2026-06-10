@@ -5,7 +5,7 @@
 Infrastructure partagée pour l'envoi d'emails automatiques aux contacts client. Posé en R5-B.1, câblé sur le premier événement réel en B.2 (`quote.sent`). Expose :
 
 - **`getResendClient()`** — lazy singleton `Resend` ; instancié une seule fois au premier appel, réutilisé ensuite.
-- **`dispatchNotification(event, payload)`** — point d'entrée unique pour déclencher un email à partir d'un événement métier. Évalué à chaque appel : no-op si `NOTIFICATIONS_ENABLED !== "true"`.
+- **`dispatchNotification(event, payload)`** — point d'entrée unique pour déclencher un email à partir d'un événement métier. Évalué à chaque appel : no-op si `NOTIFICATIONS_ENABLED` est `false`.
 - **`getNotifiableContacts(clientId)`** — retourne les contacts d'un client ayant un compte portail actif (`userId IS NOT NULL`).
 - **`renderQuoteSentHtml(props)`** — rend le template React Email pour `quote.sent` en HTML.
 - **`renderInvoiceSentHtml(props)`** — rend le template React Email pour `invoice.sent` en HTML.
@@ -41,10 +41,10 @@ const contacts: NotifiableContact[] = await getNotifiableContacts(clientId);
 | Variable | Obligatoire | Description |
 |----------|-------------|-------------|
 | `RESEND_API_KEY` | Oui (prod) | Clé API Resend. `getResendClient()` throw si absente. |
-| `NOTIFICATIONS_ENABLED` | Non | Doit valoir exactement `"true"` pour activer l'envoi. Toute autre valeur (absent, `"false"`, `"1"`) = no-op. |
+| `NOTIFICATIONS_ENABLED` | Non | `"true"` ou `"false"`. Validé par `@saas/config` (Zod) : seules ces deux valeurs sont acceptées (typo = erreur au démarrage). Défaut : `false` (opt-in strict). |
 | `APP_URL` | Non | Préfixe des liens CTA dans les emails. Défaut : `http://localhost:3001`. |
 
-> **Killswitch CI/preview** : `NOTIFICATIONS_ENABLED` est évalué à chaque appel de `dispatchNotification`, jamais mis en cache. Le défaut strict-opt-in (`!== "true"`) empêche tout envoi réel en CI ou en preview deploy.
+> **Killswitch CI/preview** : `NOTIFICATIONS_ENABLED` est évalué à chaque appel de `dispatchNotification`, jamais mis en cache. Le défaut strict-opt-in (`false`) empêche tout envoi réel en CI ou en preview deploy. La valeur est exposée comme `boolean` typé via `@saas/config` — un typo (`"tru"`, `"1"`, etc.) lève une erreur Zod au démarrage plutôt que de passer silencieusement.
 
 ## Architecture interne
 
@@ -71,7 +71,7 @@ const DISPATCH_MAP: Record<NotificationEvent, Handler | null> = {
 ```
 
 `dispatchNotification` :
-1. Early-return si `NOTIFICATIONS_ENABLED !== "true"`.
+1. Early-return si `!config.NOTIFICATIONS_ENABLED` (boolean `false` via `@saas/config`).
 2. Consulte la map. Si `null` → `console.warn` structuré + return.
 3. Si handler → `try/catch` + `console.error(JSON.stringify({ event, message }))` sur erreur (pas d'objet `Error` brut).
 
