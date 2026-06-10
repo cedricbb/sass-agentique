@@ -31,7 +31,7 @@ afterEach(cleanup);
 const PAYMENT_1 = {
   id: "pay-1",
   invoiceId: "inv-1",
-  amountEurCents: 5000,
+  amountCents: 5000,
   method: "bank_transfer" as const,
   externalRef: "REF-123",
   paidAt: new Date("2024-06-15"),
@@ -44,7 +44,7 @@ const PAYMENT_1 = {
 const PAYMENT_2 = {
   id: "pay-2",
   invoiceId: "inv-1",
-  amountEurCents: 3000,
+  amountCents: 3000,
   method: "stripe_card" as const,
   externalRef: null,
   paidAt: new Date("2024-07-01"),
@@ -57,7 +57,7 @@ const PAYMENT_2 = {
 const PAYMENT_3 = {
   id: "pay-3",
   invoiceId: "inv-1",
-  amountEurCents: 1000,
+  amountCents: 1000,
   method: "other" as const,
   externalRef: "LONGREF-ABCDEFGHIJ-KLMNOP",
   paidAt: new Date("2024-08-01"),

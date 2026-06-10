@@ -118,11 +118,11 @@ function buildColumns(
       cell: ({ row }) => METHOD_LABELS[row.original.method] ?? row.original.method,
     },
     {
-      accessorKey: "amountEurCents",
+      accessorKey: "amountCents",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Montant" />
       ),
-      cell: ({ row }) => formatCurrency(row.original.amountEurCents / 100),
+      cell: ({ row }) => formatCurrency(row.original.amountCents / 100),
     },
     {
       accessorKey: "paidAt",

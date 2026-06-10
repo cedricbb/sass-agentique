@@ -106,7 +106,7 @@ const mockClient = { id: "client-uuid-1" }
 const mockPayment1 = {
   id: "pay-uuid-1",
   invoiceId: "inv-uuid-1",
-  amountEurCents: 5000,
+  amountCents: 5000,
   method: "stripe_card" as const,
   paidAt: new Date("2026-01-15"),
   invoiceNumber: "F-2026-001",
@@ -115,7 +115,7 @@ const mockPayment1 = {
 const mockPayment2 = {
   id: "pay-uuid-2",
   invoiceId: "inv-uuid-2",
-  amountEurCents: 15000,
+  amountCents: 15000,
   method: "bank_transfer" as const,
   paidAt: new Date("2026-02-10"),
   invoiceNumber: "F-2026-002",
@@ -124,7 +124,7 @@ const mockPayment2 = {
 const mockPaymentOther = {
   id: "pay-uuid-3",
   invoiceId: "inv-uuid-3",
-  amountEurCents: 3000,
+  amountCents: 3000,
   method: "other" as const,
   paidAt: new Date("2026-03-05"),
   invoiceNumber: "F-2026-003",

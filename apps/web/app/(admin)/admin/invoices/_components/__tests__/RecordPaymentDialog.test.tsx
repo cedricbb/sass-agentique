@@ -71,7 +71,7 @@ describe("RecordPaymentDialog", () => {
       expect(mockCreatePaymentAction).toHaveBeenCalledWith(
         expect.objectContaining({
           invoiceId: "inv-uuid-1",
-          amountEurCents: 15000,
+          amountCents: 15000,
           method: "bank_transfer",
         }),
       );

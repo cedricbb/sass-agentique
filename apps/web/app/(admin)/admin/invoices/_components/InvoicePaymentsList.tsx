@@ -64,7 +64,7 @@ export function InvoicePaymentsList({ invoiceId, invoiceStatus, payments }: Invo
               >
                 <span>{formatDate(payment.paidAt)}</span>
                 <span>{paymentMethodLabel(payment.method)}</span>
-                <span>{formatCurrency(payment.amountEurCents / 100)}</span>
+                <span>{formatCurrency(payment.amountCents / 100)}</span>
                 {payment.externalRef && (
                   <span className="text-muted-foreground truncate max-w-[120px]">{payment.externalRef}</span>
                 )}
@@ -83,7 +83,7 @@ export function InvoicePaymentsList({ invoiceId, invoiceStatus, payments }: Invo
                       <AlertDialogHeader>
                         <AlertDialogTitle>Supprimer ce paiement ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Cette action est irréversible. Le paiement de {formatCurrency(payment.amountEurCents / 100)} du{" "}
+                          Cette action est irréversible. Le paiement de {formatCurrency(payment.amountCents / 100)} du{" "}
                           {formatDate(payment.paidAt)} sera supprimé.
                         </AlertDialogDescription>
                       </AlertDialogHeader>

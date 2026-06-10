@@ -26,7 +26,7 @@ const mockPayments: Payment[] = [
   {
     id: "pay-1",
     invoiceId: "inv-1",
-    amountEurCents: 10000,
+    amountCents: 10000,
     method: "stripe_card",
     externalRef: "pi_test_001",
     paidAt: new Date("2026-04-15T10:00:00Z"),
@@ -36,7 +36,7 @@ const mockPayments: Payment[] = [
   {
     id: "pay-2",
     invoiceId: "inv-2",
-    amountEurCents: 5000,
+    amountCents: 5000,
     method: "bank_transfer",
     externalRef: null,
     paidAt: new Date("2026-03-20T10:00:00Z"),
@@ -46,7 +46,7 @@ const mockPayments: Payment[] = [
   {
     id: "pay-3-abcdef12",
     invoiceId: "inv-unknown",
-    amountEurCents: 8000,
+    amountCents: 8000,
     method: "other",
     externalRef: null,
     paidAt: new Date("2026-05-01T10:00:00Z"),

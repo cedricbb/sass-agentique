@@ -57,7 +57,7 @@ export function RecordPaymentDialog({
   } = useForm<RecordPaymentFormValues>({
     resolver: zodResolver(recordPaymentFormSchema),
     defaultValues: {
-      amountEurCents: remainingTtcCents,
+      amountCents: remainingTtcCents,
       method: "bank_transfer",
       paidAt: new Date(),
       externalRef: null,
@@ -69,7 +69,7 @@ export function RecordPaymentDialog({
     const result = await createPaymentAction({
       ...values,
       invoiceId,
-      amountEurCents: Math.round(parseFloat(String(values.amountEurCents / 100)) * 100),
+      amountCents: Math.round(parseFloat(String(values.amountCents / 100)) * 100),
     });
 
     if (!result.ok) {
@@ -114,11 +114,11 @@ export function RecordPaymentDialog({
               defaultValue={remainingTtcCents / 100}
               onChange={(e) => {
                 const cents = Math.round(parseFloat(e.target.value) * 100);
-                setValue("amountEurCents", isNaN(cents) ? 0 : cents);
+                setValue("amountCents", isNaN(cents) ? 0 : cents);
               }}
             />
-            {errors.amountEurCents && (
-              <p className="text-sm text-destructive">{errors.amountEurCents.message}</p>
+            {errors.amountCents && (
+              <p className="text-sm text-destructive">{errors.amountCents.message}</p>
             )}
           </div>
 

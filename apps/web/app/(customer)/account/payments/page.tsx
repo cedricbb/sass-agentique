@@ -52,7 +52,7 @@ export default async function CustomerPaymentsPage() {
               {payments.map((payment) => (
                 <tr key={payment.id} className="border-b last:border-0" data-testid="payment-row">
                   <td className="px-4 py-3">{formatDate(payment.paidAt)}</td>
-                  <td className="px-4 py-3">{formatCurrency(payment.amountEurCents / 100) + " TTC"}</td>
+                  <td className="px-4 py-3">{formatCurrency(payment.amountCents / 100) + " TTC"}</td>
                   <td className="px-4 py-3">
                     <Badge
                       variant={PAYMENT_METHOD_VARIANT[payment.method] as "default" | "secondary" | "outline" | "destructive"}
