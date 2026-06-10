@@ -10,7 +10,7 @@ type NewPaymentInput = {
   invoiceId: string;
   ownerId: string;
   amountEurCents: number;
-  method: string;
+  method: "stripe_card" | "bank_transfer" | "other";
   externalRef: string;
   paidAt: Date;
 };

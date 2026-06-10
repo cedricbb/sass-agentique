@@ -7,7 +7,7 @@ export const paymentIntentSucceededHandler = inngest.createFunction(
   { event: "stripe/payment-intent.succeeded" },
   async ({ event, step }) => {
     return step.run("handle-payment-intent-succeeded", () =>
-      handlePaymentIntentSucceeded(event, {
+      handlePaymentIntentSucceeded({ data: event.data }, {
         getInvoiceById,
         createPayment: paymentService.createPayment,
         markStripeEventProcessed,
