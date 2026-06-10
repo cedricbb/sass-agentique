@@ -22,7 +22,7 @@ vi.mock("../payment-intent-succeeded.handler", () => ({
   handlePaymentIntentSucceeded: mockHandlePaymentIntentSucceeded,
 }));
 
-let capturedConfig: { id: string; retries: number };
+let _capturedConfig: { id: string; retries: number };
 let capturedTrigger: { cron: string };
 let capturedHandler: () => Promise<unknown>;
 
@@ -30,11 +30,11 @@ vi.mock("@saas/workflows", () => ({
   inngest: {
     createFunction: vi.fn(
       (
-        config: typeof capturedConfig,
+        config: typeof _capturedConfig,
         trigger: typeof capturedTrigger,
         handler: typeof capturedHandler,
       ) => {
-        capturedConfig = config;
+        _capturedConfig = config;
         capturedTrigger = trigger;
         capturedHandler = handler;
         return { id: config.id };
