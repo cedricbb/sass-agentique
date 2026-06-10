@@ -91,8 +91,8 @@ describe("buildDashboardMetrics", () => {
 
   it("computes collectedCents from payments sum", async () => {
     mockListAllPayments.mockResolvedValue([
-      { id: "1", amountEurCents: 5000 },
-      { id: "2", amountEurCents: 3000 },
+      { id: "1", amountCents: 5000 },
+      { id: "2", amountCents: 3000 },
     ] as unknown as Payment[]);
     const m = await buildDashboardMetrics();
     expect(m.collectedCents).toBe(8000);

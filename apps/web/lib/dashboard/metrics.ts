@@ -97,7 +97,7 @@ export async function buildDashboardMetrics(): Promise<DashboardMetrics> {
     0,
   );
 
-  const collectedCents = payments.reduce((sum, p) => sum + p.amountEurCents, 0);
+  const collectedCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
 
   return {
     clientsCount: clients.length,
