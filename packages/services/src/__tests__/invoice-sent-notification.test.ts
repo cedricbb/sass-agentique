@@ -144,11 +144,6 @@ describe("invoice_service_dispatch_hook", () => {
 describe("handler_email_dispatch", () => {
   beforeEach(() => {
     vi.doUnmock("../notification.service");
-    process.env.NOTIFICATIONS_ENABLED = "true";
-  });
-
-  afterEach(() => {
-    delete process.env.NOTIFICATIONS_ENABLED;
   });
 
   const buildDbMock = (
@@ -171,7 +166,7 @@ describe("handler_email_dispatch", () => {
       Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
     }));
     vi.doMock("@saas/config", () => ({
-      env: { RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
+      env: { NOTIFICATIONS_ENABLED: true, RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
     }));
     vi.doMock("@saas/db", () => {
       const db = buildDbMock([INVOICE_FIXTURE], [CLIENT_FIXTURE], CONTACTS_FIXTURE);
@@ -216,7 +211,7 @@ describe("handler_email_dispatch", () => {
       Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
     }));
     vi.doMock("@saas/config", () => ({
-      env: { RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
+      env: { NOTIFICATIONS_ENABLED: true, RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
     }));
     vi.doMock("@saas/db", () => {
       const db = buildDbMock([INVOICE_FIXTURE], [CLIENT_FIXTURE], []);
@@ -256,11 +251,6 @@ describe("quote_sent_catch_logs_error", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    process.env.NOTIFICATIONS_ENABLED = "true";
-  });
-
-  afterEach(() => {
-    delete process.env.NOTIFICATIONS_ENABLED;
   });
 
   it("quote_sent_catch_logs_error", async () => {
@@ -315,5 +305,65 @@ describe("quote_sent_catch_logs_error", () => {
     );
 
     mockConsoleError.mockRestore();
+  });
+});
+
+describe("notifications_flag_behavior", () => {
+  beforeEach(() => {
+    vi.doUnmock("../notification.service");
+  });
+
+  it("dispatches_notification_when_env_enabled", async () => {
+    const mockEmailsSend = vi.fn().mockResolvedValue({ id: "email-id" });
+    vi.doMock("resend", () => ({
+      Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
+    }));
+    vi.doMock("@saas/config", () => ({
+      env: { NOTIFICATIONS_ENABLED: true, RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
+    }));
+    const mockWhere = vi.fn()
+      .mockResolvedValueOnce([INVOICE_FIXTURE])
+      .mockResolvedValueOnce([CLIENT_FIXTURE])
+      .mockResolvedValueOnce(CONTACTS_FIXTURE);
+    vi.doMock("@saas/db", () => ({
+      db: { select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: mockWhere }) }) },
+      invoices: { id: "id", number: "number", totalEurCents: "totalEurCents", vatRateBps: "vatRateBps", dueAt: "dueAt" },
+      clients: { id: "id", name: "name" },
+      clientContacts: { id: "id", name: "name", email: "email", userId: "userId", clientId: "clientId" },
+      quotes: {},
+    }));
+    vi.doMock("drizzle-orm", () => ({
+      eq: vi.fn((...a: unknown[]) => ({ op: "eq", a })),
+      and: vi.fn((...a: unknown[]) => ({ op: "and", a })),
+      isNotNull: vi.fn((c: unknown) => ({ op: "isNotNull", c })),
+    }));
+    vi.doMock("../emails/InvoiceSentEmail", () => ({
+      renderInvoiceSentHtml: vi.fn().mockResolvedValue("<html>invoice email</html>"),
+    }));
+    vi.doMock("./invoice.shared", () => ({
+      computeInvoiceTtc: vi.fn().mockReturnValue({ totalHtCents: 100000, vatCents: 20000, totalTtcCents: 120000 }),
+    }));
+    vi.doMock("../emails/QuoteSentEmail", () => ({ renderQuoteSentHtml: vi.fn() }));
+    vi.doMock("./quote.shared", () => ({ computeQuoteTtc: vi.fn() }));
+
+    const { dispatchNotification } = await import("../notification.service");
+    await dispatchNotification("invoice.sent", { clientId: CLIENT_ID, entityId: INVOICE_ID, tenantId: OWNER_ID });
+
+    expect(mockEmailsSend).toHaveBeenCalled();
+  });
+
+  it("skips_notification_when_env_disabled", async () => {
+    const mockEmailsSend = vi.fn();
+    vi.doMock("resend", () => ({
+      Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
+    }));
+    vi.doMock("@saas/config", () => ({
+      env: { NOTIFICATIONS_ENABLED: false, RESEND_API_KEY: "test-key" },
+    }));
+
+    const { dispatchNotification } = await import("../notification.service");
+    await dispatchNotification("invoice.sent", { clientId: CLIENT_ID, entityId: INVOICE_ID, tenantId: OWNER_ID });
+
+    expect(mockEmailsSend).not.toHaveBeenCalled();
   });
 });

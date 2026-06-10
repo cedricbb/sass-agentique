@@ -165,11 +165,6 @@ describe("report_service_dispatch_hook", () => {
 describe("handler_email_dispatch", () => {
   beforeEach(() => {
     vi.doUnmock("../notification.service");
-    process.env.NOTIFICATIONS_ENABLED = "true";
-  });
-
-  afterEach(() => {
-    delete process.env.NOTIFICATIONS_ENABLED;
   });
 
   const buildDbMock = (
@@ -192,7 +187,7 @@ describe("handler_email_dispatch", () => {
       Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
     }));
     vi.doMock("@saas/config", () => ({
-      env: { RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
+      env: { NOTIFICATIONS_ENABLED: true, RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
     }));
     vi.doMock("@saas/db", () => {
       const db = buildDbMock([REPORT_FIXTURE], [CLIENT_FIXTURE], CONTACTS_FIXTURE);
@@ -235,7 +230,7 @@ describe("handler_email_dispatch", () => {
       Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
     }));
     vi.doMock("@saas/config", () => ({
-      env: { RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
+      env: { NOTIFICATIONS_ENABLED: true, RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
     }));
     vi.doMock("@saas/db", () => {
       const db = buildDbMock([], [CLIENT_FIXTURE], CONTACTS_FIXTURE);
@@ -271,7 +266,7 @@ describe("handler_email_dispatch", () => {
       Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockEmailsSend } })),
     }));
     vi.doMock("@saas/config", () => ({
-      env: { RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
+      env: { NOTIFICATIONS_ENABLED: true, RESEND_API_KEY: "test-key", APP_URL: "http://localhost:3001" },
     }));
     vi.doMock("@saas/db", () => {
       const db = buildDbMock([REPORT_FIXTURE], [CLIENT_FIXTURE], []);

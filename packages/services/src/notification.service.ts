@@ -172,7 +172,7 @@ export async function dispatchNotification(
   event: NotificationEvent,
   payload: NotificationPayload,
 ): Promise<void> {
-  if (process.env.NOTIFICATIONS_ENABLED !== "true") return;
+  if (!env.NOTIFICATIONS_ENABLED) return;
   const handler = DISPATCH_MAP[event];
   if (!handler) {
     console.warn(`[notification.service] no handler for event "${event}"`, { event });
