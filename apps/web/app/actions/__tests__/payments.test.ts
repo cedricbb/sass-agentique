@@ -83,7 +83,7 @@ const mockInvoice = {
 const mockPayment = {
   id: PAYMENT_ID,
   invoiceId: INVOICE_ID,
-  amountEurCents: 5000,
+  amountCents: 5000,
   method: "stripe_card",
   paidAt: new Date(),
   externalRef: null,
@@ -94,7 +94,7 @@ const mockPayment = {
 
 const validInput = {
   invoiceId: INVOICE_ID,
-  amountEurCents: 5000,
+  amountCents: 5000,
   method: "stripe_card" as const,
   paidAt: new Date(),
 };
@@ -123,7 +123,7 @@ describe("createPaymentAction", () => {
     mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 5000, balanceCents: 5000, isFullyPaid: false });
     mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: true });
-    const result = await createPaymentAction({ ...validInput, amountEurCents: 5000 });
+    const result = await createPaymentAction({ ...validInput, amountCents: 5000 });
     expect(result).toEqual({ ok: true, data: { payment: mockPayment, invoiceMarkedAsPaid: true } });
   });
 
@@ -160,7 +160,7 @@ describe("createPaymentAction", () => {
   it("T8 — over-payment", async () => {
     mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 10000, balanceCents: 0, isFullyPaid: false });
-    const result = await createPaymentAction({ ...validInput, amountEurCents: 3000 });
+    const result = await createPaymentAction({ ...validInput, amountCents: 3000 });
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_OVERPAYMENT", status: 400 } });
   });
 
@@ -168,12 +168,12 @@ describe("createPaymentAction", () => {
     mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 0, balanceCents: 10000, isFullyPaid: false });
     mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: false });
-    const result = await createPaymentAction({ ...validInput, amountEurCents: 12000 });
+    const result = await createPaymentAction({ ...validInput, amountCents: 12000 });
     expect(result).toMatchObject({ ok: true });
   });
 
   it("T9 — zod fail negative amount", async () => {
-    const result = await createPaymentAction({ ...validInput, amountEurCents: -100 });
+    const result = await createPaymentAction({ ...validInput, amountCents: -100 });
     expect(result).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
   });
 

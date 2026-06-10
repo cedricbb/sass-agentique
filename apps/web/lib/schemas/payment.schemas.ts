@@ -4,7 +4,7 @@ export const paymentMethodSchema = z.enum(["stripe_card", "bank_transfer", "othe
 
 export const createPaymentSchema = z.object({
   invoiceId: z.string().uuid(),
-  amountEurCents: z.number().int().positive(),
+  amountCents: z.number().int().positive(),
   method: paymentMethodSchema,
   paidAt: z.coerce.date(),
   externalRef: z.string().trim().optional().nullable(),
@@ -24,7 +24,7 @@ export const deletePaymentSchema = paymentIdSchema;
 export const listAllPaymentsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(200).default(50),
-  sort: z.enum(["paidAt", "amountEurCents"]).default("paidAt"),
+  sort: z.enum(["paidAt", "amountCents"]).default("paidAt"),
   order: z.enum(["asc", "desc"]).default("desc"),
   search: z.string().optional(),
   method: paymentMethodSchema.optional(),

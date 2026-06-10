@@ -44,7 +44,7 @@ export async function createPaymentAction(
       totalEurCents: invoice.totalEurCents,
       vatRateBps: invoice.vatRateBps,
     });
-    if (data.amountEurCents + balance.paidCents > totalTtcCents) {
+    if (data.amountCents + balance.paidCents > totalTtcCents) {
       return fail(
         "PAYMENT_OVERPAYMENT",
         "Le montant dépasse le solde restant.",
