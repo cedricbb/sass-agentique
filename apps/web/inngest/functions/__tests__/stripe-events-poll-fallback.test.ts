@@ -88,7 +88,7 @@ describe("stripeEventsPollFallbackCron", () => {
     const { inngestFunctions } = await import("@/inngest/functions/index");
     expect(Array.isArray(inngestFunctions)).toBe(true);
     expect(inngestFunctions).toHaveLength(4);
-    const ids = (inngestFunctions as ReadonlyArray<{ id: string }>).map((f) => f.id);
+    const ids = (inngestFunctions as unknown as ReadonlyArray<{ id: string }>).map((f) => f.id);
     expect(ids).toContain("stripe-events-poll-fallback-cron");
   });
 
