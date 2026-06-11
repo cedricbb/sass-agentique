@@ -30,7 +30,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 
 | Package | Rôle |
 |---------|------|
-| `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation |
+| `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation + `LOG_LEVEL` |
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
 | `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation, projet, devis, facture, paiement, rapport, contrats de maintenance) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
@@ -370,6 +370,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `report.shared` (subpath `@saas/services/report.shared`) | Module zéro-dépendance server-only : `REPORT_KINDS`, `type ReportKind`, `REPORT_KIND_LABELS` — consommable depuis Client Components (Pattern 11) |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
 | `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
+| `logger` (subpath `@saas/services/logger`) | Logger structuré JSON stdout zero-dep : niveaux `debug/info/warn/error`, filtrage via `LOG_LEVEL`, sérialisation `Error` correcte. Voir `docs/logger.md`. |
 
 ### Plans de facturation (pré-R3 — `config/plans.ts`)
 
