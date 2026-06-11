@@ -8,6 +8,17 @@ const mockGetInvoiceById = vi.fn();
 const mockMarkStripeEventProcessed = vi.fn();
 const mockCreatePayment = vi.fn();
 const mockHandlePaymentIntentSucceeded = vi.fn();
+const mockLoggerInfo = vi.fn();
+const mockLoggerWarn = vi.fn();
+const mockLoggerError = vi.fn();
+
+vi.mock("@saas/services/logger", () => ({
+  logger: {
+    info: mockLoggerInfo,
+    warn: mockLoggerWarn,
+    error: mockLoggerError,
+  },
+}));
 
 vi.mock("@saas/services", () => ({
   getStripeClient: mockGetStripeClient,
@@ -186,5 +197,39 @@ describe("stripeEventsPollFallbackCron", () => {
       reInjected: 0,
       skippedNoInvoiceId: 0,
     });
+  });
+
+  it("poll_fallback_emits_start_log", async () => {
+    await import("@/inngest/functions/stripe-events-poll-fallback");
+    mockGetStripeClient.mockReturnValue(mockStripeClient([]));
+
+    await capturedHandler();
+
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      "inngest.cron.payment_intent_poll_fallback.start",
+      { jobName: "payment_intent_poll_fallback" },
+    );
+  });
+
+  it("poll_fallback_emits_completed_log_with_counters", async () => {
+    await import("@/inngest/functions/stripe-events-poll-fallback");
+    const ev = makeStripeEvent({ eventId: "evt_c1", invoiceId: "inv-999" });
+    mockGetStripeClient.mockReturnValue(mockStripeClient([ev]));
+    mockGetStripeEvent.mockResolvedValueOnce(null);
+    mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
+    mockHandlePaymentIntentSucceeded.mockResolvedValueOnce({ status: "processed" });
+
+    await capturedHandler();
+
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      "inngest.cron.payment_intent_poll_fallback.completed",
+      {
+        jobName: "payment_intent_poll_fallback",
+        totalScanned: 1,
+        alreadyProcessed: 0,
+        reInjected: 1,
+        skippedNoInvoiceId: 0,
+      },
+    );
   });
 });

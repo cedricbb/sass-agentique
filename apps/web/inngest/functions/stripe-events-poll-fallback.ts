@@ -8,6 +8,7 @@ import {
   paymentService,
   markStripeEventProcessed,
 } from "@saas/services";
+import { logger } from "@saas/services/logger";
 import { handlePaymentIntentSucceeded } from "./payment-intent-succeeded.handler";
 
 export const POLL_LOOKBACK_HOURS = 25;
@@ -16,6 +17,8 @@ export const stripeEventsPollFallbackCron = inngest.createFunction(
   { id: "stripe-events-poll-fallback-cron", retries: 3 },
   { cron: "0 * * * *" },
   async () => {
+    logger.info("inngest.cron.payment_intent_poll_fallback.start", { jobName: "payment_intent_poll_fallback" });
+
     const cutoff = Math.floor(Date.now() / 1000) - POLL_LOOKBACK_HOURS * 3600;
     const stripe = getStripeClient();
 
@@ -62,16 +65,13 @@ export const stripeEventsPollFallbackCron = inngest.createFunction(
       reInjected++;
     }
 
-    console.info(
-      JSON.stringify({
-        event: "stripe-events-poll-fallback",
-        outcome: "completed",
-        totalScanned,
-        alreadyProcessed,
-        reInjected,
-        skippedNoInvoiceId,
-      }),
-    );
+    logger.info("inngest.cron.payment_intent_poll_fallback.completed", {
+      jobName: "payment_intent_poll_fallback",
+      totalScanned,
+      alreadyProcessed,
+      reInjected,
+      skippedNoInvoiceId,
+    });
 
     return { status: "completed", totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId };
   },
