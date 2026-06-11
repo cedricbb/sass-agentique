@@ -33,7 +33,7 @@ Tous les autres types sont reçus, enregistrés en DB via idempotence, puis reto
 
 ```
 POST /api/stripe/webhooks
-  1. STRIPE_WEBHOOKS_ENABLED !== "true"         → 503 service unavailable
+  1. env.STRIPE_WEBHOOKS_ENABLED === false        → 503 service unavailable
   2a. content-length header présent
         ET declaredBytes > 512 KB               → 413 payload too large  (sans buffering)
   2b. await request.text()  (raw string, HMAC)
@@ -57,7 +57,7 @@ POST /api/stripe/webhooks
 
 **Contrainte raw body** : `await request.text()` est requis avant la vérification HMAC. `req.json()` invaliderait la signature car Stripe signe le payload brut. Le prefilter Content-Length court-circuite ce buffering uniquement quand le header révèle un dépassement sans ambiguïté.
 
-**Toggle par appel** : `process.env.STRIPE_WEBHOOKS_ENABLED` est relu à chaque requête (pas en singleton), ce qui permet d'activer/désactiver sans redémarrage.
+**Toggle par appel** : `env.STRIPE_WEBHOOKS_ENABLED` (boolean, `@saas/config`) est évalué à chaque requête. Le singleton `env` parse les vars d'environnement au démarrage du process ; un changement de valeur nécessite un redémarrage du serveur. Défaut : `false` (strict opt-in — absent = désactivé).
 
 **Exclusion middleware auth** : la route est exclue du middleware d'authentification (même pattern que `/api/inngest`). Stripe n'envoie pas de session utilisateur — un blocage du middleware provoquerait des retries inutiles puis un abandon définitif de l'event.
 

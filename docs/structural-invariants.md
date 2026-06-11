@@ -39,6 +39,11 @@ Ancrage R7 : `fix-r7-d3-notifications-enabled-config` (PR #249) — migration
 `NOTIFICATIONS_ENABLED` de `process.env` direct vers `@saas/config` Zod
 `z.enum(["true","false"]).transform(...).default("false")`.
 
+Ancrage R8 : `fix-r8-d3b-stripe-webhooks-enabled-config` — migration
+`STRIPE_WEBHOOKS_ENABLED` selon le même pattern. Défaut `"false"` (strict
+opt-in, cohérent avec le comportement historique `!== "true"` + absent →
+disabled).
+
 Justification : empêche les bugs silencieux (env var manquante = comportement
 imprévisible), centralise la validation et la documentation, autorise les
 défauts explicites.
