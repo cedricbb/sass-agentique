@@ -106,9 +106,10 @@ POST /api/stripe/webhooks
                   ├─ getInvoiceById / createPayment / markStripeEventProcessed
                   └─ → PaymentIntentResult sérialisable
   → Inngest dispatch → paymentIntentFailedHandler
-      ├─ logger.error("inngest.payment_intent_failed.start", { eventId, paymentIntentId, invoiceId, ... })
-      ├─ (si invoiceId présent) dispatchNotification("payment.failed", { invoiceId, ownerId })  [try/catch dédié]
-      └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée via logger]
+      └─ step "handle-payment-intent-failed"
+             → handlePaymentIntentFailed(event, deps)
+                  ├─ logger.error + getInvoiceById / dispatchNotification / markStripeEventProcessed
+                  └─ → PaymentIntentFailedResult sérialisable
 ```
 
 **Handler `paymentIntentSucceededHandler`** (pattern pure fn + thin wrapper) :
@@ -196,28 +197,50 @@ Observabilité (R8 log3b) — logs structurés émis :
 
 Le re-throw dans le catch préserve le mécanisme de retry Inngest — l'erreur n'est pas swallowed.
 
-**Handler `paymentIntentFailedHandler`** (`apps/web/inngest/functions/payment-intent-failed.ts`) :
+**Handler `paymentIntentFailedHandler`** (pattern pure fn + thin wrapper, R8 f2b) :
 
-Déclenché par `stripe/payment-intent.failed`. Rôle v2 : log structuré + notification email admin sur échec de paiement.
+La logique métier est extraite dans une fonction pure (calque exact de `payment-intent-succeeded.handler.ts`) :
 
-| Paramètre loggé | Valeur |
-|---|---|
-| `eventId` | `stripeEvent.id` |
-| `paymentIntentId` | `paymentIntent.id` |
-| `invoiceId` | `paymentIntent.metadata?.invoiceId ?? null` |
-| `amount` | `paymentIntent.amount` (cents TTC) |
-| `errorCode` | `paymentIntent.last_payment_error?.code ?? null` |
-| `declineCode` | `paymentIntent.last_payment_error?.decline_code ?? null` |
-| `errorMessage` | `paymentIntent.last_payment_error?.message ?? null` |
+```
+apps/web/inngest/functions/payment-intent-failed.handler.ts  ← logique métier pure
+apps/web/inngest/functions/payment-intent-failed.ts          ← thin wrapper Inngest
+```
 
-Séquence v2 (R7 F.3, logs migrés vers logger structuré en R8 log3a) :
+Le wrapper délègue en un seul step :
+
+```typescript
+step.run("handle-payment-intent-failed", () =>
+  handlePaymentIntentFailed(event, {
+    getInvoiceById,
+    dispatchNotification,
+    markStripeEventProcessed,
+  }),
+)
+```
+
+**Types exportés** (`payment-intent-failed.handler.ts`) :
+
+```typescript
+type PaymentIntentFailedDeps = {
+  getInvoiceById: (id: string) => Promise<{ id: string; ownerId: string } | null>;
+  dispatchNotification: (type: string, payload: { invoiceId: string; tenantId: string }) => Promise<unknown>;
+  markStripeEventProcessed: (eventId: string) => Promise<unknown>;
+};
+
+type PaymentIntentFailedResult =
+  | { status: "logged"; eventId: string }
+  | { status: "notified"; eventId: string; invoiceId: string };
+```
+
+Séquence :
 
 ```
 1. logger.error("inngest.payment_intent_failed.start", { eventId, paymentIntentId, invoiceId,
                                                           amount, errorCode, declineCode, errorMessage })
 2. Si metadata.invoiceId présent :
      getInvoiceById(invoiceId)
-     → si invoice trouvée : dispatchNotification("payment.failed", { invoiceId, ownerId: invoice.ownerId })
+     → si invoice trouvée : dispatchNotification("payment.failed", { invoiceId, tenantId: invoice.ownerId })
+       status = "notified"
      → try/catch dédié : l'échec de la notif est loggé via logger.error mais ne bloque pas l'étape suivante
 3. markStripeEventProcessed(eventId)  [try/catch dédié, erreur loggée via logger.error, non-bloquant]
 ```
@@ -228,38 +251,45 @@ Chemins de sortie :
 |---|---|---|
 | `metadata.invoiceId` absent | `{ status: "logged", eventId }` | log structuré + markStripeEventProcessed |
 | Invoice introuvable | `{ status: "logged", eventId }` | log structuré (notif skippée) + markStripeEventProcessed |
-| Happy path (invoice trouvée) | `{ status: "logged", eventId }` | log + email admin + markStripeEventProcessed |
+| Happy path (invoice trouvée) | `{ status: "notified", eventId, invoiceId }` | log + email admin + markStripeEventProcessed |
 | `dispatchNotification` throws | `{ status: "logged", eventId }` | log erreur notif (non-bloquant) + markStripeEventProcessed |
-| `markStripeEventProcessed` throws | `{ status: "logged", eventId }` | log structuré erreur (non-bloquant, pas de propagation) |
+| `markStripeEventProcessed` throws | `{ status: "logged"\|"notified", eventId }` | log structuré erreur (non-bloquant, pas de propagation) |
 
-Arbitrages actés (R7 F.3) :
+Arbitrages actés (R7 F.3, inchangés) :
 - **Destinataire email** : admin uniquement (`ownerId` de l'invoice). Le client reçoit déjà une notification Stripe directe sur sa carte refusée.
 - **Statut invoice** : NON transitionné à `overdue`. PI failed = paiement individuel raté (carte refusée) ; `overdue` = due date dépassée sans paiement. Sémantiques distinctes. Un cron dédié gérera `overdue` (sujet R8 potentiel).
-- **Pure fn extraction** : NON appliqué (inline, cohérent avec effort S et trivialité v1). Si la complexité dépasse 25 lignes métier → micro-fix f2b en sprint ultérieur.
 
 **Cron `stripeEventsPollFallbackCron`** (`apps/web/inngest/functions/stripe-events-poll-fallback.ts`) :
 
-Defense-in-depth : poll horaire de l'API Stripe `events.list` pour rattraper les `payment_intent.succeeded` manqués (downtime réseau, retry Stripe épuisé, signature corrompue par proxy). Déduplique via `stripe_events.eventId` (R6 A.1) et ré-injecte les events absents directement vers la pure fn `handlePaymentIntentSucceeded`.
+Defense-in-depth : poll horaire de l'API Stripe `events.list` pour rattraper les `payment_intent.succeeded` et `payment_intent.failed` manqués (downtime réseau, retry Stripe épuisé, signature corrompue par proxy). Déduplique via `stripe_events.eventId` (R6 A.1) et ré-injecte les events absents directement vers les pure fns `handlePaymentIntentSucceeded` / `handlePaymentIntentFailed`.
 
 | Paramètre | Valeur |
 |---|---|
 | Schedule cron | `0 * * * *` (toutes les heures, UTC) |
 | Lookback window | `POLL_LOOKBACK_HOURS = 25` — couvre overlap +1h sur fenêtre horaire |
-| Types Stripe pollés | `payment_intent.succeeded` uniquement (Option Z : `.failed` géré manuellement via Dashboard, 90% du volume métier) |
+| Types Stripe pollés | `payment_intent.succeeded` + `payment_intent.failed` (deux boucles séquentielles) |
 | Retries Inngest | `3` |
-| Retour | `{ status: "completed", totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId }` |
+| Retour | `{ status: "completed", totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId, failedScanned, failedAlreadyProcessed, failedReInjected }` |
 
-Logique de traitement pour chaque event listé :
+Logique de traitement — deux boucles séquentielles :
 
 ```
 stripe.events.list({ type: "payment_intent.succeeded", created: { gte: cutoff } })
-  └─ pour chaque event (pagination via async iterator SDK) :
+  └─ pour chaque event :
        ├─ getStripeEvent(ev.id).processedAt non-null → alreadyProcessed++, continue
        ├─ metadata.invoiceId absent → recordStripeEvent (si absent DB) + skippedNoInvoiceId++, continue
        └─ event non traité, invoiceId présent :
             → recordStripeEvent (si absent DB)
             → handlePaymentIntentSucceeded({ data: { event: ev } }, deps)
             → reInjected++
+
+stripe.events.list({ type: "payment_intent.failed", created: { gte: cutoff } })
+  └─ pour chaque event :
+       ├─ getStripeEvent(ev.id).processedAt non-null → failedAlreadyProcessed++, continue
+       └─ event non traité :
+            → recordStripeEvent (si absent DB)
+            → handlePaymentIntentFailed({ data: { event: ev } }, deps)
+            → failedReInjected++
 ```
 
 Observabilité (R8 log3b) — logs structurés émis :
@@ -267,27 +297,28 @@ Observabilité (R8 log3b) — logs structurés émis :
 | Milestone | Message | Niveau | Contexte |
 |---|---|---|---|
 | Début du job | `inngest.cron.payment_intent_poll_fallback.start` | `info` | `{ jobName: "payment_intent_poll_fallback" }` |
-| Fin du job | `inngest.cron.payment_intent_poll_fallback.completed` | `info` | `{ jobName, totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId }` |
+| Fin du job | `inngest.cron.payment_intent_poll_fallback.completed` | `info` | `{ jobName, totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId, failedScanned, failedAlreadyProcessed, failedReInjected }` |
 
 Comportements garantis :
 
 | Cas | Outcome | Compteur |
 |---|---|---|
-| Event déjà dans DB avec `processedAt` | Ignoré | `alreadyProcessed++` |
-| Event sans `metadata.invoiceId` | Skipped silencieux | `skippedNoInvoiceId++` |
-| Event manqué avec invoiceId | Ré-injecté via pure fn | `reInjected++` |
-| `handlePaymentIntentSucceeded` throws | Inngest retry (max 3) | — |
+| `.succeeded` déjà dans DB avec `processedAt` | Ignoré | `alreadyProcessed++` |
+| `.succeeded` sans `metadata.invoiceId` | Skipped silencieux | `skippedNoInvoiceId++` |
+| `.succeeded` manqué avec invoiceId | Ré-injecté via `handlePaymentIntentSucceeded` | `reInjected++` |
+| `.failed` déjà dans DB avec `processedAt` | Ignoré | `failedAlreadyProcessed++` |
+| `.failed` manqué | Ré-injecté via `handlePaymentIntentFailed` | `failedReInjected++` |
+| Pure fn throws | Inngest retry (max 3) | — |
 
-**Idempotence** : garantie naturellement par la contrainte UNIQUE `stripe_events.eventId` — `recordStripeEvent` ne duplique jamais un event. Le check `getStripeEvent` avant ré-injection constitue une garde explicite supplémentaire.
-
-**Périmètre scope** : uniquement `payment_intent.succeeded`. Le type `payment_intent.failed` est exclu (Option Z retenue — volume métier faible, gérable via Dashboard Stripe en cas de défaut). Aucun event Inngest custom envoyé — appel direct à la pure fn (Option A).
+**Idempotence** : garantie naturellement par la contrainte UNIQUE `stripe_events.eventId` — `recordStripeEvent` ne duplique jamais un event. Le check `getStripeEvent` avant ré-injection constitue une garde explicite supplémentaire. Les pure fns elles-mêmes sont idempotentes (appel `markStripeEventProcessed` non-bloquant) : un double appel race webhook + poll ne produit pas d'effet de bord observable.
 
 ## Liens vers tests
 
 - `apps/web/inngest/functions/__tests__/inngest-route.test.ts` — exports serve handler (GET/POST/PUT), registre (3 fonctions), manifest 200
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.test.ts` — tests wrapper Inngest : happy path, skip no_invoice_id, skip invoice_not_found, propagation erreurs
 - `apps/web/inngest/functions/__tests__/payment-intent-succeeded.handler.test.ts` — tests directs de la pure fn (8 cas) : sans mock Inngest SDK, deps injectées explicitement
-- `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — log structuré happy path, erreur markStripeEventProcessed non-bloquante, skip notif si invoiceId absent, notif non-bloquante sur throw dispatchNotification
+- `apps/web/inngest/functions/__tests__/payment-intent-failed.handler.test.ts` — 8 tests unitaires directs de la pure fn `handlePaymentIntentFailed` : sans mock Inngest SDK, deps injectées explicitement ; cas happy path, invoiceId absent, invoice introuvable, dispatchNotification non-bloquante, markStripeEventProcessed non-bloquant, test structurel `no_direct_service_imports`
+- `apps/web/inngest/functions/__tests__/payment-intent-failed.test.ts` — 3 tests wrapper : `delegates_to_handle_payment_intent_failed`, markStripeEventProcessed non-bloquante, infra
 - `apps/web/inngest/functions/__tests__/stripe-events-retention.test.ts` — schedule cron `0 3 * * *`, deletedCount loggé, appel `deleteStaleStripeEvents` avec `STRIPE_EVENTS_RETENTION_DAYS`
-- `apps/web/inngest/functions/__tests__/stripe-events-poll-fallback.test.ts` — 8 cas : enregistrement dans registre, config id/schedule/retries, skip event déjà traité, ré-injection event manqué, ordre recordStripeEvent avant handlePaymentIntentSucceeded, skip sans invoiceId, counters structurés retournés
+- `apps/web/inngest/functions/__tests__/stripe-events-poll-fallback.test.ts` — enregistrement dans registre, config id/schedule/retries, skip event déjà traité (`.succeeded`), ré-injection event manqué (`.succeeded`), ordre recordStripeEvent avant pure fn, skip sans invoiceId, counters `.succeeded` retournés, skip `.failed` déjà traité, ré-injection `.failed` manqué, counters `.failed` retournés
 - `packages/services/src/__tests__/stripe-event.service.test.ts` — couverture `deleteStaleStripeEvents` (purge rows, rows récentes préservées, 0 lignes, constante exportée)
