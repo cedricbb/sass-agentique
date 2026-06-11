@@ -9,6 +9,15 @@ vi.mock("@saas/config", () => ({
   env: mockEnv,
 }));
 
+vi.mock("@saas/services/logger", () => ({
+  logger: {
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 vi.mock("@saas/services", () => ({
   verifyWebhookSignature: vi.fn(),
   recordStripeEvent: vi.fn(),
@@ -33,11 +42,17 @@ import {
   StripeServiceError,
 } from "@saas/services";
 import { inngest } from "@saas/workflows";
+import { logger } from "@saas/services/logger";
 import { handleStripeWebhook } from "../webhook-handler";
 
 const mockVerify = vi.mocked(verifyWebhookSignature);
 const mockRecord = vi.mocked(recordStripeEvent);
 const mockSend = vi.mocked(inngest.send);
+const mockLogger = {
+  error: vi.mocked(logger.error),
+  info: vi.mocked(logger.info),
+  warn: vi.mocked(logger.warn),
+};
 
 function makeRequest(options: {
   body?: string;
@@ -275,5 +290,75 @@ describe("handleStripeWebhook", () => {
     expect(pattern).toContain("api/stripe");
     const negativeGroup = pattern.match(/\(\?!([^)]+)\)/)?.[1] ?? "";
     expect(negativeGroup).toContain("api/stripe");
+  });
+
+  it("webhook_logs_dispatched_on_succeeded", async () => {
+    const event = { ...SAMPLE_EVENT, type: "payment_intent.succeeded" };
+    mockVerify.mockReturnValue(event as never);
+    mockRecord.mockResolvedValue({ inserted: true, record: { eventId: event.id } as never });
+    mockSend.mockResolvedValue(undefined as never);
+    const req = makeRequest({});
+    await handleStripeWebhook(req);
+    expect(mockLogger.info).toHaveBeenCalledWith("webhook.stripe.dispatched", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+  });
+
+  it("webhook_logs_warn_on_invalid_signature", async () => {
+    const sigError = new StripeServiceError("bad sig", "stripe/invalid_signature");
+    mockVerify.mockImplementation(() => { throw sigError; });
+    const req = makeRequest({});
+    await handleStripeWebhook(req);
+    expect(mockLogger.warn).toHaveBeenCalledWith("webhook.stripe.signature_invalid", { err: sigError });
+  });
+
+  it("webhook_logs_duplicate_on_replay", async () => {
+    mockVerify.mockReturnValue(SAMPLE_EVENT as never);
+    mockRecord.mockResolvedValue({ inserted: false, record: { eventId: SAMPLE_EVENT.id } as never });
+    const req = makeRequest({});
+    await handleStripeWebhook(req);
+    expect(mockLogger.info).toHaveBeenCalledWith("webhook.stripe.duplicate", {
+      eventId: SAMPLE_EVENT.id,
+      eventType: SAMPLE_EVENT.type,
+    });
+  });
+
+  it("webhook_logs_error_on_unexpected_exception", async () => {
+    const dbError = new Error("DB down");
+    mockVerify.mockReturnValue(SAMPLE_EVENT as never);
+    mockRecord.mockRejectedValue(dbError);
+    const req = makeRequest({});
+    await handleStripeWebhook(req);
+    expect(mockLogger.error).toHaveBeenCalledWith("webhook.stripe.error", {
+      eventId: SAMPLE_EVENT.id,
+      eventType: SAMPLE_EVENT.type,
+      err: dbError,
+    });
+  });
+
+  it("webhook_logs_disabled_when_webhooks_off", async () => {
+    mockEnv.STRIPE_WEBHOOKS_ENABLED = false;
+    const req = makeRequest({});
+    await handleStripeWebhook(req);
+    expect(mockLogger.warn).toHaveBeenCalledWith("webhook.stripe.disabled");
+  });
+
+  it("webhook_no_console_calls_on_happy_path", async () => {
+    const event = { ...SAMPLE_EVENT, type: "payment_intent.succeeded" };
+    mockVerify.mockReturnValue(event as never);
+    mockRecord.mockResolvedValue({ inserted: true, record: { eventId: event.id } as never });
+    mockSend.mockResolvedValue(undefined as never);
+    const consoleSpy = vi.spyOn(console, "error");
+    const consoleWarnSpy = vi.spyOn(console, "warn");
+    const consoleInfoSpy = vi.spyOn(console, "info");
+    const req = makeRequest({});
+    await handleStripeWebhook(req);
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleInfoSpy.mockRestore();
   });
 });

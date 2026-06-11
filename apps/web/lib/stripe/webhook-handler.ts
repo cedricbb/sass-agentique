@@ -4,6 +4,7 @@ import {
   recordStripeEvent,
   StripeServiceError,
 } from "@saas/services";
+import { logger } from "@saas/services/logger";
 import { inngest } from "@saas/workflows";
 import { env } from "@saas/config";
 
@@ -29,6 +30,7 @@ export async function handleStripeWebhook(
   request: NextRequest,
 ): Promise<NextResponse> {
   if (!env.STRIPE_WEBHOOKS_ENABLED) {
+    logger.warn("webhook.stripe.disabled");
     return NextResponse.json({ error: "service unavailable" }, { status: 503 });
   }
 
@@ -36,6 +38,7 @@ export async function handleStripeWebhook(
   if (contentLengthHeader) {
     const declaredBytes = Number.parseInt(contentLengthHeader, 10);
     if (Number.isFinite(declaredBytes) && declaredBytes > MAX_WEBHOOK_PAYLOAD_BYTES) {
+      logger.warn("webhook.stripe.body_too_large", { declaredBytes });
       return NextResponse.json({ error: "payload too large" }, { status: 413 });
     }
   }
@@ -44,6 +47,7 @@ export async function handleStripeWebhook(
   const signature = request.headers.get("stripe-signature");
 
   if (!signature) {
+    logger.warn("webhook.stripe.signature_invalid");
     return NextResponse.json({ error: "missing signature" }, { status: 400 });
   }
 
@@ -52,6 +56,7 @@ export async function handleStripeWebhook(
   }
 
   if (Buffer.byteLength(rawBody, "utf8") > MAX_WEBHOOK_PAYLOAD_BYTES) {
+    logger.warn("webhook.stripe.body_too_large");
     return NextResponse.json({ error: "payload too large" }, { status: 413 });
   }
 
@@ -61,35 +66,16 @@ export async function handleStripeWebhook(
   } catch (err) {
     if (err instanceof StripeServiceError) {
       if (err.code === "stripe/config_error") {
-        console.error(
-          JSON.stringify({
-            event: "stripe-webhook",
-            outcome: "config_error",
-            message: err.message,
-          }),
-        );
+        logger.error("webhook.stripe.error", { err });
         return NextResponse.json(
           { error: "service unavailable" },
           { status: 503 },
         );
       }
-      console.error(
-        JSON.stringify({
-          event: "stripe-webhook",
-          outcome: "invalid_signature",
-          message: err.message,
-        }),
-      );
+      logger.warn("webhook.stripe.signature_invalid", { err });
       return NextResponse.json({ error: "invalid request" }, { status: 400 });
     }
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(
-      JSON.stringify({
-        event: "stripe-webhook",
-        outcome: "unexpected_verify_error",
-        message,
-      }),
-    );
+    logger.error("webhook.stripe.error", { err: err instanceof Error ? err : new Error(String(err)) });
     return NextResponse.json({ error: "internal error" }, { status: 500 });
   }
 
@@ -101,6 +87,7 @@ export async function handleStripeWebhook(
     });
 
     if (!inserted) {
+      logger.info("webhook.stripe.duplicate", { eventId: stripeEvent.id, eventType: stripeEvent.type });
       return NextResponse.json(
         { received: true, eventId: stripeEvent.id, status: "already_processed" },
         { status: 200 },
@@ -108,14 +95,7 @@ export async function handleStripeWebhook(
     }
 
     if (!isDispatchedEventType(stripeEvent.type)) {
-      console.error(
-        JSON.stringify({
-          event: "stripe-webhook",
-          outcome: "ignored",
-          eventId: stripeEvent.id,
-          message: `unhandled event type: ${stripeEvent.type}`,
-        }),
-      );
+      logger.info("webhook.stripe.ignored", { eventId: stripeEvent.id, eventType: stripeEvent.type });
       return NextResponse.json(
         { received: true, eventId: stripeEvent.id, status: "ignored" },
         { status: 200 },
@@ -127,20 +107,13 @@ export async function handleStripeWebhook(
       data: { event: stripeEvent },
     });
 
+    logger.info("webhook.stripe.dispatched", { eventId: stripeEvent.id, eventType: stripeEvent.type });
     return NextResponse.json(
       { received: true, eventId: stripeEvent.id, status: "dispatched" },
       { status: 200 },
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(
-      JSON.stringify({
-        event: "stripe-webhook",
-        outcome: "internal_error",
-        eventId: stripeEvent.id,
-        message,
-      }),
-    );
+    logger.error("webhook.stripe.error", { eventId: stripeEvent.id, eventType: stripeEvent.type, err: err instanceof Error ? err : new Error(String(err)) });
     return NextResponse.json({ error: "internal error" }, { status: 500 });
   }
 }

@@ -13,6 +13,15 @@ vi.mock("@saas/config", () => ({
   env: mockEnv,
 }));
 
+vi.mock("@saas/services/logger", () => ({
+  logger: {
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 vi.mock("stripe", () => {
   const StripeConstructor = vi.fn(() => ({
     webhooks: { constructEvent: mockConstructEvent },
