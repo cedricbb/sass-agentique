@@ -186,6 +186,16 @@ Déclenché quotidiennement à 03:00 UTC (04:00/05:00 Europe/Paris). Purge les l
 
 La constante `STRIPE_EVENTS_RETENTION_DAYS` est exportée depuis `packages/services/src/stripe-event.service.ts` comme source de vérité unique — ni l'appel cron ni les tests ne hardcodent `90`.
 
+Observabilité (R8 log3b) — logs structurés émis :
+
+| Milestone | Message | Niveau | Contexte |
+|---|---|---|---|
+| Début du job | `inngest.cron.stripe_events_retention.start` | `info` | `{ jobName: "stripe_events_retention", retentionDays }` |
+| Purge réussie | `inngest.cron.stripe_events_retention.purged` | `info` | `{ jobName: "stripe_events_retention", purgedCount }` |
+| Exception (re-throw) | `inngest.cron.stripe_events_retention.error` | `error` | `{ jobName: "stripe_events_retention", err }` |
+
+Le re-throw dans le catch préserve le mécanisme de retry Inngest — l'erreur n'est pas swallowed.
+
 **Handler `paymentIntentFailedHandler`** (`apps/web/inngest/functions/payment-intent-failed.ts`) :
 
 Déclenché par `stripe/payment-intent.failed`. Rôle v2 : log structuré + notification email admin sur échec de paiement.
@@ -252,9 +262,16 @@ stripe.events.list({ type: "payment_intent.succeeded", created: { gte: cutoff } 
             → reInjected++
 ```
 
+Observabilité (R8 log3b) — logs structurés émis :
+
+| Milestone | Message | Niveau | Contexte |
+|---|---|---|---|
+| Début du job | `inngest.cron.payment_intent_poll_fallback.start` | `info` | `{ jobName: "payment_intent_poll_fallback" }` |
+| Fin du job | `inngest.cron.payment_intent_poll_fallback.completed` | `info` | `{ jobName, totalScanned, alreadyProcessed, reInjected, skippedNoInvoiceId }` |
+
 Comportements garantis :
 
-| Cas | Outcome | Log structuré |
+| Cas | Outcome | Compteur |
 |---|---|---|
 | Event déjà dans DB avec `processedAt` | Ignoré | `alreadyProcessed++` |
 | Event sans `metadata.invoiceId` | Skipped silencieux | `skippedNoInvoiceId++` |
