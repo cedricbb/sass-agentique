@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { createHash } from "crypto";
+import { logger } from "@saas/services/logger";
 
 export class StripeServiceError extends Error {
   code: string;
@@ -85,14 +86,22 @@ export function verifyWebhookSignature(
 
 function wrapStripeError(err: unknown): StripeServiceError {
   if (err instanceof Stripe.errors.StripeError) {
+    const safeType = err.type ?? err.code ?? "unknown_error";
+    logger.error("stripe.error", {
+      err,
+      stripeRequestId: err.requestId,
+      stripeStatusCode: err.statusCode,
+      stripeType: err.type,
+      stripeCode: err.code,
+    });
     return new StripeServiceError(
-      err.message,
+      `Stripe operation failed: ${safeType}`,
       `stripe/${err.type}`,
       err
     );
   }
-  const message = err instanceof Error ? err.message : String(err);
-  return new StripeServiceError(message, "stripe/unknown_error", err);
+  logger.error("stripe.error", { err });
+  return new StripeServiceError("Stripe operation failed", "stripe/unknown_error", err);
 }
 
 export class StripeService {

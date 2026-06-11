@@ -8,15 +8,20 @@ const {
   mockSubscriptionsUpdate,
   mockWebhooksConstructEvent,
   StripeError,
+  mockLoggerError,
 } = vi.hoisted(() => {
   process.env.STRIPE_SECRET_KEY = "sk_test_mock";
   class StripeError extends Error {
     type: string;
+    code: string | undefined;
     statusCode: number;
-    constructor(message: string, type: string, statusCode = 400) {
+    requestId: string | undefined;
+    constructor(message: string, type: string, statusCode = 400, code?: string, requestId?: string) {
       super(message);
       this.type = type;
       this.statusCode = statusCode;
+      this.code = code;
+      this.requestId = requestId;
     }
   }
   return {
@@ -27,8 +32,18 @@ const {
     mockSubscriptionsUpdate: vi.fn(),
     mockWebhooksConstructEvent: vi.fn(),
     StripeError,
+    mockLoggerError: vi.fn(),
   };
 });
+
+vi.mock("@saas/services/logger", () => ({
+  logger: {
+    error: mockLoggerError,
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 vi.mock("stripe", () => {
   const StripeMock = vi.fn().mockImplementation(() => ({
@@ -61,6 +76,7 @@ describe("StripeService", () => {
   beforeEach(() => {
     __resetStripeServiceForTests();
     __resetStripeClientForTests();
+    mockLoggerError.mockClear();
     process.env.STRIPE_SECRET_KEY = "sk_test_mock";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_mock";
     service = new StripeService();
@@ -238,6 +254,49 @@ describe("StripeService", () => {
       await service.createCustomer({ email: "a@b.c" }).catch((e: any) => {
         expect(e.code).toBe("stripe/unknown_error");
       });
+    });
+
+    it("sanitizes_stripe_error_message", async () => {
+      mockCustomersCreate.mockRejectedValueOnce(new StripeError("Your card was declined. ch_abc123", "card_error"));
+      await service.createCustomer({ email: "a@b.c" }).catch((e: any) => {
+        expect(e.message).toBe("Stripe operation failed: card_error");
+        expect(e.message).not.toContain("ch_abc123");
+      });
+    });
+
+    it("sanitizes_non_stripe_error_message", async () => {
+      mockCustomersCreate.mockRejectedValueOnce(new Error("network timeout internal detail"));
+      await service.createCustomer({ email: "a@b.c" }).catch((e: any) => {
+        expect(e.message).toBe("Stripe operation failed");
+        expect(e.message).not.toContain("network timeout");
+      });
+    });
+
+    it("emits_structured_log_for_stripe_error", async () => {
+      const stripeErr = new StripeError("card declined cus_xxx", "card_error", 400, "card_declined", "req_abc");
+      mockCustomersCreate.mockRejectedValueOnce(stripeErr);
+      await service.createCustomer({ email: "a@b.c" }).catch(() => {});
+      expect(mockLoggerError).toHaveBeenCalledTimes(1);
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        "stripe.error",
+        expect.objectContaining({
+          err: stripeErr,
+          stripeType: "card_error",
+          stripeCode: "card_declined",
+        })
+      );
+    });
+
+    it("emits_structured_log_for_non_stripe_error", async () => {
+      const networkErr = new Error("network timeout");
+      mockCustomersCreate.mockRejectedValueOnce(networkErr);
+      await service.createCustomer({ email: "a@b.c" }).catch(() => {});
+      expect(mockLoggerError).toHaveBeenCalledTimes(1);
+      const [msg, ctx] = mockLoggerError.mock.calls[0];
+      expect(msg).toBe("stripe.error");
+      expect(ctx).toHaveProperty("err", networkErr);
+      expect(ctx).not.toHaveProperty("stripeType");
+      expect(ctx).not.toHaveProperty("stripeCode");
     });
 
     it("logs clientId but never raw email", async () => {
