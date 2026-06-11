@@ -106,9 +106,9 @@ POST /api/stripe/webhooks
                   ├─ getInvoiceById / createPayment / markStripeEventProcessed
                   └─ → PaymentIntentResult sérialisable
   → Inngest dispatch → paymentIntentFailedHandler
-      ├─ console.error(JSON.stringify({ event, outcome, eventId, ... }))  [log structuré]
+      ├─ logger.error("inngest.payment_intent_failed.start", { eventId, paymentIntentId, invoiceId, ... })
       ├─ (si invoiceId présent) dispatchNotification("payment.failed", { invoiceId, ownerId })  [try/catch dédié]
-      └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée]
+      └─ markStripeEventProcessed(eventId)  [non-bloquant, erreur loggée via logger]
 ```
 
 **Handler `paymentIntentSucceededHandler`** (pattern pure fn + thin wrapper) :
@@ -161,10 +161,10 @@ Chemins de sortie :
 |---|---|---|
 | `metadata.invoiceId` absent | `{ status: "skipped", reason: "no_invoice_id_metadata" }` | `markStripeEventProcessed` |
 | `amount` <= 0 | `{ status: "skipped", reason: "invalid_amount" }` | `markStripeEventProcessed` |
-| Invoice introuvable | `{ status: "skipped", reason: "invoice_not_found" }` | log structuré + `markStripeEventProcessed` |
+| Invoice introuvable | `{ status: "skipped", reason: "invoice_not_found" }` | `logger.warn("inngest.payment_intent_succeeded.invoice_not_found", { eventId, invoiceId })` + `markStripeEventProcessed` |
 | Happy path | `{ status: "processed", invoiceId, paymentIntentId, invoiceMarkedAsPaid }` | insert payment + mark processed |
 | `createPayment` throws | propagation → Inngest retry (max 3) | — |
-| `markStripeEventProcessed` throws | log structuré (non-bloquant) | — |
+| `markStripeEventProcessed` throws | `logger.error("inngest.payment_intent_succeeded.mark_processed_error", { eventId, invoiceId, err })` (non-bloquant) | — |
 
 **Idempotence** — 3 niveaux de défense :
 
@@ -200,15 +200,16 @@ Déclenché par `stripe/payment-intent.failed`. Rôle v2 : log structuré + noti
 | `declineCode` | `paymentIntent.last_payment_error?.decline_code ?? null` |
 | `errorMessage` | `paymentIntent.last_payment_error?.message ?? null` |
 
-Séquence v2 (R7 F.3) :
+Séquence v2 (R7 F.3, logs migrés vers logger structuré en R8 log3a) :
 
 ```
-1. Log structuré (console.error JSON)
+1. logger.error("inngest.payment_intent_failed.start", { eventId, paymentIntentId, invoiceId,
+                                                          amount, errorCode, declineCode, errorMessage })
 2. Si metadata.invoiceId présent :
      getInvoiceById(invoiceId)
      → si invoice trouvée : dispatchNotification("payment.failed", { invoiceId, ownerId: invoice.ownerId })
-     → try/catch dédié : l'échec de la notif est loggé mais ne bloque pas l'étape suivante
-3. markStripeEventProcessed(eventId)  [try/catch dédié, non-bloquant]
+     → try/catch dédié : l'échec de la notif est loggé via logger.error mais ne bloque pas l'étape suivante
+3. markStripeEventProcessed(eventId)  [try/catch dédié, erreur loggée via logger.error, non-bloquant]
 ```
 
 Chemins de sortie :
