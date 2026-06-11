@@ -8,6 +8,7 @@ const mockGetInvoiceById = vi.fn();
 const mockMarkStripeEventProcessed = vi.fn();
 const mockCreatePayment = vi.fn();
 const mockHandlePaymentIntentSucceeded = vi.fn();
+const mockHandlePaymentIntentFailed = vi.fn();
 const mockLoggerInfo = vi.fn();
 const mockLoggerWarn = vi.fn();
 const mockLoggerError = vi.fn();
@@ -27,10 +28,15 @@ vi.mock("@saas/services", () => ({
   getInvoiceById: mockGetInvoiceById,
   paymentService: { createPayment: mockCreatePayment },
   markStripeEventProcessed: mockMarkStripeEventProcessed,
+  dispatchNotification: vi.fn(),
 }));
 
 vi.mock("../payment-intent-succeeded.handler", () => ({
   handlePaymentIntentSucceeded: mockHandlePaymentIntentSucceeded,
+}));
+
+vi.mock("../payment-intent-failed.handler", () => ({
+  handlePaymentIntentFailed: mockHandlePaymentIntentFailed,
 }));
 
 let _capturedConfig: { id: string; retries: number };
@@ -60,10 +66,15 @@ async function* makeAsyncIterable<T>(items: T[]): AsyncGenerator<T> {
   }
 }
 
-function mockStripeClient(events: unknown[]) {
+function mockStripeClient(eventsByType: { succeeded?: unknown[]; failed?: unknown[] } = {}) {
   return {
     events: {
-      list: () => makeAsyncIterable(events),
+      list: (opts: { type: string }) => {
+        if (opts.type === "payment_intent.failed") {
+          return makeAsyncIterable(eventsByType.failed ?? []);
+        }
+        return makeAsyncIterable(eventsByType.succeeded ?? []);
+      },
     },
   };
 }
@@ -74,10 +85,11 @@ function makeStripeEvent(opts: {
   invoiceId?: string;
   noInvoiceId?: boolean;
   amount?: number;
+  type?: string;
 } = {}) {
   return {
     id: opts.eventId ?? "evt_test456",
-    type: "payment_intent.succeeded",
+    type: opts.type ?? "payment_intent.succeeded",
     data: {
       object: {
         id: opts.piId ?? "pi_test123",
@@ -121,7 +133,7 @@ describe("stripeEventsPollFallbackCron", () => {
   it("poll_fallback_skips_already_processed_events", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
     const ev = makeStripeEvent({ eventId: "evt_processed" });
-    mockGetStripeClient.mockReturnValue(mockStripeClient([ev]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ succeeded: [ev] }));
     mockGetStripeEvent.mockResolvedValueOnce({ eventId: "evt_processed", processedAt: new Date() });
 
     const result = await capturedHandler();
@@ -133,7 +145,7 @@ describe("stripeEventsPollFallbackCron", () => {
   it("poll_fallback_reinjects_missed_succeeded_event", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
     const ev = makeStripeEvent({ eventId: "evt_missed", invoiceId: "inv-456" });
-    mockGetStripeClient.mockReturnValue(mockStripeClient([ev]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ succeeded: [ev] }));
     mockGetStripeEvent.mockResolvedValueOnce(null);
     mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
     mockHandlePaymentIntentSucceeded.mockResolvedValueOnce({ status: "processed" });
@@ -155,7 +167,7 @@ describe("stripeEventsPollFallbackCron", () => {
   it("poll_fallback_records_event_before_reinjection", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
     const ev = makeStripeEvent({ eventId: "evt_new", invoiceId: "inv-789" });
-    mockGetStripeClient.mockReturnValue(mockStripeClient([ev]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ succeeded: [ev] }));
     mockGetStripeEvent.mockResolvedValueOnce(null);
     mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
     mockHandlePaymentIntentSucceeded.mockResolvedValueOnce({ status: "processed" });
@@ -174,7 +186,7 @@ describe("stripeEventsPollFallbackCron", () => {
   it("poll_fallback_skips_event_without_invoice_id", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
     const ev = makeStripeEvent({ eventId: "evt_noinvoice", noInvoiceId: true });
-    mockGetStripeClient.mockReturnValue(mockStripeClient([ev]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ succeeded: [ev] }));
     mockGetStripeEvent.mockResolvedValueOnce(null);
     mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
 
@@ -186,7 +198,7 @@ describe("stripeEventsPollFallbackCron", () => {
 
   it("poll_fallback_returns_structured_counters", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
-    mockGetStripeClient.mockReturnValue(mockStripeClient([]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({}));
 
     const result = await capturedHandler();
 
@@ -196,12 +208,15 @@ describe("stripeEventsPollFallbackCron", () => {
       alreadyProcessed: 0,
       reInjected: 0,
       skippedNoInvoiceId: 0,
+      failedScanned: 0,
+      failedAlreadyProcessed: 0,
+      failedReInjected: 0,
     });
   });
 
   it("poll_fallback_emits_start_log", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
-    mockGetStripeClient.mockReturnValue(mockStripeClient([]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({}));
 
     await capturedHandler();
 
@@ -214,7 +229,7 @@ describe("stripeEventsPollFallbackCron", () => {
   it("poll_fallback_emits_completed_log_with_counters", async () => {
     await import("@/inngest/functions/stripe-events-poll-fallback");
     const ev = makeStripeEvent({ eventId: "evt_c1", invoiceId: "inv-999" });
-    mockGetStripeClient.mockReturnValue(mockStripeClient([ev]));
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ succeeded: [ev] }));
     mockGetStripeEvent.mockResolvedValueOnce(null);
     mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
     mockHandlePaymentIntentSucceeded.mockResolvedValueOnce({ status: "processed" });
@@ -229,7 +244,63 @@ describe("stripeEventsPollFallbackCron", () => {
         alreadyProcessed: 0,
         reInjected: 1,
         skippedNoInvoiceId: 0,
+        failedScanned: 0,
+        failedAlreadyProcessed: 0,
+        failedReInjected: 0,
       },
     );
+  });
+
+  it("poll_fallback_reinjects_missed_failed_event", async () => {
+    await import("@/inngest/functions/stripe-events-poll-fallback");
+    const ev = makeStripeEvent({ eventId: "evt_failed_missed", invoiceId: "inv-failed-123", type: "payment_intent.failed" });
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ failed: [ev] }));
+    mockGetStripeEvent.mockResolvedValueOnce(null);
+    mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
+    mockHandlePaymentIntentFailed.mockResolvedValueOnce({ status: "notified", eventId: "evt_failed_missed", invoiceId: "inv-failed-123" });
+
+    const result = await capturedHandler();
+
+    expect(mockHandlePaymentIntentFailed).toHaveBeenCalledOnce();
+    expect(mockHandlePaymentIntentFailed).toHaveBeenCalledWith(
+      { data: { event: ev } },
+      expect.objectContaining({
+        getInvoiceById: expect.any(Function),
+        dispatchNotification: expect.any(Function),
+        markStripeEventProcessed: expect.any(Function),
+      }),
+    );
+    expect(result).toMatchObject({ failedScanned: 1, failedReInjected: 1, failedAlreadyProcessed: 0 });
+  });
+
+  it("poll_fallback_skips_already_processed_failed_event", async () => {
+    await import("@/inngest/functions/stripe-events-poll-fallback");
+    const ev = makeStripeEvent({ eventId: "evt_failed_processed", type: "payment_intent.failed" });
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ failed: [ev] }));
+    mockGetStripeEvent.mockResolvedValueOnce({ eventId: "evt_failed_processed", processedAt: new Date() });
+
+    const result = await capturedHandler();
+
+    expect(mockHandlePaymentIntentFailed).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ failedScanned: 1, failedAlreadyProcessed: 1, failedReInjected: 0 });
+  });
+
+  it("poll_fallback_records_failed_event_before_reinjection", async () => {
+    await import("@/inngest/functions/stripe-events-poll-fallback");
+    const ev = makeStripeEvent({ eventId: "evt_failed_new", invoiceId: "inv-failed-789", type: "payment_intent.failed" });
+    mockGetStripeClient.mockReturnValue(mockStripeClient({ failed: [ev] }));
+    mockGetStripeEvent.mockResolvedValueOnce(null);
+    mockRecordStripeEvent.mockResolvedValueOnce({ inserted: true });
+    mockHandlePaymentIntentFailed.mockResolvedValueOnce({ status: "logged", eventId: "evt_failed_new" });
+
+    await capturedHandler();
+
+    expect(mockRecordStripeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: "evt_failed_new", type: "payment_intent.failed" }),
+    );
+    expect(mockHandlePaymentIntentFailed).toHaveBeenCalledOnce();
+    const recordCallOrder = mockRecordStripeEvent.mock.invocationCallOrder[0];
+    const handleCallOrder = mockHandlePaymentIntentFailed.mock.invocationCallOrder[0];
+    expect(recordCallOrder).toBeLessThan(handleCallOrder);
   });
 });
