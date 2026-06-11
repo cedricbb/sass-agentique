@@ -1,12 +1,11 @@
 import type Stripe from "stripe";
-import type { NotificationEvent, AdminNotificationPayload } from "@saas/services";
 import { logger } from "@saas/services/logger";
 
 export type PaymentIntentFailedDeps = {
   getInvoiceById: (id: string) => Promise<{ id: string; ownerId: string } | null>;
   dispatchNotification: (
-    event: NotificationEvent,
-    payload: AdminNotificationPayload,
+    event: "payment.failed",
+    payload: { invoiceId: string; tenantId: string },
   ) => Promise<void>;
   markStripeEventProcessed: (eventId: string) => Promise<unknown>;
 };
