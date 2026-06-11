@@ -199,3 +199,32 @@ describe("STRIPE_SECRET_KEY conditional validation", () => {
     expect(result.success).toBe(false);
   });
 });
+
+const logLevelEnvSchema = z.object({
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+});
+
+describe("LOG_LEVEL validation", () => {
+  it("defaults_log_level_to_info", () => {
+    const result = logLevelEnvSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.LOG_LEVEL).toBe("info");
+    }
+  });
+
+  it("rejects_invalid_log_level", () => {
+    const result = logLevelEnvSchema.safeParse({ LOG_LEVEL: "verbose" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts_all_valid_log_level_values", () => {
+    for (const level of ["debug", "info", "warn", "error"] as const) {
+      const result = logLevelEnvSchema.safeParse({ LOG_LEVEL: level });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.LOG_LEVEL).toBe(level);
+      }
+    }
+  });
+});

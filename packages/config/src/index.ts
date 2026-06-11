@@ -21,6 +21,7 @@ const envSchema = z.object({
   STRIPE_WEBHOOKS_ENABLED: z.enum(["true", "false"]).transform(v => v === "true").default("false"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 }).refine(
   (data) => !data.NOTIFICATIONS_ENABLED || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
   { message: "RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
