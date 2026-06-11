@@ -70,16 +70,27 @@ Les deux gardes retournent le même status 413 et le même body `{ error: "paylo
 
 **Error message safety** : les erreurs de signature retournent `{ error: "invalid request" }` sans jamais exposer le message du SDK Stripe — prévention de fuite d'information vers un attaquant qui sonde le endpoint.
 
-**Logging** (Pattern 16 — JSON.stringify, jamais l'objet Error brut) :
+**Logging structuré** (`@saas/services/logger`) :
 
-```typescript
-console.error(JSON.stringify({
-  event: "stripe-webhook",
-  outcome: "invalid_signature" | "config_error" | "ignored" | "internal_error",
-  eventId: "<si disponible>",
-  message: (err as Error).message,
-}));
+| Milestone | Niveau | Clés de contexte |
+|---|---|---|
+| `webhook.stripe.received` | `info` | `eventId`, `eventType` |
+| `webhook.stripe.disabled` | `warn` | — |
+| `webhook.stripe.signature_invalid` | `warn` | `err` |
+| `webhook.stripe.body_too_large` | `warn` | — |
+| `webhook.stripe.duplicate` | `info` | `eventId`, `eventType` |
+| `webhook.stripe.dispatched` | `info` | `eventId`, `eventType` |
+| `webhook.stripe.error` | `error` | `eventId`, `eventType`, `err` |
+
+```ts
+import { logger } from "@saas/services/logger";
+
+logger.info("webhook.stripe.dispatched", { eventId: event.id, eventType: event.type });
+logger.warn("webhook.stripe.signature_invalid", { err });
+logger.error("webhook.stripe.error", { eventId: event.id, eventType: event.type, err });
 ```
+
+Les milestones précoces (avant parse — ex. `signature_invalid`) émettent sans `eventId`/`eventType` car le payload n'a pas encore été décodé. Les erreurs de signature ne retournent toujours pas le message SDK au client (`{ error: "invalid request" }`).
 
 ## Liens vers tests
 
