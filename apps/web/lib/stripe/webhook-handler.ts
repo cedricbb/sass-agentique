@@ -5,6 +5,7 @@ import {
   StripeServiceError,
 } from "@saas/services";
 import { inngest } from "@saas/workflows";
+import { env } from "@saas/config";
 
 const MAX_WEBHOOK_PAYLOAD_BYTES = 512 * 1024;
 
@@ -27,7 +28,7 @@ const INNGEST_EVENT_NAMES: Record<DispatchedEventType, string> = {
 export async function handleStripeWebhook(
   request: NextRequest,
 ): Promise<NextResponse> {
-  if (process.env.STRIPE_WEBHOOKS_ENABLED !== "true") {
+  if (!env.STRIPE_WEBHOOKS_ENABLED) {
     return NextResponse.json({ error: "service unavailable" }, { status: 503 });
   }
 

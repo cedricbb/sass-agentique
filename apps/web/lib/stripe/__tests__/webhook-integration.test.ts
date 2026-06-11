@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockConstructEvent, stripeEventsStore } = vi.hoisted(() => {
+const { mockConstructEvent, stripeEventsStore, mockEnv } = vi.hoisted(() => {
   return {
     mockConstructEvent: vi.fn(),
     stripeEventsStore: new Map<string, unknown>(),
+    mockEnv: { STRIPE_WEBHOOKS_ENABLED: true as boolean },
   };
 });
+
+vi.mock("@saas/config", () => ({
+  env: mockEnv,
+}));
 
 vi.mock("stripe", () => {
   const StripeConstructor = vi.fn(() => ({
@@ -113,7 +118,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
   stripeEventsStore.clear();
-  vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
+  mockEnv.STRIPE_WEBHOOKS_ENABLED = true;
   vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_integ");
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_test_integ");
   __resetStripeClientForTests();

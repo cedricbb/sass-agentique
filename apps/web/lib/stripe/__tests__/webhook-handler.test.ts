@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+const mockEnv = vi.hoisted(() => ({
+  STRIPE_WEBHOOKS_ENABLED: true as boolean,
+}));
+
+vi.mock("@saas/config", () => ({
+  env: mockEnv,
+}));
+
 vi.mock("@saas/services", () => ({
   verifyWebhookSignature: vi.fn(),
   recordStripeEvent: vi.fn(),
@@ -34,17 +42,13 @@ const mockSend = vi.mocked(inngest.send);
 function makeRequest(options: {
   body?: string;
   signature?: string | null;
-  enabled?: string;
   contentLength?: string | null;
 }): NextRequest {
   const {
     body = '{"id":"evt_1","type":"payment_intent.succeeded","object":"event"}',
     signature = "t=12345,v1=abc",
-    enabled = "true",
     contentLength = undefined,
   } = options;
-
-  vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", enabled);
 
   const url = "https://example.com/api/stripe/webhooks";
   const headers: Record<string, string> = {
@@ -73,12 +77,13 @@ const SAMPLE_EVENT = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.unstubAllEnvs();
+  mockEnv.STRIPE_WEBHOOKS_ENABLED = true;
 });
 
 describe("handleStripeWebhook", () => {
-  it("webhook_returns_503_when_toggle_disabled", async () => {
-    const req = makeRequest({ enabled: "false" });
+  it("returns 503 when webhooks disabled", async () => {
+    mockEnv.STRIPE_WEBHOOKS_ENABLED = false;
+    const req = makeRequest({});
     const res = await handleStripeWebhook(req);
     expect(res.status).toBe(503);
     const body = await res.json();
@@ -86,7 +91,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_400_when_signature_header_missing", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const req = makeRequest({ signature: null });
     const res = await handleStripeWebhook(req);
     expect(res.status).toBe(400);
@@ -95,7 +99,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_400_when_body_empty", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const req = makeRequest({ body: "" });
     const res = await handleStripeWebhook(req);
     expect(res.status).toBe(400);
@@ -104,7 +107,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_413_when_payload_too_large", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const oversizedBody = "x".repeat(512 * 1024 + 1);
     const req = makeRequest({ body: oversizedBody });
     const res = await handleStripeWebhook(req);
@@ -114,7 +116,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_400_on_invalid_signature_without_leaking_error", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const sdkMessage = "Webhook signature verification failed. SECRET_DETAIL";
     mockVerify.mockImplementation(() => {
       throw new StripeServiceError(sdkMessage, "stripe/invalid_signature");
@@ -130,7 +131,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_503_on_config_error", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     mockVerify.mockImplementation(() => {
       throw new StripeServiceError(
         "STRIPE_WEBHOOK_SECRET is not defined",
@@ -145,7 +145,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_already_processed_on_duplicate_event", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     mockVerify.mockReturnValue(SAMPLE_EVENT as never);
     mockRecord.mockResolvedValue({
       inserted: false,
@@ -161,8 +160,7 @@ describe("handleStripeWebhook", () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
-  it("webhook_dispatches_payment_intent_succeeded_to_inngest", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
+  it("dispatches inngest event for payment_intent.succeeded", async () => {
     const event = { ...SAMPLE_EVENT, type: "payment_intent.succeeded" };
     mockVerify.mockReturnValue(event as never);
     mockRecord.mockResolvedValue({
@@ -185,7 +183,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_dispatches_payment_intent_failed_to_inngest", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const event = { ...SAMPLE_EVENT, type: "payment_intent.payment_failed" };
     mockVerify.mockReturnValue(event as never);
     mockRecord.mockResolvedValue({
@@ -205,7 +202,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_ignored_for_unknown_event_type", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const event = { ...SAMPLE_EVENT, type: "customer.created" };
     mockVerify.mockReturnValue(event as never);
     mockRecord.mockResolvedValue({
@@ -223,7 +219,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_500_on_unexpected_error", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     mockVerify.mockReturnValue(SAMPLE_EVENT as never);
     mockRecord.mockRejectedValue(new Error("DB down"));
     const req = makeRequest({});
@@ -234,7 +229,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_413_prefilter_content_length", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const req = makeRequest({ contentLength: "600000" });
     const textSpy = vi.spyOn(req, "text");
     const res = await handleStripeWebhook(req);
@@ -245,7 +239,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_returns_413_oversized_body_without_content_length", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     const oversizedBody = "x".repeat(512 * 1024 + 1);
     const req = makeRequest({ body: oversizedBody });
     const res = await handleStripeWebhook(req);
@@ -255,7 +248,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_passes_prefilter_with_small_content_length", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     mockVerify.mockImplementation(() => {
       throw new StripeServiceError("bad sig", "stripe/invalid_signature");
     });
@@ -267,7 +259,6 @@ describe("handleStripeWebhook", () => {
   });
 
   it("webhook_skips_prefilter_on_non_numeric_content_length", async () => {
-    vi.stubEnv("STRIPE_WEBHOOKS_ENABLED", "true");
     mockVerify.mockImplementation(() => {
       throw new StripeServiceError("bad sig", "stripe/invalid_signature");
     });
