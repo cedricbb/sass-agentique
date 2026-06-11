@@ -91,14 +91,14 @@ describe("schéma Zod env", () => {
 });
 
 const stripeEnvSchema = z.object({
-  STRIPE_WEBHOOKS_ENABLED: z.string().optional(),
+  STRIPE_WEBHOOKS_ENABLED: z.enum(["true", "false"]).transform(v => v === "true").default("false"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 }).refine(
-  (data) => data.STRIPE_WEBHOOKS_ENABLED !== "true" || (!!data.STRIPE_SECRET_KEY && data.STRIPE_SECRET_KEY.length > 0),
+  (data) => !data.STRIPE_WEBHOOKS_ENABLED || (!!data.STRIPE_SECRET_KEY && data.STRIPE_SECRET_KEY.length > 0),
   { message: "STRIPE_SECRET_KEY is required when STRIPE_WEBHOOKS_ENABLED=true" },
 ).refine(
-  (data) => data.STRIPE_WEBHOOKS_ENABLED !== "true" || (!!data.STRIPE_WEBHOOK_SECRET && data.STRIPE_WEBHOOK_SECRET.length > 0),
+  (data) => !data.STRIPE_WEBHOOKS_ENABLED || (!!data.STRIPE_WEBHOOK_SECRET && data.STRIPE_WEBHOOK_SECRET.length > 0),
   { message: "STRIPE_WEBHOOK_SECRET is required when STRIPE_WEBHOOKS_ENABLED=true" },
 );
 
@@ -146,6 +146,31 @@ describe("RESEND_API_KEY conditional validation", () => {
 });
 
 describe("STRIPE_SECRET_KEY conditional validation", () => {
+  it("returns_boolean_true_when_stripe_webhooks_enabled", () => {
+    const result = stripeEnvSchema.safeParse({
+      STRIPE_WEBHOOKS_ENABLED: "true",
+      STRIPE_SECRET_KEY: "sk_x",
+      STRIPE_WEBHOOK_SECRET: "whsec_x",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.STRIPE_WEBHOOKS_ENABLED).toBe(true);
+    }
+  });
+
+  it("defaults_to_false_when_stripe_webhooks_enabled_absent", () => {
+    const result = stripeEnvSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.STRIPE_WEBHOOKS_ENABLED).toBe(false);
+    }
+  });
+
+  it("rejects_typo_value_for_stripe_webhooks_enabled", () => {
+    const result = stripeEnvSchema.safeParse({ STRIPE_WEBHOOKS_ENABLED: "tru" });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects_missing_stripe_keys_when_webhooks_enabled", () => {
     const result = stripeEnvSchema.safeParse({ STRIPE_WEBHOOKS_ENABLED: "true" });
     expect(result.success).toBe(false);
