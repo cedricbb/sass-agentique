@@ -23,7 +23,7 @@ describe("logger", () => {
   it("emits_json_to_stdout_with_required_fields", () => {
     logger.info("test", { key: "val" });
     expect(console.info).toHaveBeenCalledOnce();
-    const raw = (console.info as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string;
+    const raw = (console.info as unknown as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string;
     const parsed = JSON.parse(raw);
     expect(parsed.level).toBe("info");
     expect(typeof parsed.timestamp).toBe("string");
@@ -36,7 +36,7 @@ describe("logger", () => {
     const err = new Error("boom");
     logger.error("fail", { err });
     expect(console.error).toHaveBeenCalledOnce();
-    const raw = (console.error as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string;
+    const raw = (console.error as unknown as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string;
     const parsed = JSON.parse(raw);
     expect(parsed.err).toBeDefined();
     expect(parsed.err.name).toBe("Error");
@@ -91,7 +91,7 @@ describe("logger", () => {
   it("handles_undefined_context", () => {
     expect(() => logger.info("no-ctx")).not.toThrow();
     expect(console.info).toHaveBeenCalledOnce();
-    const raw = (console.info as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string;
+    const raw = (console.info as unknown as ReturnType<typeof vi.spyOn>).mock.calls[0][0] as string;
     const parsed = JSON.parse(raw);
     expect(parsed.message).toBe("no-ctx");
     expect(parsed.level).toBe("info");
