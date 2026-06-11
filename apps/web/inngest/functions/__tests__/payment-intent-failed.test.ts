@@ -1,23 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
-import { logger } from "@saas/services/logger";
 
 vi.mock("@saas/services/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-const mockMarkStripeEventProcessed = vi.fn();
-const mockDispatchNotification = vi.fn();
 const mockGetInvoiceById = vi.fn();
+const mockDispatchNotification = vi.fn();
+const mockMarkStripeEventProcessed = vi.fn();
+const mockHandlePaymentIntentFailed = vi.fn();
 
 vi.mock("@saas/services", () => ({
   getInvoiceById: mockGetInvoiceById,
   dispatchNotification: mockDispatchNotification,
-  paymentService: { createPayment: vi.fn() },
   markStripeEventProcessed: mockMarkStripeEventProcessed,
 }));
 
-let capturedHandler: (args: { event: unknown }) => Promise<unknown>;
+vi.mock("../payment-intent-failed.handler", () => ({
+  handlePaymentIntentFailed: mockHandlePaymentIntentFailed,
+}));
+
+let capturedHandler: (args: {
+  event: unknown;
+  step: { run: (name: string, fn: () => unknown) => Promise<unknown> };
+}) => Promise<unknown>;
 
 vi.mock("@saas/workflows", () => ({
   inngest: {
@@ -28,37 +34,25 @@ vi.mock("@saas/workflows", () => ({
   },
 }));
 
-const makeEvent = (overrides: {
-  eventId?: string;
-  piId?: string;
-  amount?: number;
-  invoiceId?: string;
-  lastPaymentError?: { code?: string; decline_code?: string; message?: string } | null;
-  noMetadata?: boolean;
-} = {}) => {
-  const paymentIntent: Record<string, unknown> = {
-    id: overrides.piId ?? "pi_test123",
-    amount: overrides.amount ?? 10000,
-    metadata: overrides.noMetadata ? {} : { invoiceId: overrides.invoiceId ?? "inv-uuid-123" },
-  };
-  if ("lastPaymentError" in overrides) {
-    paymentIntent.last_payment_error = overrides.lastPaymentError;
-  } else {
-    paymentIntent.last_payment_error = {
-      code: "card_declined",
-      decline_code: "insufficient_funds",
-      message: "Your card has insufficient funds.",
-    };
-  }
-  return {
-    data: {
-      event: {
-        id: overrides.eventId ?? "evt_test456",
-        data: { object: paymentIntent },
+const makeStep = () => ({
+  run: vi.fn(async (_name: string, fn: () => unknown) => fn()),
+});
+
+const makeEvent = (overrides: { invoiceId?: string; noMetadata?: boolean } = {}) => ({
+  data: {
+    event: {
+      id: "evt_test456",
+      data: {
+        object: {
+          id: "pi_test123",
+          amount: 10000,
+          metadata: overrides.noMetadata ? {} : { invoiceId: overrides.invoiceId ?? "inv-uuid-123" },
+          last_payment_error: { code: "card_declined", decline_code: "insufficient_funds", message: "Funds low" },
+        },
       },
     },
-  };
-};
+  },
+});
 
 describe("paymentIntentFailedHandler", () => {
   beforeEach(() => {
@@ -66,73 +60,23 @@ describe("paymentIntentFailedHandler", () => {
     vi.clearAllMocks();
   });
 
-  it("happy_path_returns_logged_status", async () => {
+  it("delegates_to_handle_payment_intent_failed", async () => {
     await import("@/inngest/functions/payment-intent-failed");
+    const step = makeStep();
     const event = makeEvent();
-    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
+    mockHandlePaymentIntentFailed.mockResolvedValueOnce({ status: "notified", eventId: "evt_test456", invoiceId: "inv-uuid-123" });
 
-    const result = await capturedHandler({ event });
+    const result = await capturedHandler({ event, step });
 
-    expect(result).toMatchObject({ status: "logged", eventId: "evt_test456" });
-  });
-
-  it("emits_structured_log_with_all_fields", async () => {
-    await import("@/inngest/functions/payment-intent-failed");
-    const event = makeEvent();
-    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
-
-    await capturedHandler({ event });
-
-    expect(logger.error).toHaveBeenCalledWith(
-      "inngest.payment_intent_failed.start",
+    expect(mockHandlePaymentIntentFailed).toHaveBeenCalledWith(
+      { data: event.data },
       expect.objectContaining({
-        eventId: "evt_test456",
-        paymentIntentId: "pi_test123",
-        invoiceId: "inv-uuid-123",
-        amount: 10000,
-        errorCode: "card_declined",
-        declineCode: "insufficient_funds",
-        errorMessage: "Your card has insufficient funds.",
+        getInvoiceById: expect.any(Function),
+        dispatchNotification: expect.any(Function),
+        markStripeEventProcessed: expect.any(Function),
       }),
     );
-  });
-
-  it("calls_mark_stripe_event_processed", async () => {
-    await import("@/inngest/functions/payment-intent-failed");
-    const event = makeEvent();
-    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
-
-    await capturedHandler({ event });
-
-    expect(mockMarkStripeEventProcessed).toHaveBeenCalledWith("evt_test456");
-  });
-
-  it("catches_mark_processed_error_without_propagation", async () => {
-    await import("@/inngest/functions/payment-intent-failed");
-    const event = makeEvent();
-    mockMarkStripeEventProcessed.mockRejectedValueOnce(new Error("db down"));
-
-    const result = await capturedHandler({ event });
-
-    expect(result).toMatchObject({ status: "logged" });
-    expect(logger.error).toHaveBeenCalledWith(
-      "inngest.payment_intent_failed.mark_processed_error",
-      expect.objectContaining({ eventId: "evt_test456", err: expect.any(Error) }),
-    );
-  });
-
-  it("handles_null_last_payment_error", async () => {
-    await import("@/inngest/functions/payment-intent-failed");
-    const event = makeEvent({ lastPaymentError: null });
-    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
-
-    const result = await capturedHandler({ event });
-
-    expect(result).toMatchObject({ status: "logged" });
-    expect(logger.error).toHaveBeenCalledWith(
-      "inngest.payment_intent_failed.start",
-      expect.objectContaining({ errorCode: null, declineCode: null, errorMessage: null }),
-    );
+    expect(result).toMatchObject({ status: "notified", eventId: "evt_test456" });
   });
 
   it("handler_registered_in_inngest_functions", async () => {
@@ -149,28 +93,5 @@ describe("paymentIntentFailedHandler", () => {
     const config = callArgs?.[0] as { id: string; retries: number };
     expect(config.id).toBe("stripe-payment-intent-failed");
     expect(config.retries).toBe(3);
-  });
-
-  it("skips_notification_when_no_invoice_id", async () => {
-    await import("@/inngest/functions/payment-intent-failed");
-    const event = makeEvent({ noMetadata: true });
-    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
-
-    const result = await capturedHandler({ event });
-
-    expect(mockDispatchNotification).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ status: "logged" });
-  });
-
-  it("calls_mark_processed_even_when_notification_throws", async () => {
-    await import("@/inngest/functions/payment-intent-failed");
-    const event = makeEvent();
-    mockGetInvoiceById.mockResolvedValueOnce({ id: "inv-uuid-123", ownerId: "owner-id-1" });
-    mockDispatchNotification.mockRejectedValueOnce(new Error("Resend down"));
-    mockMarkStripeEventProcessed.mockResolvedValueOnce(null);
-
-    await capturedHandler({ event });
-
-    expect(mockMarkStripeEventProcessed).toHaveBeenCalledWith("evt_test456");
   });
 });
