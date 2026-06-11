@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
+import { logger } from "@saas/services/logger";
+
+vi.mock("@saas/services/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}));
 
 const mockMarkStripeEventProcessed = vi.fn();
 const mockDispatchNotification = vi.fn();
 const mockGetInvoiceById = vi.fn();
-const mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
 vi.mock("@saas/services", () => ({
   getInvoiceById: mockGetInvoiceById,
@@ -79,20 +83,18 @@ describe("paymentIntentFailedHandler", () => {
 
     await capturedHandler({ event });
 
-    expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('"paymentIntentId":"pi_test123"'));
-    const firstCall = mockConsoleError.mock.calls[0][0] as string;
-    const parsed = JSON.parse(firstCall);
-    expect(parsed).toMatchObject({
-      event: "stripe-payment-intent-failed",
-      outcome: "logged",
-      eventId: "evt_test456",
-      paymentIntentId: "pi_test123",
-      invoiceId: "inv-uuid-123",
-      amount: 10000,
-      errorCode: "card_declined",
-      declineCode: "insufficient_funds",
-      errorMessage: "Your card has insufficient funds.",
-    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "inngest.payment_intent_failed.start",
+      expect.objectContaining({
+        eventId: "evt_test456",
+        paymentIntentId: "pi_test123",
+        invoiceId: "inv-uuid-123",
+        amount: 10000,
+        errorCode: "card_declined",
+        declineCode: "insufficient_funds",
+        errorMessage: "Your card has insufficient funds.",
+      }),
+    );
   });
 
   it("calls_mark_stripe_event_processed", async () => {
@@ -113,16 +115,10 @@ describe("paymentIntentFailedHandler", () => {
     const result = await capturedHandler({ event });
 
     expect(result).toMatchObject({ status: "logged" });
-    const errorCalls = mockConsoleError.mock.calls.map((c) => c[0] as string);
-    const errorLog = errorCalls.find((c) => c.includes("mark_processed_error"));
-    expect(errorLog).toBeDefined();
-    const parsed = JSON.parse(errorLog!);
-    expect(parsed).toMatchObject({
-      event: "stripe-payment-intent-failed",
-      outcome: "mark_processed_error",
-      eventId: "evt_test456",
-      message: "db down",
-    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "inngest.payment_intent_failed.mark_processed_error",
+      expect.objectContaining({ eventId: "evt_test456", err: expect.any(Error) }),
+    );
   });
 
   it("handles_null_last_payment_error", async () => {
@@ -133,11 +129,10 @@ describe("paymentIntentFailedHandler", () => {
     const result = await capturedHandler({ event });
 
     expect(result).toMatchObject({ status: "logged" });
-    const firstCall = mockConsoleError.mock.calls[0][0] as string;
-    const parsed = JSON.parse(firstCall);
-    expect(parsed.errorCode).toBeNull();
-    expect(parsed.declineCode).toBeNull();
-    expect(parsed.errorMessage).toBeNull();
+    expect(logger.error).toHaveBeenCalledWith(
+      "inngest.payment_intent_failed.start",
+      expect.objectContaining({ errorCode: null, declineCode: null, errorMessage: null }),
+    );
   });
 
   it("handler_registered_in_inngest_functions", async () => {
