@@ -58,11 +58,20 @@ getStripeClient()
 
 **`StripeService` class** : conservée pour compatibilité, le constructeur n'instancie plus le client (lazy). L'accès SDK interne passe par un getter privé `get stripe()` → `getStripeClient()`.
 
+**`wrapStripeError`** : helper interne qui intercepte les erreurs Stripe avant qu'elles remontent aux callers. Depuis R8/log2, le comportement est :
+
+1. Émet un `logger.error("stripe.error", { err, operation, stripeRequestId, stripeStatusCode, stripeType, stripeCode })` — le détail complet (requestId, statusCode, type, code) est capturé dans les logs structurés.
+2. Retourne/throw une `StripeServiceError` dont le `.message` est **toujours** générique et sanitizé :
+   - `Stripe.errors.StripeError` → `"Stripe operation failed: <err.type ?? err.code ?? 'unknown_error'>"`
+   - Erreur non-Stripe → `"Stripe operation failed"`
+
+Aucun message SDK verbatim, aucun identifiant Stripe (`ch_xxx`, `pi_xxx`, `cus_xxx`) ne transite vers le caller.
+
 **Zod env validation** (`packages/config/src/index.ts`) :
 
 Si `STRIPE_WEBHOOKS_ENABLED === "true"`, le schéma exige `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET` non-vides. Sinon les deux sont optionnels. Calque Pattern 18 (même mécanique que `RESEND_API_KEY ↔ NOTIFICATIONS_ENABLED`).
 
 ## Liens vers tests
 
-- `packages/services/src/__tests__/stripe.service.test.ts` — singleton, lazy init, re-instanciation sur changement clé, `__resetStripeClientForTests`, `verifyWebhookSignature` (valid / invalid / config_error / generic-message-not-sdk-verbatim)
+- `packages/services/src/__tests__/stripe.service.test.ts` — singleton, lazy init, re-instanciation sur changement clé, `__resetStripeClientForTests`, `verifyWebhookSignature` (valid / invalid / config_error / generic-message-not-sdk-verbatim), `wrapStripeError` (sanitized message AC1-AC4, structured log via spy)
 - `packages/config/src/__tests__/env.test.ts` — refines Zod conditionnels `STRIPE_WEBHOOKS_ENABLED`
