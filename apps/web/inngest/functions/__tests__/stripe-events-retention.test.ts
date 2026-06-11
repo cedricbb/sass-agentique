@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
 
 const mockDeleteStaleStripeEvents = vi.fn();
+const mockLoggerInfo = vi.fn();
+const mockLoggerError = vi.fn();
+
+vi.mock("@saas/services/logger", () => ({
+  logger: {
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+  },
+}));
 
 vi.mock("@saas/services", () => ({
   deleteStaleStripeEvents: mockDeleteStaleStripeEvents,
@@ -61,5 +70,42 @@ describe("stripeEventsRetentionCron", () => {
     const callArgs = createFunction.mock.calls[0];
     const config = callArgs?.[0] as { id: string };
     expect(config.id).toBe("stripe-events-retention-cron");
+  });
+
+  it("retention_emits_start_log", async () => {
+    await import("@/inngest/functions/stripe-events-retention");
+    mockDeleteStaleStripeEvents.mockResolvedValueOnce({ deletedCount: 3 });
+
+    await capturedHandler();
+
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      "inngest.cron.stripe_events_retention.start",
+      { jobName: "stripe_events_retention", retentionDays: 90 },
+    );
+  });
+
+  it("retention_emits_purged_log", async () => {
+    await import("@/inngest/functions/stripe-events-retention");
+    mockDeleteStaleStripeEvents.mockResolvedValueOnce({ deletedCount: 7 });
+
+    await capturedHandler();
+
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      "inngest.cron.stripe_events_retention.purged",
+      { jobName: "stripe_events_retention", purgedCount: 7 },
+    );
+  });
+
+  it("retention_emits_error_log_and_rethrows", async () => {
+    await import("@/inngest/functions/stripe-events-retention");
+    const boom = new Error("db error");
+    mockDeleteStaleStripeEvents.mockRejectedValueOnce(boom);
+
+    await expect(capturedHandler()).rejects.toThrow("db error");
+
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      "inngest.cron.stripe_events_retention.error",
+      { jobName: "stripe_events_retention", err: boom },
+    );
   });
 });
