@@ -65,7 +65,7 @@ export async function deleteStaleStripeEvents(
   const deleted = await db
     .delete(stripeEvents)
     .where(lt(stripeEvents.receivedAt, cutoffDate))
-    .returning();
+    .returning({ id: stripeEvents.id });
 
   return { deletedCount: deleted.length };
 }
