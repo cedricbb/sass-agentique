@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
+import { logger } from "@saas/services/logger";
+
+vi.mock("@saas/services/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}));
 
 const mockGetInvoiceById = vi.fn();
 const mockCreatePayment = vi.fn();
 const mockMarkStripeEventProcessed = vi.fn();
-const mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
 vi.mock("@saas/services", () => ({
   getInvoiceById: mockGetInvoiceById,
@@ -138,7 +142,10 @@ describe("paymentIntentSucceededHandler", () => {
 
     const result = await capturedHandler({ event, step });
 
-    expect(mockConsoleError).toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      "inngest.payment_intent_succeeded.mark_processed_error",
+      expect.objectContaining({ eventId: "evt_test456", invoiceId: "inv-uuid-123", err: expect.any(Error) }),
+    );
     expect(result).toMatchObject({ status: "processed" });
   });
 

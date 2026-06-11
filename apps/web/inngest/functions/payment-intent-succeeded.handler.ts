@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { logger } from "@saas/services/logger";
 
 export type PaymentIntentSucceededDeps = {
   getInvoiceById: (id: string) => Promise<{ id: string; ownerId: string } | null>;
@@ -42,14 +43,10 @@ export async function handlePaymentIntentSucceeded(
   const invoice = await deps.getInvoiceById(invoiceId);
 
   if (!invoice) {
-    console.error(
-      JSON.stringify({
-        event: "stripe-payment-intent-succeeded",
-        outcome: "invoice_not_found",
-        eventId: stripeEvent.id,
-        invoiceId,
-      }),
-    );
+    logger.warn("inngest.payment_intent_succeeded.invoice_not_found", {
+      eventId: stripeEvent.id,
+      invoiceId,
+    });
     await deps.markStripeEventProcessed(stripeEvent.id);
     return { status: "skipped", reason: "invoice_not_found", invoiceId };
   }
@@ -66,15 +63,11 @@ export async function handlePaymentIntentSucceeded(
   try {
     await deps.markStripeEventProcessed(stripeEvent.id);
   } catch (err) {
-    console.error(
-      JSON.stringify({
-        event: "stripe-payment-intent-succeeded",
-        outcome: "mark_processed_failed",
-        eventId: stripeEvent.id,
-        invoiceId,
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    );
+    logger.error("inngest.payment_intent_succeeded.mark_processed_error", {
+      eventId: stripeEvent.id,
+      invoiceId,
+      err,
+    });
   }
 
   return { status: "processed", invoiceId, paymentIntentId: paymentIntent.id, invoiceMarkedAsPaid };

@@ -1,8 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { logger } from "@saas/services/logger";
 import { handlePaymentIntentSucceeded } from "@/inngest/functions/payment-intent-succeeded.handler";
 import type { PaymentIntentSucceededDeps } from "@/inngest/functions/payment-intent-succeeded.handler";
+
+vi.mock("@saas/services/logger", () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}));
 
 const makeEvent = (
   overrides: {
@@ -98,6 +103,10 @@ describe("handlePaymentIntentSucceeded", () => {
     expect(result).toMatchObject({ status: "skipped", reason: "invoice_not_found", invoiceId: "inv-uuid-123" });
     expect(deps.markStripeEventProcessed).toHaveBeenCalledWith("evt_test456");
     expect(deps.createPayment).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "inngest.payment_intent_succeeded.invoice_not_found",
+      expect.objectContaining({ eventId: "evt_test456", invoiceId: "inv-uuid-123" }),
+    );
   });
 
   it("returns_processed_when_mark_processed_throws", async () => {
@@ -109,6 +118,10 @@ describe("handlePaymentIntentSucceeded", () => {
     const result = await handlePaymentIntentSucceeded(event as never, deps);
 
     expect(result).toMatchObject({ status: "processed", invoiceId: "inv-uuid-123" });
+    expect(logger.error).toHaveBeenCalledWith(
+      "inngest.payment_intent_succeeded.mark_processed_error",
+      expect.objectContaining({ eventId: "evt_test456", invoiceId: "inv-uuid-123", err: expect.any(Error) }),
+    );
   });
 
   it("propagates_create_payment_error", async () => {
