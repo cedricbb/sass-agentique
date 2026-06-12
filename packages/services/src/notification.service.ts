@@ -1,4 +1,5 @@
 import { getResendClient } from "./resend.client";
+import nodemailer from "nodemailer";
 import { env } from "@saas/config";
 import { db, clientContacts, quotes, clients, invoices, reports, users } from "@saas/db";
 import { eq, and, isNotNull } from "drizzle-orm";
@@ -9,23 +10,41 @@ import { renderQuoteSentHtml } from "./emails/QuoteSentEmail";
 import { renderInvoiceSentHtml } from "./emails/InvoiceSentEmail";
 import { renderReportIssuedHtml } from "./emails/ReportIssuedEmail";
 
+const FROM = "SaaS Agentique <noreply@saas-agentique.io>";
+
+function createSmtpTransport() {
+  return nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: false,
+    auth:
+      env.SMTP_USER && env.SMTP_PASS
+        ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
+        : undefined,
+  });
+}
+
 export type NotificationEvent = "quote.sent" | "invoice.sent" | "report.issued" | "payment.failed";
 export type NotificationPayload = { clientId: string; entityId: string; tenantId: string };
 export type AdminNotificationPayload = { invoiceId: string; tenantId: string };
 export type NotifiableContact = { id: string; name: string; email: string; userId: string };
 
 async function sendNotificationEmail(params: { to: string; subject: string; html: string }): Promise<void> {
-  if (!env.RESEND_API_KEY) {
-    console.log("[notification.service] RESEND_API_KEY not set, email skipped", { to: params.to, subject: params.subject });
+  const { to, subject, html } = params;
+
+  if (env.SMTP_HOST) {
+    const transport = createSmtpTransport();
+    await transport.sendMail({ from: FROM, to, subject, html });
     return;
   }
-  const resend = getResendClient();
-  await resend.emails.send({
-    from: "SaaS Agentique <noreply@saas-agentique.io>",
-    to: params.to,
-    subject: params.subject,
-    html: params.html,
-  });
+
+  if (env.RESEND_API_KEY) {
+    const resend = getResendClient();
+    await resend.emails.send({ from: FROM, to, subject, html });
+    return;
+  }
+
+  console.log("[notification.service] no transport configured, email skipped", { to, subject });
 }
 
 async function handleQuoteSentNotification(payload: NotificationPayload): Promise<void> {
