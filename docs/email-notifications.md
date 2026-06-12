@@ -40,7 +40,9 @@ const contacts: NotifiableContact[] = await getNotifiableContacts(clientId);
 
 | Variable | Obligatoire | Description |
 |----------|-------------|-------------|
-| `RESEND_API_KEY` | Oui (prod) | Clé API Resend. `getResendClient()` throw si absente. |
+| `SMTP_HOST` | Non | Hôte SMTP (ex. `localhost` pour MailHog). Si défini, active le transport nodemailer en priorité. |
+| `SMTP_PORT` | Non | Port SMTP. Défaut : `587`. Utilisé uniquement si `SMTP_HOST` est défini. |
+| `RESEND_API_KEY` | Oui (prod) | Clé API Resend. `getResendClient()` throw si absente. Utilisé uniquement si `SMTP_HOST` n'est pas défini. |
 | `NOTIFICATIONS_ENABLED` | Non | `"true"` ou `"false"`. Validé par `@saas/config` (Zod) : seules ces deux valeurs sont acceptées (typo = erreur au démarrage). Défaut : `false` (opt-in strict). |
 | `APP_URL` | Non | Préfixe des liens CTA dans les emails. Défaut : `http://localhost:3001`. |
 
@@ -72,6 +74,25 @@ __getResendClientKeyHashForTests()
 ```
 
 `getResendClient` est re-exporté depuis le barrel `@saas/services`. Les helpers `__*ForTests` sont consommés directement via chemin profond (`../resend.client`) depuis les tests internes du package — ils ne sont pas re-exportés dans le barrel.
+
+### Transport email (`sendNotificationEmail`)
+
+Cascade strictement identique à celle de `email.service.ts` — même env vars, même `FROM`, même ordre de priorité :
+
+```
+sendNotificationEmail(to, subject, html)
+  → if env.SMTP_HOST
+      → nodemailer.createTransport({ host, port, secure: false })
+      → transport.sendMail({ from: FROM, to, subject, html })
+  → else if env.RESEND_API_KEY
+      → getResendClient().emails.send({ from: FROM, to, subject, html })
+  → else
+      → console.log("RESEND_API_KEY not set, email skipped", { to, subject })
+```
+
+**En développement avec MailHog** : définir `SMTP_HOST=localhost` (et `SMTP_PORT=1025`) dans `.env` pour que toutes les notifications métier (`quote.sent`, `invoice.sent`, `report.issued`, `payment.failed`) soient capturées sur `http://localhost:8025`, au même titre que les 4 emails d'authentification.
+
+**En production** : laisser `SMTP_HOST` non défini et configurer `RESEND_API_KEY`.
 
 ### Dispatch map (`DISPATCH_MAP`)
 
@@ -262,6 +283,7 @@ Le hook est idempotent par construction : `markReportIssued` utilise une clause 
 |---------|-------|
 | `packages/services/src/__tests__/resend.client.test.ts` | Lazy singleton : cache hit, rotation clé SHA256, throw clé absente, reset test-only |
 | `packages/services/src/__tests__/notification.service.test.ts` | Dispatch no-op, contacts notifiables, stub `resend.client` |
+| `packages/services/src/__tests__/notification-email-transport.test.ts` | Cascade SMTP > Resend > console : nodemailer activé si `SMTP_HOST` set, Resend activé si clé seule, fallback console.log si aucun transport |
 | `packages/services/src/__tests__/quote-sent-notification.test.ts` | DISPATCH_MAP câblé, hook quote.service, handler email loop, `.catch` logué |
 | `packages/services/src/__tests__/quote-sent-email.test.tsx` | Rendu HTML template QuoteSentEmail, présence CTA |
 | `packages/services/src/__tests__/invoice-sent-notification.test.ts` | DISPATCH_MAP invoice.sent câblé, hook invoice.service, handler TTC+dueDate, `.catch` logué |
