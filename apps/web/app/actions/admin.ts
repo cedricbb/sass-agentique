@@ -2,38 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { banUser, unbanUser, resetUserTotp } from "@saas/services";
-import { requireAdmin } from "@/lib/auth";
+import { withAdmin } from "@/lib/action-result";
+import type { ActionResult } from "@/lib/action-result";
 
-export async function banUserAction(userId: string): Promise<{ error?: string }> {
-  try {
-    await requireAdmin();
+export async function banUserAction(userId: string): Promise<ActionResult<void>> {
+  return withAdmin(async () => {
     await banUser(userId);
     revalidatePath("/admin/users");
-    return {};
-  } catch {
-    return { error: "Une erreur est survenue." };
-  }
+  });
 }
 
-export async function unbanUserAction(userId: string): Promise<{ error?: string }> {
-  try {
-    await requireAdmin();
+export async function unbanUserAction(userId: string): Promise<ActionResult<void>> {
+  return withAdmin(async () => {
     await unbanUser(userId);
     revalidatePath("/admin/users");
-    return {};
-  } catch {
-    return { error: "Une erreur est survenue." };
-  }
+  });
 }
 
-export async function resetUserTotpAction(userId: string): Promise<{ error?: string }> {
-  try {
-    await requireAdmin();
+export async function resetUserTotpAction(userId: string): Promise<ActionResult<void>> {
+  return withAdmin(async () => {
     await resetUserTotp(userId);
     revalidatePath("/admin/users");
-    return {};
-  } catch {
-    return { error: "Une erreur est survenue." };
-  }
+  });
 }
-

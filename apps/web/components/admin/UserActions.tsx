@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, ShieldOff, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { banUserAction, unbanUserAction, resetUserTotpAction } from "@/app/actions/admin";
+import { toastResult } from "@/lib/toast";
 
 interface UserActionsProps {
   userId: string;
@@ -31,19 +32,11 @@ interface UserActionsProps {
 
 type ConfirmAction = "ban" | "unban" | "resetTotp" | null;
 
-export function UserActions({ userId, isBanned, totpEnabled }: UserActionsProps) {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-  const [confirm, setConfirm] = useState<ConfirmAction>(null);
-
-  const confirmMessages: Record<
-    NonNullable<ConfirmAction>,
-    { title: string; description: string }
-  > = {
+const confirmMessages: Record<NonNullable<ConfirmAction>, { title: string; description: string }> =
+  {
     ban: {
       title: "Bannir cet utilisateur ?",
-      description:
-        "L'utilisateur ne pourra plus se connecter. Cette action est réversible.",
+      description: "L'utilisateur ne pourra plus se connecter. Cette action est réversible.",
     },
     unban: {
       title: "Débannir cet utilisateur ?",
@@ -56,18 +49,30 @@ export function UserActions({ userId, isBanned, totpEnabled }: UserActionsProps)
     },
   };
 
-  async function handleConfirm() {
+const successMessages: Record<NonNullable<ConfirmAction>, string> = {
+  ban: "Utilisateur banni",
+  unban: "Utilisateur débanni",
+  resetTotp: "2FA réinitialisé",
+};
+
+export function UserActions({ userId, isBanned, totpEnabled }: UserActionsProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [confirm, setConfirm] = useState<ConfirmAction>(null);
+
+  function handleConfirm() {
     if (!confirm) return;
-    setPending(true);
-    try {
-      if (confirm === "ban") await banUserAction(userId);
-      if (confirm === "unban") await unbanUserAction(userId);
-      if (confirm === "resetTotp") await resetUserTotpAction(userId);
-      router.refresh();
-    } finally {
-      setPending(false);
-      setConfirm(null);
-    }
+    const action = confirm;
+    startTransition(async () => {
+      let result;
+      if (action === "ban") result = await banUserAction(userId);
+      else if (action === "unban") result = await unbanUserAction(userId);
+      else result = await resetUserTotpAction(userId);
+      if (toastResult(result, successMessages[action])) {
+        setConfirm(null);
+        router.refresh();
+      }
+    });
   }
 
   return (
@@ -117,8 +122,8 @@ export function UserActions({ userId, isBanned, totpEnabled }: UserActionsProps)
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} disabled={pending}>
-              {pending && <Loader2 className="mr-2 size-3.5 animate-spin" />}
+            <AlertDialogAction onClick={handleConfirm} disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 size-3.5 animate-spin" />}
               Confirmer
             </AlertDialogAction>
           </AlertDialogFooter>
