@@ -1,3 +1,4 @@
+"use client"
 import { toast } from "sonner";
 import type { ActionResult } from "@/lib/action-result";
 
