@@ -11,10 +11,13 @@ const envSchema = z.object({
 
 const notificationsEnvSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
   NOTIFICATIONS_ENABLED: z.enum(["true", "false"]).transform(v => v === "true").default("false"),
 }).refine(
-  (data) => !data.NOTIFICATIONS_ENABLED || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
-  { message: "RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
+  (data) => !data.NOTIFICATIONS_ENABLED
+    || (!!data.SMTP_HOST && data.SMTP_HOST.length > 0)
+    || (!!data.RESEND_API_KEY && data.RESEND_API_KEY.length > 0),
+  { message: "SMTP_HOST or RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
 );
 
 describe("schéma Zod env", () => {
@@ -124,9 +127,18 @@ describe("RESEND_API_KEY conditional validation", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects_missing_resend_key_when_notifications_enabled", () => {
+  it("rejects_missing_transport_when_notifications_enabled", () => {
     const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true" });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects_missing_transport_with_correct_error_message", () => {
+    const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const messages = result.error.issues.map(i => i.message);
+      expect(messages.some(m => m.includes("SMTP_HOST or RESEND_API_KEY"))).toBe(true);
+    }
   });
 
   it("accepts_missing_resend_key_when_notifications_disabled", () => {
@@ -139,8 +151,13 @@ describe("RESEND_API_KEY conditional validation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects_empty_resend_key_when_notifications_enabled", () => {
-    const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true", RESEND_API_KEY: "" });
+  it("accepts_smtp_host_only_when_notifications_enabled", () => {
+    const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true", SMTP_HOST: "localhost" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects_empty_transport_strings_when_notifications_enabled", () => {
+    const result = notificationsEnvSchema.safeParse({ NOTIFICATIONS_ENABLED: "true", SMTP_HOST: "", RESEND_API_KEY: "" });
     expect(result.success).toBe(false);
   });
 });

@@ -23,8 +23,10 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 }).refine(
-  (data) => !data.NOTIFICATIONS_ENABLED || (data.RESEND_API_KEY !== undefined && data.RESEND_API_KEY.length > 0),
-  { message: "RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
+  (data) => !data.NOTIFICATIONS_ENABLED
+    || (!!data.SMTP_HOST && data.SMTP_HOST.length > 0)
+    || (!!data.RESEND_API_KEY && data.RESEND_API_KEY.length > 0),
+  { message: "SMTP_HOST or RESEND_API_KEY is required when NOTIFICATIONS_ENABLED=true" },
 ).refine(
   (data) => !data.STRIPE_WEBHOOKS_ENABLED || (!!data.STRIPE_SECRET_KEY && data.STRIPE_SECRET_KEY.length > 0),
   { message: "STRIPE_SECRET_KEY is required when STRIPE_WEBHOOKS_ENABLED=true" },
