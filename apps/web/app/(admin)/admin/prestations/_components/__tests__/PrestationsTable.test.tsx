@@ -1,10 +1,22 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { PrestationsTable } from "../PrestationsTable";
 import type { Prestation } from "@saas/db";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
+vi.mock("@/app/actions/prestations", () => ({
+  archivePrestationAction: vi.fn(),
+}));
+
+vi.mock("@/lib/toast", () => ({
+  toastResult: vi.fn(),
+}));
 
 afterEach(() => cleanup());
 
@@ -127,5 +139,15 @@ describe("PrestationsTable", () => {
     const p = makePrestation({ createdAt: new Date("2024-03-20") });
     renderWithNuqs(<PrestationsTable data={[p]} />);
     expect(screen.getByText("20/03/2024")).toBeInTheDocument();
+  });
+
+  it("prestations_table_renders_archive_button_per_row", () => {
+    const prestations = [
+      makePrestation({ id: "id-1" }),
+      makePrestation({ id: "id-2" }),
+    ];
+    renderWithNuqs(<PrestationsTable data={prestations} />);
+    const buttons = screen.getAllByTestId("archive-prestation-trigger");
+    expect(buttons).toHaveLength(2);
   });
 });

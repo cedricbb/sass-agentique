@@ -11,6 +11,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ArchivePrestationButton } from "./ArchivePrestationButton";
 
 const KIND_LABELS: Record<string, string> = { one_shot: "Ponctuelle", recurring: "Récurrente" };
 const KIND_BADGE_VARIANT: Record<string, "default" | "secondary"> = { one_shot: "default", recurring: "secondary" };
@@ -48,17 +49,23 @@ const columns: ColumnDef<Prestation>[] = [
   {
     id: "actions",
     cell: ({ row }) => (
-      <Button
-        variant="ghost"
-        size="icon"
-        asChild
-        data-testid={`prestation-edit-${row.original.id}`}
-      >
-        <Link href={`/admin/prestations/${row.original.id}`}>
-          <Pencil className="size-4" />
-          <span className="sr-only">Modifier</span>
-        </Link>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          data-testid={`prestation-edit-${row.original.id}`}
+        >
+          <Link href={`/admin/prestations/${row.original.id}`}>
+            <Pencil className="size-4" />
+            <span className="sr-only">Modifier</span>
+          </Link>
+        </Button>
+        <ArchivePrestationButton
+          id={row.original.id}
+          prestationName={row.original.name}
+        />
+      </div>
     ),
   },
 ];
