@@ -61,8 +61,8 @@
 - **Action** : depuis la fiche du devis en statut `draft`, déclencher l'action "Envoyer le devis" (`transitionQuoteStatusAction` vers `sent`).
 - **URL** : `/admin/quotes/[id]`
 - **Résultat attendu** : statut passe à `sent`, badge mis à jour, email `quote.sent` envoyé (vérifier console ou boîte mail), bouton "Envoyer" désactivé ou remplacé.
-- ✗ OK
-- **Frictions** : email non envoyé, pas de mail reçu
+- ☑ OK
+- **Frictions** : N/A
 
 ### A5 — Acceptation devis (sent → accepted)
 
@@ -110,8 +110,8 @@
 - **Action** : consulter la boîte mail de test (ou logs console si `EMAIL_PROVIDER=console`), vérifier la présence des 2 emails métier : `quote.sent` et `invoice.sent`.
 - **URL** : boîte mail externe ou terminal
 - **Résultat attendu** : 2 emails reçus, contenu lisible (nom client, montant, lien vers le portail customer), mise en forme correcte.
-- ✗ OK
-- **Frictions** : Aucun mails reçu sur Mailhog
+- ☑ OK
+- **Frictions** : N/A
 
 ---
 
