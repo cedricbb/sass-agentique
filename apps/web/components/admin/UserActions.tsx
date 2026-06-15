@@ -71,6 +71,12 @@ export function UserActions({ userId, isBanned, totpEnabled }: UserActionsProps)
       if (toastResult(result, successMessages[action])) {
         setConfirm(null);
         router.refresh();
+      }else result = await resetUserTotpAction(userId);
+      console.log("[R9-6 debug] result:", result);                                    // ← AJOUT
+      console.log("[R9-6 debug] message:", successMessages[action]);                  // ← AJOUT
+      if (toastResult(result, successMessages[action])) {
+        setConfirm(null);
+        router.refresh();
       }
     });
   }
