@@ -102,8 +102,8 @@
 - **Action** : naviguer vers la fiche client (`/admin/clients/[id]`), consulter l'historique devis/factures/paiements rattachés.
 - **URL** : `/admin/clients/[id]`
 - **Résultat attendu** : devis `accepted`, facture `paid`, paiement enregistré visibles dans la fiche. Montants cohérents.
-- ✗ OK
-- **Frictions** : Pas d'historique visible sur la fiche du client
+- ☑ OK
+- **Frictions** : N/A
 
 ### A10 — Vérification emails envoyés
 
@@ -164,8 +164,8 @@
 - **Action** : naviguer vers la fiche d'un client existant (`/admin/clients/[id]`). Vérifier toutes les sections : infos générales, liste devis, liste factures, liste paiements.
 - **URL** : `/admin/clients/[id]`
 - **Résultat attendu** : toutes les sections s'affichent, les données rattachées au client (devis, factures) sont visibles et cohérentes, liens internes fonctionnels.
-- ✗ OK
-- **Frictions** : Aucun historique de facture ni devis sur la fiche du client
+- ☑ OK
+- **Frictions** : N/A
 
 ### B2.4 — Invitation customer depuis fiche client
 

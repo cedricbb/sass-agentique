@@ -42,8 +42,8 @@ const contacts: NotifiableContact[] = await getNotifiableContacts(clientId);
 |----------|-------------|-------------|
 | `SMTP_HOST` | Non | Hôte SMTP (ex. `localhost` pour MailHog). Si défini, active le transport nodemailer en priorité. |
 | `SMTP_PORT` | Non | Port SMTP. Défaut : `587`. Utilisé uniquement si `SMTP_HOST` est défini. |
-| `RESEND_API_KEY` | Oui (prod) | Clé API Resend. `getResendClient()` throw si absente. Utilisé uniquement si `SMTP_HOST` n'est pas défini. |
-| `NOTIFICATIONS_ENABLED` | Non | `"true"` ou `"false"`. Validé par `@saas/config` (Zod) : seules ces deux valeurs sont acceptées (typo = erreur au démarrage). Défaut : `false` (opt-in strict). |
+| `RESEND_API_KEY` | Si pas SMTP | Clé API Resend. Utilisé uniquement si `SMTP_HOST` n'est pas défini. Requis en prod sans SMTP. |
+| `NOTIFICATIONS_ENABLED` | Non | `"true"` ou `"false"`. Validé par `@saas/config` (Zod) : `SMTP_HOST` ou `RESEND_API_KEY` obligatoire si `true` (typo ou transport manquant = erreur au démarrage). Défaut : `false` (opt-in strict). |
 | `APP_URL` | Non | Préfixe des liens CTA dans les emails. Défaut : `http://localhost:3001`. |
 
 > **Killswitch CI/preview** : `NOTIFICATIONS_ENABLED` est évalué à chaque appel de `dispatchNotification`, jamais mis en cache. Le défaut strict-opt-in (`false`) empêche tout envoi réel en CI ou en preview deploy. La valeur est exposée comme `boolean` typé via `@saas/config` — un typo (`"tru"`, `"1"`, etc.) lève une erreur Zod au démarrage plutôt que de passer silencieusement.
