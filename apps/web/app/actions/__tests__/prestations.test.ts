@@ -73,13 +73,22 @@ describe("createPrestationAction", () => {
     mockedCreatePrestation.mockResolvedValue(fakePrestation as never);
     const result = await createPrestationAction(validInput);
     expect(result).toEqual({ ok: true, data: fakePrestation });
-    expect(mockedCreatePrestation).toHaveBeenCalledWith({
-      name: "Dev Web",
-      slug: undefined,
-      description: undefined,
-      basePriceEurCents: 5000,
-      kind: "one_shot",
-    });
+    expect(mockedCreatePrestation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Dev Web",
+        basePriceEurCents: 5000,
+        kind: "one_shot",
+        ownerId: "u1",
+      }),
+    );
+  });
+
+  it("create_prestation_action_passes_owner_id", async () => {
+    mockedCreatePrestation.mockResolvedValue(fakePrestation as never);
+    await createPrestationAction(validInput);
+    expect(mockedCreatePrestation).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerId: "u1" }),
+    );
   });
 
   it("2 — revalidatePath appelé", async () => {

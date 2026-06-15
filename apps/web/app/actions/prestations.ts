@@ -14,14 +14,15 @@ import type { Prestation } from "@saas/db";
 export async function createPrestationAction(
   input: unknown,
 ): Promise<ActionResult<Prestation>> {
-  return withAdmin(async () => {
+  return withAdmin(async (user) => {
     const data = createPrestationSchema.parse(input);
     const payload: Record<string, unknown> = {
       name: data.name,
       basePriceEurCents: Math.round(data.basePriceEur * 100),
       kind: data.kind,
+      ownerId: user.id,
     };
-    if (data.slug !== undefined) payload.slug = data.slug;
+    if (data.slug !== undefined && data.slug.trim().length > 0) payload.slug = data.slug;
     if (data.description !== undefined) payload.description = data.description;
     const prestation = await createPrestation(payload as never);
     revalidatePath("/admin/prestations");
