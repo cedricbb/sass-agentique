@@ -3,6 +3,8 @@ import { getClientByIdAction } from "@/app/actions/clients";
 import { ClientForm } from "../_components/ClientForm";
 import { InviteCustomerDialog } from "../_components/InviteCustomerDialog";
 import { AddClientContactDialog } from "../_components/AddClientContactDialog";
+import { ClientQuotesSection } from "../_components/ClientQuotesSection";
+import { ClientInvoicesSection } from "../_components/ClientInvoicesSection";
 import {
   Tooltip,
   TooltipTrigger,
@@ -14,6 +16,8 @@ import {
   getClientContactWithUser,
   getActiveInvitationByContact,
   getLastConsumedInvitationByContact,
+  listQuotes,
+  listInvoices,
 } from "@saas/services";
 
 const portalStatusLabel = (expiresAt: Date): string => {
@@ -39,7 +43,11 @@ export default async function EditClientPage({
   const result = await getClientByIdAction(id);
   if (!result.ok || !result.data) notFound();
 
-  const contacts = await listClientContacts(id);
+  const [contacts, quotes, invoices] = await Promise.all([
+    listClientContacts(id),
+    listQuotes({ clientId: id }),
+    listInvoices({ clientId: id }),
+  ]);
   const contactsWithData = await Promise.all(
     contacts.map(async (contact) => {
       const [withUser, activeInvitation, lastConsumedInvitation] = await Promise.all([
@@ -117,6 +125,8 @@ export default async function EditClientPage({
           </table>
         )}
       </section>
+      <ClientQuotesSection quotes={quotes} />
+      <ClientInvoicesSection invoices={invoices} />
     </div>
   );
 }
