@@ -192,8 +192,8 @@
 - **Action** : cliquer "Nouvelle prestation", remplir le PrestationForm (nom, description, prix unitaire, unité, TVA), soumettre. Tester aussi la validation : soumettre avec prix négatif ou vide.
 - **URL** : `/admin/prestations/new`
 - **Résultat attendu** : (1) prestation créée, redirection ou message de succès, prestation visible dans la liste. (2) validation : message d'erreur sur le champ prix invalide.
-- ✗ OK
-- **Frictions** : Impossible de créer une préstation erreur a la soumission du formulaire meme rempli correctement, pas autant de champ que décrit, d'ou l'erreur je pense, champs dispo dans le formulaire Nom/Slug/Description/Type/Prix de base
+- ☐ OK
+- **Frictions** : ~~Impossible de créer une préstation erreur a la soumission du formulaire meme rempli correctement, pas autant de champ que décrit, d'ou l'erreur je pense, champs dispo dans le formulaire Nom/Slug/Description/Type/Prix de base~~ **FIXÉ (fix-r9-prestation-form-fields-and-archive-action)** : `createPrestationAction` ne passait pas `ownerId` au service → contrainte NOT NULL en DB. Corrigé.
 
 ### B3.3 — Édition prestation existante
 
@@ -208,8 +208,8 @@
 - **Action** : depuis la fiche ou la liste, déclencher l'archivage d'une prestation (bouton "Archiver" ou action contextuelle). Confirmer si une modale de confirmation apparaît.
 - **URL** : `/admin/prestations/[id]` ou `/admin/prestations`
 - **Résultat attendu** : prestation archivée (statut changé), disparaît de la liste active ou marquée comme archivée selon l'implémentation. Action réversible ou non ? Observer.
-- ✗ OK
-- **Frictions** : Pas de bouton d'action autre que modifier, pas de bouton archivage
+- ☐ OK
+- **Frictions** : ~~Pas de bouton d'action autre que modifier, pas de bouton archivage~~ **FIXÉ (fix-r9-prestation-form-fields-and-archive-action)** : bouton "Archiver" ajouté par ligne dans `PrestationsTable`.
 
 ---
 
@@ -410,8 +410,8 @@
 | 7  | B       | 2.2   | Pas de slug automatique, pas de nom pas de soumission, ajout d'un contact au client(entreprise) ne reprend pas le select de tous les clients, peut-être après refactor en entreprise/client ?                                                                      | gênant                                    |             |
 | 8  | B       | 2.3   | Aucun historique de facture ni devis sur la fiche du client                                                                                                                                                                                                        | bloquant                                  |             |
 | 9  | B       | 3.1   | colonnes disponibles Nom/Prix/Type/Crée le                                                                                                                                                                                                                         | gênant                                    |             |
-| 10 | B       | 3.2   | Impossible de créer une préstation erreur a la soumission du formulaire meme rempli correctement, pas autant de champ que décrit, d'ou l'erreur je pense, champs dispo dans le formulaire Nom/Slug/Description/Type/Prix de base                                   | bloquant                                  |             |
-| 11 | B       | 3.4   | Pas de bouton d'action autre que modifier, pas de bouton archivage                                                                                                                                                                                                 | bloquant                                  |             |
+| 10 | B       | 3.2   | Impossible de créer une préstation erreur a la soumission du formulaire meme rempli correctement, pas autant de champ que décrit, d'ou l'erreur je pense, champs dispo dans le formulaire Nom/Slug/Description/Type/Prix de base                                   | ~~bloquant~~ **FIXÉ**                     | fix-r9-prestation-form-fields-and-archive-action |
+| 11 | B       | 3.4   | Pas de bouton d'action autre que modifier, pas de bouton archivage                                                                                                                                                                                                 | ~~bloquant~~ **FIXÉ**                     | fix-r9-prestation-form-fields-and-archive-action |
 | 12 | B       | 4.1   | Pas de nouveau client affiché hors ceux du seed, les clients crée en R9 n'apparaissent pas dans la liste, dashboard 5 clients, menu users 9 clients (clients invités au portail mais pas encore connecté?) client visibles après acceptation invitation au portail | gênant                                    |             |
 | 13 | B       | 4.2   | Pas de feedback visuel, pas de taost ni rien, uniquement le badge qui change de couleur, modale de confirmation avant de bannir/debannir                                                                                                                           | bloquant                                  |             |
 | 14 | C       | 1.2   | Nom de l'app Bienvenue dans l'espace client de Client Test R9, bouton pour pouvoir créer son compte avec le bon lien d'invitation                                                                                                                                  | cosmétique                                |             |
