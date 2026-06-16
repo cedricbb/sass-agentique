@@ -2,7 +2,9 @@
 
 ## Ce que fait ce module
 
-Page d'accueil du portail client (`/account`). Affiche 3 cards stats cliquables (Devis / Factures / Rapports) avec des compteurs actionables fetch en SSR via `Promise.all`.
+Page d'accueil du portail client (`/account`). Point d'entrée post-login pour les customers — `loginAction`, `totpVerifyAction` et `registerAction` redirigent tous vers `/account` après authentification réussie.
+
+Affiche 3 cards stats cliquables (Devis / Factures / Rapports) avec des compteurs actionables fetch en SSR via `Promise.all`.
 
 Chaque card :
 - Affiche un compteur sémantique selon le nombre d'items "actionnables" du client connecté.
