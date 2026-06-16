@@ -1,9 +1,11 @@
 import { requireCustomer } from "@/lib/auth";
 import { CustomerShell } from "@/components/layout/CustomerShell";
+import { getUserTotpStatus } from "@saas/services";
 import type { ReactNode } from "react";
 
 export default async function AccountLayout({ children }: { children: ReactNode }) {
   const { user, client } = await requireCustomer();
+  const { totpEnabled } = await getUserTotpStatus(user.id);
 
   return (
     <CustomerShell
@@ -14,6 +16,7 @@ export default async function AccountLayout({ children }: { children: ReactNode 
         emailVerified: user.emailVerified,
       }}
       clientName={client.name}
+      totpEnabled={totpEnabled}
     >
       {children}
     </CustomerShell>

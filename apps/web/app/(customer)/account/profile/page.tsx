@@ -4,6 +4,7 @@ import { validateSession } from "@saas/services";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Mail, User, ShieldCheck } from "lucide-react";
 import { ProfileEditButton } from "@/components/profile/ProfileEditButton";
+import { CustomerSecuritySection } from "@/components/profile/CustomerSecuritySection";
 
 function getInitials(name: string | null, email: string): string {
   if (name) {
@@ -118,6 +119,9 @@ export default async function ProfilePage() {
 
         </div>
       </div>
+
+      {/* ── Sécurité ─────────────────────────────────────────────────────── */}
+      <CustomerSecuritySection userId={user.id} />
 
     </div>
   );
