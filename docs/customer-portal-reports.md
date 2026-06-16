@@ -115,7 +115,7 @@ Les routes admin et customer partagent `streamPdfFromR2` et `reportService.getRe
 ### Dépendances
 
 - `apps/web/lib/auth.ts` — `requireCustomer()` → `{ user, client }`, `assertClientOwnership()`
-- `packages/services/src/report.service.ts` — `getReportById(id)`, `listReportsByClient(clientId, opts)`, `getReportByTitle(title)` (e2e helper) ; ré-exporte `REPORT_KIND_LABELS`/`REPORT_KINDS`/`type ReportKind` depuis `report.shared.ts`
+- `packages/services/src/report.service.ts` — `getReportById(id)`, `listReportsByClient(clientId, opts)`, `countIssuedReportsForClient(clientId)`, `getReportByTitle(title)` (e2e helper) ; ré-exporte `REPORT_KIND_LABELS`/`REPORT_KINDS`/`type ReportKind` depuis `report.shared.ts`
 - `packages/services/src/report.shared.ts` — module partagé zéro-dépendance server-only : `REPORT_KINDS`, `type ReportKind`, `REPORT_KIND_LABELS` ; accessible via `@saas/services/report.shared`
 - `apps/web/lib/storage/r2.ts` — `streamPdfFromR2(key)`, `R2NotFoundError`
 - `packages/db/src/seed.ts` — 4 rapports seed (Acme draft, Acme monthly émis, Bob monthly émis, Globex émis)
@@ -127,3 +127,4 @@ Les routes admin et customer partagent `streamPdfFromR2` et `reportService.getRe
 - `apps/web/app/api/account/reports/[id]/file/__tests__/route.test.ts` — 8 cas unitaires route stream (AC1–AC8)
 - `apps/web/tests/e2e/helpers/resolve-seed-ids.ts` — `resolveReportId(reportTitle)` pour résolution UUID seed
 - `packages/services/src/__tests__/report.shared.test.ts` — 3 tests contrats shared (back-compat re-export, zéro import server-only, complétude labels)
+- `packages/services/src/__tests__/report.service.test.ts` — `countIssuedReportsForClient` (issued only + zero)

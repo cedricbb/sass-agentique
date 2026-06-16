@@ -103,7 +103,7 @@ Un contact d'un autre client ne peut pas accepter/refuser un devis qui ne lui ap
 
 - `apps/web/lib/auth.ts` — `requireCustomer()`, `assertClientOwnership()`, `assertClientOwnershipOrThrow()`
 - `apps/web/lib/action-result.ts` — `withCustomer()`, `ActionResult<T>`
-- `packages/services/src/quote.service.ts` — `getQuoteById`, `listQuotesByClient`, `transitionQuoteStatus`, `InvalidQuoteTransitionError`, `UUID_RE`
+- `packages/services/src/quote.service.ts` — `getQuoteById`, `listQuotesByClient`, `transitionQuoteStatus`, `countPendingQuotesForClient`, `InvalidQuoteTransitionError`, `UUID_RE`
 - `packages/services/src/quote.shared.ts` — `CUSTOMER_VISIBLE_QUOTE_STATUSES`, `CustomerVisibleQuoteStatus`
 - `packages/db/src/seed.ts` — devis seed : Q-2026-001 (draft acme), Q-2026-004 (declined acme), Q-2026-005 (expired bob)
 
@@ -112,4 +112,4 @@ Un contact d'un autre client ne peut pas accepter/refuser un devis qui ne lui ap
 - `apps/web/app/actions/__tests__/customer-quotes.test.ts` — 7 tests server actions (happy path accept/decline, RBAC cross-client, transition invalide, redirect)
 - `apps/web/app/(customer)/account/quotes/[id]/__tests__/QuoteCustomerActions.test.tsx` — 5 tests composant UI (visibilité boutons, masquage hors sent, AlertDialog, isPending)
 - `apps/web/tests/e2e/customer-quotes.spec.ts` — tests e2e Playwright (isolation cross-client, guard draft, liste)
-- `packages/services/src/__tests__/quote.service.test.ts` — tests unitaires `getQuoteById` incluant guard UUID
+- `packages/services/src/__tests__/quote.service.test.ts` — tests unitaires `getQuoteById` incluant guard UUID, `countPendingQuotesForClient` (sent only + zero)
