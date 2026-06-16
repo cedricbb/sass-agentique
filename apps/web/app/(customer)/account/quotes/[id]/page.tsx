@@ -6,6 +6,7 @@ import type { CustomerVisibleQuoteStatus } from "@saas/services/quote.shared";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { QuoteAmountsCard } from "../_components/QuoteAmountsCard";
+import { QuoteCustomerActions } from "./QuoteCustomerActions";
 
 const QUOTE_STATUS_LABELS: Record<CustomerVisibleQuoteStatus, string> = {
   sent: "Envoyé",
@@ -89,6 +90,7 @@ export default async function CustomerQuoteDetailPage({
       )}
 
       <QuoteAmountsCard amounts={amounts} />
+      <QuoteCustomerActions quoteId={quote.id} quoteNumber={quote.number} status={status} />
     </div>
   );
 }
