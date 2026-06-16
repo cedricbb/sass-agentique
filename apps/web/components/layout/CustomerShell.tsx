@@ -6,6 +6,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { CustomerSidebar } from "./CustomerSidebar";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { TwoFactorBanner } from "@/components/auth/TwoFactorBanner";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +29,7 @@ export interface CustomerUser {
 interface CustomerShellProps {
   user: CustomerUser;
   clientName?: string | null;
+  totpEnabled: boolean;
   children: ReactNode;
 }
 
@@ -52,7 +54,7 @@ function getInitials(name: string | null, email: string): string {
   return email.slice(0, 2).toUpperCase();
 }
 
-export function CustomerShell({ user, clientName, children }: CustomerShellProps) {
+export function CustomerShell({ user, clientName, totpEnabled, children }: CustomerShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
@@ -164,6 +166,7 @@ export function CustomerShell({ user, clientName, children }: CustomerShellProps
         </header>
 
         <EmailVerificationBanner emailVerified={user.emailVerified} />
+        <TwoFactorBanner totpEnabled={totpEnabled} />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
