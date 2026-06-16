@@ -29,6 +29,7 @@ vi.mock("drizzle-orm", () => ({
   isNull: vi.fn((a: unknown) => ({ isNull: a })),
   isNotNull: vi.fn((a: unknown) => ({ isNotNull: a })),
   desc: vi.fn((a: unknown) => ({ desc: a })),
+  count: vi.fn(() => "count"),
 }));
 
 import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
@@ -42,6 +43,7 @@ import {
   markReportIssued,
   deleteReport,
   InvalidFilePathError,
+  countIssuedReportsForClient,
 } from "../report.service";
 
 function mockDbReturns(result: unknown) {
@@ -284,6 +286,21 @@ describe("report.service", () => {
       dbMock.where.mockReturnThis();
       const result = await deleteReport("missing");
       expect(result).toEqual({ deletedReport: null });
+    });
+  });
+
+  describe("countIssuedReportsForClient", () => {
+    it("count_issued_reports_returns_issued_only", async () => {
+      dbMock.where.mockResolvedValueOnce([{ count: 4 }]);
+      const result = await countIssuedReportsForClient("c-1");
+      expect(result).toBe(4);
+      expect(dbMock.where).toHaveBeenCalled();
+    });
+
+    it("count_issued_reports_returns_zero_when_none_issued", async () => {
+      dbMock.where.mockResolvedValueOnce([{ count: 0 }]);
+      const result = await countIssuedReportsForClient("c-1");
+      expect(result).toBe(0);
     });
   });
 });

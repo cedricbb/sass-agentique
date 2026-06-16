@@ -4,7 +4,7 @@ import {
   invoiceStatusEnum,
   quotes, quoteItems, invoices, invoiceItems,
 } from "@saas/db";
-import { eq, and, inArray, desc, like } from "drizzle-orm";
+import { eq, and, inArray, desc, like, count } from "drizzle-orm";
 import { dispatchNotification } from "./notification.service";
 
 type Db = typeof db;
@@ -48,6 +48,11 @@ export function canTransitionInvoice(from: InvoiceStatus, to: InvoiceStatus): bo
 
 export { computeInvoiceTtc, type InvoiceAmounts, CUSTOMER_VISIBLE_INVOICE_STATUSES, type CustomerVisibleInvoiceStatus } from "./invoice.shared";
 import { CUSTOMER_VISIBLE_INVOICE_STATUSES } from "./invoice.shared";
+
+export async function countUnpaidInvoicesForClient(clientId: string): Promise<number> {
+  const [row] = await db.select({ count: count() }).from(invoices).where(and(eq(invoices.clientId, clientId), eq(invoices.status, "sent")));
+  return row?.count ?? 0;
+}
 
 export async function listInvoicesByClient(clientId: string): Promise<Invoice[]> {
   return listInvoices({ clientId, status: [...CUSTOMER_VISIBLE_INVOICE_STATUSES] });

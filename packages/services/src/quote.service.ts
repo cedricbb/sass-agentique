@@ -8,7 +8,7 @@ import {
   type QuoteItem,
   type NewQuoteItem,
 } from "@saas/db";
-import { eq, and, inArray, desc, like } from "drizzle-orm";
+import { eq, and, inArray, desc, like, count } from "drizzle-orm";
 import { CUSTOMER_VISIBLE_QUOTE_STATUSES } from "./quote.shared";
 import { dispatchNotification } from "./notification.service";
 export { computeQuoteTtc, type QuoteAmounts, CUSTOMER_VISIBLE_QUOTE_STATUSES, type CustomerVisibleQuoteStatus } from "./quote.shared";
@@ -83,6 +83,11 @@ export async function generateQuoteNumber(ownerId: string, year?: number): Promi
     throw new Error(`Cannot parse last quote number: "${last.number}"`);
   }
   return `${prefix}${String(parsed + 1).padStart(3, "0")}`;
+}
+
+export async function countPendingQuotesForClient(clientId: string): Promise<number> {
+  const [row] = await db.select({ count: count() }).from(quotes).where(and(eq(quotes.clientId, clientId), eq(quotes.status, "sent")));
+  return row?.count ?? 0;
 }
 
 export async function listQuotesByClient(clientId: string): Promise<Quote[]> {

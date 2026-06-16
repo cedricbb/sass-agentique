@@ -35,6 +35,7 @@ vi.mock("drizzle-orm", () => ({
   asc: vi.fn((...args: unknown[]) => ({ op: "asc", args })),
   like: vi.fn((...args: unknown[]) => ({ op: "like", args })),
   sql: vi.fn((...args: unknown[]) => ({ op: "sql", args })),
+  count: vi.fn(() => "count"),
 }));
 
 import {
@@ -60,6 +61,7 @@ import {
   updateInvoiceItem,
   removeInvoiceItem,
   recomputeInvoiceTotal,
+  countUnpaidInvoicesForClient,
 } from "../invoice.service";
 
 const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
@@ -481,5 +483,20 @@ describe("recomputeInvoiceTotal", () => {
     dbMock.returning!.mockResolvedValueOnce([INV_FIXTURE]);
     const total = await recomputeInvoiceTotal(INV_ID);
     expect(total).toBe(800);
+  });
+});
+
+describe("countUnpaidInvoicesForClient", () => {
+  it("count_unpaid_invoices_returns_sent_only", async () => {
+    dbMock.where.mockResolvedValueOnce([{ count: 2 }]);
+    const result = await countUnpaidInvoicesForClient("c1");
+    expect(result).toBe(2);
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+
+  it("count_unpaid_invoices_returns_zero_when_none_sent", async () => {
+    dbMock.where.mockResolvedValueOnce([{ count: 0 }]);
+    const result = await countUnpaidInvoicesForClient("c1");
+    expect(result).toBe(0);
   });
 });

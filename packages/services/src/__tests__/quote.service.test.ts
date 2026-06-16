@@ -33,6 +33,7 @@ vi.mock("drizzle-orm", () => ({
   like: vi.fn((...args: unknown[]) => ({ op: "like", args })),
   sql: vi.fn((...args: unknown[]) => ({ op: "sql", args })),
   sum: vi.fn((...args: unknown[]) => ({ op: "sum", args })),
+  count: vi.fn(() => "count"),
 }));
 
 import {
@@ -55,6 +56,7 @@ import {
   removeQuoteItem,
   recomputeQuoteTotal,
   CUSTOMER_VISIBLE_QUOTE_STATUSES,
+  countPendingQuotesForClient,
 } from "../quote.service";
 
 const OWNER_ID = "a0a0a0a0-b1b1-c2c2-d3d3-e4e4e4e4e4e4";
@@ -478,5 +480,20 @@ describe("listQuotesByClient", () => {
     const result = await listQuotesByClient("c1");
 
     expect(result[0].createdAt.getTime()).toBeGreaterThan(result[1].createdAt.getTime());
+  });
+});
+
+describe("countPendingQuotesForClient", () => {
+  it("count_pending_quotes_returns_sent_only", async () => {
+    dbMock.where.mockResolvedValueOnce([{ count: 3 }]);
+    const result = await countPendingQuotesForClient("c1");
+    expect(result).toBe(3);
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+
+  it("count_pending_quotes_returns_zero_when_none_sent", async () => {
+    dbMock.where.mockResolvedValueOnce([{ count: 0 }]);
+    const result = await countPendingQuotesForClient("c1");
+    expect(result).toBe(0);
   });
 });

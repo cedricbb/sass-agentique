@@ -1,5 +1,5 @@
 import { db, type Report, type NewReport, reports } from "@saas/db";
-import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, count } from "drizzle-orm";
 import { dispatchNotification } from "./notification.service";
 import type { ReportKind } from "./report.shared";
 export { REPORT_KINDS, type ReportKind, REPORT_KIND_LABELS } from "./report.shared";
@@ -21,6 +21,11 @@ function validateFilePath(filePath: string): string {
     throw new InvalidFilePathError();
   }
   return trimmed;
+}
+
+export async function countIssuedReportsForClient(clientId: string): Promise<number> {
+  const [row] = await db.select({ count: count() }).from(reports).where(and(eq(reports.clientId, clientId), isNotNull(reports.issuedAt)));
+  return row?.count ?? 0;
 }
 
 export async function listReportsByClient(
