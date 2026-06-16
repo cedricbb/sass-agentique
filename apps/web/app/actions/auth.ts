@@ -62,7 +62,7 @@ export async function registerAction(
     path: "/",
   });
 
-  redirect("/account/profile");
+  redirect("/account/");
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ export async function loginAction(
     }
 
     const sessionUser = await validateSession(result.sessionToken);
-    const destination = sessionUser?.role === "admin" ? "/admin/" : "/account/profile";
+    const destination = sessionUser?.role === "admin" ? "/admin/" : "/account/";
     redirect(destination);
   } catch (err) {
     if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
@@ -157,7 +157,7 @@ export async function totpVerifyAction(
       ? next
       : sessionUser?.role === "admin"
         ? "/admin/"
-        : "/account/profile";
+        : "/account/";
   } catch (err) {
     if (err instanceof Error) {
       if (err.message === "CHALLENGE_EXPIRED") {
