@@ -4,7 +4,7 @@
 
 Expose les devis aux clients authentifiés du portail (`/account`) :
 - `/account/quotes` — liste read-only des devis **visibles** du client connecté.
-- `/account/quotes/[id]` — détail read-only avec métadonnées + lignes.
+- `/account/quotes/[id]` — détail avec métadonnées + lignes + boutons d'action si statut `sent`.
 
 Chaque niveau applique des gardes séquentiels : session → existence → UUID valide → statut non-draft → ownership.
 Un devis brouillon ou appartenant à un autre client retourne un `404` identique — non-divulgation volontaire.
@@ -35,7 +35,17 @@ Affiche le bloc `data-testid="quote-detail"` avec :
 - Date d'expiration (`data-testid="quote-expires-date"`)
 - Lignes de devis (`data-testid="quote-items-table"`)
 
-Les pages sont read-only : zéro bouton d'action.
+Si `quote.status === "sent"` : boutons **Accepter** (`data-testid="quote-accept-trigger"`) et **Refuser** (`data-testid="quote-decline-trigger"`) avec AlertDialog de confirmation.
+Si tout autre statut (`accepted`, `declined`, `expired`) : page read-only, aucun bouton.
+
+### Actions customer (statut `sent` uniquement)
+
+| Action | Server action | Transition DB |
+|---|---|---|
+| Accepter | `acceptCustomerQuoteAction(quoteId)` | `sent → accepted` + `acceptedAt = now()` |
+| Refuser | `declineCustomerQuoteAction(quoteId)` | `sent → declined` |
+
+Les deux actions sont terminales côté customer : impossible de revenir sur `accepted` ou `declined`.
 
 ## Architecture interne
 
@@ -52,6 +62,30 @@ Trois gardes séquentiels dans `apps/web/app/(customer)/account/quotes/[id]/page
 
 `getQuoteById` valide le format UUID via `UUID_RE` avant toute requête SQL. Un `id` non-UUID retourne `null` → 404 (jamais 500 Postgres).
 
+### RBAC server actions
+
+`apps/web/app/actions/customer-quotes.ts` — les deux actions utilisent `withCustomer(scope)` :
+
+```
+1. withCustomer()                     → session + { user, client } (throw si non-customer)
+2. getQuoteById(quoteId)              → null → ActionResult error
+3. assertClientOwnershipOrThrow()     → quote.clientId !== scope.client.id → throw FORBIDDEN
+4. quote.status !== "sent"            → InvalidQuoteTransitionError (transition invalide)
+5. transitionQuoteStatus()            → UPDATE DB + acceptedAt si accepted
+6. revalidatePath()                   → liste + détail revalidés
+```
+
+Un contact d'un autre client ne peut pas accepter/refuser un devis qui ne lui appartient pas — le guard `assertClientOwnershipOrThrow` lève une erreur `FORBIDDEN` avant toute mutation.
+
+### Composant UI — QuoteCustomerActions
+
+`apps/web/app/(customer)/account/quotes/[id]/QuoteCustomerActions.tsx` :
+
+- Rendu conditionnel : `if (status !== "sent") return null`
+- `isPending` géré via `useState` (jamais `useTransition` — leçon R9-6c pour éviter double-toast)
+- Deux `AlertDialog` indépendants : un bouton trigger → dialog confirmation → appel action
+- `toastResult(result, label)` pour le feedback utilisateur
+
 ### Isolation liste
 
 `listQuotesByClient(clientId)` filtre par `clientId` ET `status IN (CUSTOMER_VISIBLE_QUOTE_STATUSES)` — les brouillons et les devis d'autres clients sont structurellement absents du résultat.
@@ -62,16 +96,20 @@ Trois gardes séquentiels dans `apps/web/app/(customer)/account/quotes/[id]/page
 |---|---|---|
 | `GET /account/quotes` | `requireCustomer` | devis visibles du client connecté |
 | `GET /account/quotes/[id]` | `requireCustomer` | devis non-draft, ownership validé |
+| `POST acceptCustomerQuoteAction` | `withCustomer` + ownership | transition sent→accepted |
+| `POST declineCustomerQuoteAction` | `withCustomer` + ownership | transition sent→declined |
 
 ### Dépendances
 
-- `apps/web/lib/auth.ts` — `requireCustomer()` → `{ user, client }`, `assertClientOwnership()`
-- `packages/services/src/quote.service.ts` — `getQuoteById(id)`, `listQuotesByClient(clientId)`, `UUID_RE` (guard uuid)
+- `apps/web/lib/auth.ts` — `requireCustomer()`, `assertClientOwnership()`, `assertClientOwnershipOrThrow()`
+- `apps/web/lib/action-result.ts` — `withCustomer()`, `ActionResult<T>`
+- `packages/services/src/quote.service.ts` — `getQuoteById`, `listQuotesByClient`, `transitionQuoteStatus`, `InvalidQuoteTransitionError`, `UUID_RE`
 - `packages/services/src/quote.shared.ts` — `CUSTOMER_VISIBLE_QUOTE_STATUSES`, `CustomerVisibleQuoteStatus`
 - `packages/db/src/seed.ts` — devis seed : Q-2026-001 (draft acme), Q-2026-004 (declined acme), Q-2026-005 (expired bob)
 
 ## Liens vers tests
 
+- `apps/web/app/actions/__tests__/customer-quotes.test.ts` — 7 tests server actions (happy path accept/decline, RBAC cross-client, transition invalide, redirect)
+- `apps/web/app/(customer)/account/quotes/[id]/__tests__/QuoteCustomerActions.test.tsx` — 5 tests composant UI (visibilité boutons, masquage hors sent, AlertDialog, isPending)
 - `apps/web/tests/e2e/customer-quotes.spec.ts` — tests e2e Playwright (isolation cross-client, guard draft, liste)
-- `packages/services/src/__tests__/quote.service.test.ts` — tests unitaires `getQuoteById` incluant guard UUID (id invalide → null, id inexistant → null, id valide → Quote)
-- `apps/web/tests/e2e/helpers/resolve-seed-ids.ts` — `resolveQuoteId(quoteNumber)` pour résolution UUID réel depuis numéro Q-XXXX (seed)
+- `packages/services/src/__tests__/quote.service.test.ts` — tests unitaires `getQuoteById` incluant guard UUID
