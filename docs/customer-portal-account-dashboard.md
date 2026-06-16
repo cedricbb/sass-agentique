@@ -37,6 +37,10 @@ Textes générés selon le compte :
 | 1 | "1 devis en attente d'acceptation" | "1 facture à payer" | "1 rapport disponible" |
 | N | "N devis en attente d'acceptation" | "N factures à payer" | "N rapports disponibles" |
 
+## Bannière 2FA (CustomerShell)
+
+`CustomerShell` (layout `/account`) affiche une bannière amber persistante en haut de toutes les pages `/account/*` quand `totpEnabled=false`. Elle pointe vers `/account/security/setup` et disparaît uniquement une fois le 2FA activé. Voir [`customer-portal-security.md`](./customer-portal-security.md) pour le détail.
+
 ## Architecture interne
 
 Le composant `AccountPage` (Server Component) :
