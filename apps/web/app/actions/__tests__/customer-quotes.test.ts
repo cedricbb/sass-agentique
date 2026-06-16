@@ -41,7 +41,7 @@ const mockedTransitionQuoteStatus = vi.mocked(transitionQuoteStatus);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const CLIENT_ID = "client-aaa";
-const OTHER_CLIENT_ID = "client-bbb";
+const _OTHER_CLIENT_ID = "client-bbb";
 const QUOTE_ID = "quote-001";
 
 const fakeScope = {
