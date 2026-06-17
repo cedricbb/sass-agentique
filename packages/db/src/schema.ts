@@ -413,3 +413,36 @@ export const stripeEvents = pgTable("stripe_events", {
 
 export type StripeEvent = typeof stripeEvents.$inferSelect;
 export type NewStripeEvent = typeof stripeEvents.$inferInsert;
+
+// ── Business Profiles ─────────────────────────────────────────────────────────
+
+type BusinessProfileAddress = {
+  line1?: string
+  line2?: string
+  city?: string
+  state?: string
+  zip?: string
+  country?: string
+}
+
+export const businessProfiles = pgTable("business_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  legalForm: text("legal_form"),
+  siret: text("siret"),
+  tvaIntra: text("tva_intra"),
+  address: jsonb("address").$type<BusinessProfileAddress>(),
+  email: text("email"),
+  phone: text("phone"),
+  iban: text("iban"),
+  bic: text("bic"),
+  logoKey: text("logo_key"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("business_profiles_owner_unique").on(table.ownerId),
+]);
+
+export type BusinessProfile = typeof businessProfiles.$inferSelect;
+export type NewBusinessProfile = typeof businessProfiles.$inferInsert;
