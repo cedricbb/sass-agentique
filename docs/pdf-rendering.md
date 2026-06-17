@@ -1,0 +1,97 @@
+# PDF Rendering Infrastructure
+
+## Ce que fait ce module
+
+Fournit la couche de rendu PDF côté serveur basée sur `@react-pdf/renderer` (Node pur, sans Chromium). Expose les primitives visuelles partagées entre factures et devis, ainsi qu'un wrapper `renderToPdfBuffer` pour produire un `Buffer` prêt à l'envoi ou au stockage R2.
+
+Ce module est **server-only** : aucun composant ne peut être importé côté Edge Runtime ou Client Component.
+
+## Comment l'utiliser
+
+### Rendu vers Buffer
+
+```ts
+import { renderToPdfBuffer } from "@/lib/pdf/render"
+import { PageFrame, PartyBlock, ItemsTable, TotalsBlock, LegalFooter } from "@/lib/pdf/primitives"
+
+const element = (
+  <PageFrame>
+    <PartyBlock label="ÉMETTEUR" party={billFrom} />
+    <PartyBlock label="DESTINATAIRE" party={billTo} />
+    <ItemsTable items={lineItems} />
+    <TotalsBlock totalHtCents={ht} vatCents={vat} totalTtcCents={ttc} />
+    <LegalFooter />
+  </PageFrame>
+)
+
+const buffer = await renderToPdfBuffer(element)
+```
+
+### Primitives disponibles
+
+| Composant | Props | Rôle |
+|-----------|-------|------|
+| `PageFrame` | `children` | Document A4 avec marges 40pt, police Helvetica |
+| `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — adresse formatée, email, tél, SIRET/TVA conditionnels |
+| `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT |
+| `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC |
+| `LegalFooter` | `text?` | Mentions légales (placeholder jusqu'à R10-1f) |
+
+### Type `PdfLineItem`
+
+```ts
+type PdfLineItem = {
+  description: string
+  quantity: number
+  unitPriceHtCents: number
+  totalHtCents: number
+}
+```
+
+Les montants sont exprimés en centimes entiers. La conversion `centsToEur` est interne au module.
+
+## Architecture interne
+
+### Dépendance
+
+`@react-pdf/renderer@4.5.1` — pinné en `apps/web/package.json` pour garantir la compatibilité React 19 / Next 15. Les versions antérieures ont des peer deps React 18 incompatibles.
+
+### Fichiers
+
+```
+apps/web/lib/pdf/
+├── primitives.tsx          # Composants @react-pdf stylés + StyleSheet
+├── render.ts               # renderToPdfBuffer — server-only
+└── __tests__/
+    ├── primitives.test.tsx  # Rendu → Buffer, extraction texte via zlib inflate
+    └── render.test.ts       # Smoke test renderToPdfBuffer
+```
+
+### Contraintes runtime
+
+- `render.ts` est marqué `import "server-only"` — interdit en Edge Runtime et Client Components.
+- `@react-pdf/renderer` embarque Yoga Layout (WASM) — pas compatible Edge.
+- Police par défaut : Helvetica (intégrée, aucun enregistrement `Font.register` requis).
+
+### Montants
+
+Tous les montants transitent en centimes entiers (`number`). L'adaptateur amont (`InvoicePdf`, `QuotePdf` — R10-1c-b/c) est responsable du calcul via `computeXxxTtc`. Ce module ne calcule pas.
+
+### BillTo / BillFrom
+
+Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est exposé via l'export `"./billing-party.shared"` du `package.json` de `@saas/services`.
+
+## Maillons amont / aval
+
+| Maillon | Statut | Rôle |
+|---------|--------|------|
+| R10-1a `billing-party.shared` | ✅ livré | Fournit `BillTo`, `BillFrom`, `formatPostalAddress` |
+| **R10-1c-a** (ce module) | ✅ livré | Primitives + `renderToPdfBuffer` |
+| R10-1c-b `InvoicePdf` | 🔜 | Adaptateur facture → primitives |
+| R10-1c-c `QuotePdf` | 🔜 | Adaptateur devis → primitives |
+| R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
+
+## Liens vers tests
+
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 5 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal), ItemsTable (items + tableau vide), TotalsBlock
+- `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`

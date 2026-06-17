@@ -179,6 +179,10 @@ sass-agentique/
 │       │   ├── auth.ts           # Helpers auth (session, guards)
 │       │   ├── dashboard/        # Données et utilitaires du tableau de bord
 │       │   ├── hooks/            # Hooks custom (use-data-table-state…)
+│       │   ├── pdf/              # Rendu PDF server-only (@react-pdf/renderer)
+│       │   │   ├── primitives.tsx    # PageFrame, PartyBlock, ItemsTable, TotalsBlock, LegalFooter
+│       │   │   ├── render.ts         # renderToPdfBuffer — server-only, Node uniquement
+│       │   │   └── __tests__/        # Tests rendu PDF (inflate + magic bytes)
 │       │   ├── schemas/          # Validation Zod (client, prestation, project)
 │       │   ├── storage/          # Client R2/Cloudflare (upload, delete, stream PDF)
 │       │   └── __tests__/        # Tests utilitaires
@@ -369,6 +373,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `report.service` | Rapports de projet et de livraison ; ré-exporte `REPORT_KIND_LABELS`/`REPORT_KINDS`/`type ReportKind` depuis `report.shared.ts` (back-compat) |
 | `report.shared` (subpath `@saas/services/report.shared`) | Module zéro-dépendance server-only : `REPORT_KINDS`, `type ReportKind`, `REPORT_KIND_LABELS` — consommable depuis Client Components (Pattern 11) |
 | `billing-party.shared` (subpath `@saas/services/billing-party.shared`) | Contrats et résolveurs purs pour la génération PDF (R10) : types `BillTo`, `BillFrom`, `PostalAddress` ; `resolveBillingParty` (client → BillTo) ; `resolveEmitter` (EmitterInput → BillFrom) ; `formatPostalAddress`. Zéro import DB/R2/react-pdf. Voir `docs/billing-party.md`. |
+| `lib/pdf` (`apps/web/lib/pdf/`) | Infra rendu PDF server-only (R10-1c-a) : primitives `@react-pdf/renderer` partagées (PageFrame, PartyBlock, ItemsTable, TotalsBlock, LegalFooter) + `renderToPdfBuffer`. Node uniquement — incompatible Edge Runtime. Voir `docs/pdf-rendering.md`. |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
 | `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
 | `logger` (subpath `@saas/services/logger`) | Logger structuré JSON stdout zero-dep : niveaux `debug/info/warn/error`, filtrage via `LOG_LEVEL`, sérialisation `Error` correcte. Voir `docs/logger.md`. |
