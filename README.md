@@ -368,6 +368,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `payment.service` | Enregistrement des paiements ; `recomputePaidAtForInvoice` (réconciliation état payé, idempotente, réutilisable) ; `listPaymentsForCustomerPortal` (portail client, cross-client isolation via JOIN). Voir `docs/payment.service.md`. |
 | `report.service` | Rapports de projet et de livraison ; ré-exporte `REPORT_KIND_LABELS`/`REPORT_KINDS`/`type ReportKind` depuis `report.shared.ts` (back-compat) |
 | `report.shared` (subpath `@saas/services/report.shared`) | Module zéro-dépendance server-only : `REPORT_KINDS`, `type ReportKind`, `REPORT_KIND_LABELS` — consommable depuis Client Components (Pattern 11) |
+| `billing-party.shared` (subpath `@saas/services/billing-party.shared`) | Contrats et résolveurs purs pour la génération PDF (R10) : types `BillTo`, `BillFrom`, `PostalAddress` ; `resolveBillingParty` (client → BillTo) ; `resolveEmitter` (EmitterInput → BillFrom) ; `formatPostalAddress`. Zéro import DB/R2/react-pdf. Voir `docs/billing-party.md`. |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
 | `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
 | `logger` (subpath `@saas/services/logger`) | Logger structuré JSON stdout zero-dep : niveaux `debug/info/warn/error`, filtrage via `LOG_LEVEL`, sérialisation `Error` correcte. Voir `docs/logger.md`. |
@@ -397,7 +398,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 
 ### Tests unitaires et d'intégration (Vitest)
 
-47 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
+48 fichiers de tests couvrant les services critiques, les Server Actions et les composants UI :
 
 **Packages**
 
@@ -420,6 +421,7 @@ Deux rôles DB stricts : `admin` (propriétaire solo) et `client` (utilisateur f
 | `packages/services/src/__tests__/payment.service.test.ts` | Enregistrement paiements |
 | `packages/services/src/__tests__/report.service.test.ts` | Rapports |
 | `packages/services/src/__tests__/report.shared.test.ts` | Module partagé rapports (back-compat re-export, zéro dep server-only, complétude labels) |
+| `packages/services/src/__tests__/billing-party.shared.test.ts` | Contrats de facturation PDF : résolveurs BillTo/BillFrom, normalisation billingAddress (string/jsonb/null), formatPostalAddress |
 | `packages/services/src/__tests__/maintenance-contract.service.test.ts` | Contrats de maintenance |
 | `packages/services/src/__tests__/slug.test.ts` | Utilitaires slug |
 
