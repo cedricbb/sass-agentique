@@ -35,11 +35,16 @@ vi.mock("@saas/services", () => {
     getInvoiceById: vi.fn(),
     listInvoices: vi.fn(),
     createInvoiceFromQuote: vi.fn(),
+    getBusinessProfile: vi.fn(),
     InvalidInvoiceTransitionError,
     InvalidQuoteForInvoicingError,
     QuoteAlreadyInvoicedError,
   };
 });
+
+vi.mock("@/lib/pdf/generate-invoice-pdf", () => ({
+  generateAndStoreInvoicePdf: vi.fn(),
+}));
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -64,10 +69,12 @@ import {
   getInvoiceById,
   listInvoices,
   createInvoiceFromQuote,
+  getBusinessProfile,
   InvalidInvoiceTransitionError,
   InvalidQuoteForInvoicingError,
   QuoteAlreadyInvoicedError,
 } from "@saas/services";
+import { generateAndStoreInvoicePdf } from "@/lib/pdf/generate-invoice-pdf";
 import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -78,6 +85,8 @@ const mockedTransitionInvoiceStatus = vi.mocked(transitionInvoiceStatus);
 const mockedGetInvoiceById = vi.mocked(getInvoiceById);
 const mockedListInvoices = vi.mocked(listInvoices);
 const mockedCreateInvoiceFromQuote = vi.mocked(createInvoiceFromQuote);
+const mockedGetBusinessProfile = vi.mocked(getBusinessProfile);
+const mockedGenerateAndStoreInvoicePdf = vi.mocked(generateAndStoreInvoicePdf);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
@@ -94,6 +103,7 @@ const fakeAdmin = {
 const mockInvoice = {
   id: "inv-1",
   clientId: VALID_UUID,
+  ownerId: "admin-1",
   projectId: null,
   quoteId: null,
   number: "INV-2026-001",
@@ -107,6 +117,8 @@ const mockInvoice = {
   updatedAt: new Date(),
 };
 
+const fakeProfile = { id: "profile-1", ownerId: "admin-1" };
+
 function makeRedirectError() {
   const err = new Error("NEXT_REDIRECT");
   (err as unknown as { digest: string }).digest = "NEXT_REDIRECT;/login";
@@ -116,6 +128,9 @@ function makeRedirectError() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockedRequireAdmin.mockResolvedValue(fakeAdmin);
+  mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+  mockedGetBusinessProfile.mockResolvedValue(fakeProfile as never);
+  mockedGenerateAndStoreInvoicePdf.mockResolvedValue({ pdfKey: "k" } as never);
 });
 
 describe("createInvoiceAction", () => {
@@ -287,6 +302,57 @@ describe("transitionInvoiceStatusAction", () => {
       const result = transitionInvoiceStatusSchema.safeParse({ targetStatus: s });
       expect(result.success).toBe(true);
     }
+  });
+
+  it("draft_to_sent_generates_pdf", async () => {
+    const sentInvoice = { ...mockInvoice, status: "sent" };
+    mockedTransitionInvoiceStatus.mockResolvedValue(sentInvoice as never);
+    const result = await transitionInvoiceStatusAction("inv-1", { targetStatus: "sent" });
+    expect(result).toMatchObject({ ok: true, data: sentInvoice });
+    expect(mockedGenerateAndStoreInvoicePdf).toHaveBeenCalledTimes(1);
+    expect(mockedGenerateAndStoreInvoicePdf).toHaveBeenCalledWith("inv-1");
+  });
+
+  it("sent_without_profile_returns_business_profile_required", async () => {
+    mockedGetBusinessProfile.mockResolvedValue(null);
+    const result = await transitionInvoiceStatusAction("inv-1", { targetStatus: "sent" });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "BUSINESS_PROFILE_REQUIRED", status: 400 },
+    });
+    expect(mockedTransitionInvoiceStatus).not.toHaveBeenCalled();
+  });
+
+  it("pdf_generation_failure_does_not_block_emission", async () => {
+    const sentInvoice = { ...mockInvoice, status: "sent" };
+    mockedTransitionInvoiceStatus.mockResolvedValue(sentInvoice as never);
+    mockedGenerateAndStoreInvoicePdf.mockRejectedValue(new Error("R2 timeout"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await transitionInvoiceStatusAction("inv-1", { targetStatus: "sent" });
+    expect(result).toMatchObject({ ok: true });
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    const logged = consoleSpy.mock.calls[0][0] as string;
+    expect(logged).toContain("invoice.pdf.generation_failed");
+    consoleSpy.mockRestore();
+  });
+
+  it("non_sent_transition_skips_precheck_and_pdf", async () => {
+    const paidInvoice = { ...mockInvoice, status: "paid" };
+    mockedTransitionInvoiceStatus.mockResolvedValue(paidInvoice as never);
+    const result = await transitionInvoiceStatusAction("inv-1", { targetStatus: "paid" });
+    expect(result).toMatchObject({ ok: true, data: paidInvoice });
+    expect(mockedGetBusinessProfile).not.toHaveBeenCalled();
+    expect(mockedGenerateAndStoreInvoicePdf).not.toHaveBeenCalled();
+  });
+
+  it("sent_precheck_invoice_not_found", async () => {
+    mockedGetInvoiceById.mockResolvedValue(null);
+    const result = await transitionInvoiceStatusAction("inv-1", { targetStatus: "sent" });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INTERNAL_ERROR" },
+    });
+    expect(mockedTransitionInvoiceStatus).not.toHaveBeenCalled();
   });
 });
 
