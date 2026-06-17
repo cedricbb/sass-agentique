@@ -8,6 +8,29 @@ Ce module est **server-only** : aucun composant ne peut être importé côté Ed
 
 ## Comment l'utiliser
 
+### Générer et persister le PDF d'une facture (voie principale)
+
+```ts
+import { generateAndStoreInvoicePdf } from "@/lib/pdf/generate-invoice-pdf"
+
+const { pdfKey } = await generateAndStoreInvoicePdf(invoiceId)
+// pdfKey = "invoices/2026/06/<uuid>.pdf" — persisté en DB, immuable
+```
+
+Comportement garanti :
+- **Idempotent** : si `invoice.pdfKey` est déjà défini, retourne la clé existante sans régénérer.
+- **Rollback best-effort** : si la persistance DB échoue après l'upload R2, `deletePdfFromR2(key)` est tenté pour éviter les objets orphelins.
+- **Guard métier** : lève `BusinessProfileRequiredError` si aucun profil d'entreprise n'est trouvé pour l'émetteur (SIRET/raison sociale obligatoires pour une facture FR).
+- **Guard PDF** : `isPdfMagicBytes` + `assertPdfSize` sont appelés avant tout upload.
+
+Erreurs exportées :
+
+| Classe | Condition |
+|--------|-----------|
+| `InvoiceNotFoundError` | `invoiceId` introuvable en base |
+| `ClientNotFoundError` | `invoice.clientId` introuvable |
+| `BusinessProfileRequiredError` | `getBusinessProfile(ownerId)` retourne null |
+
 ### Rendu d'une facture (voie haute — recommandée)
 
 ```ts
@@ -90,11 +113,13 @@ packages/services/src/
 └── quote-pdf.shared.ts     # toQuotePdfModel — pur, zéro dépendance PDF/DB
 
 apps/web/lib/pdf/
+├── generate-invoice-pdf.ts # Orchestrateur complet : DB → R2 → persistance pdfKey
 ├── primitives.tsx          # Composants @react-pdf stylés + StyleSheet
 ├── InvoicePdf.tsx          # Composant facture — assemble les primitives
 ├── QuotePdf.tsx            # Composant devis — assemble les primitives (expiresAt, statut)
 ├── render.ts               # renderToPdfBuffer + renderInvoicePdf + renderQuotePdf — server-only
 └── __tests__/
+    ├── generate-invoice-pdf.test.ts  # 7 tests mock-only : AC1–AC7 (immutabilité, rollback, guard)
     ├── _pdf-text.ts         # Helper partagé : inflate FlateDecode + decode hex TJ
     ├── primitives.test.tsx  # Rendu → Buffer, extraction texte via zlib inflate
     ├── invoice-pdf.test.tsx # Test end-to-end InvoicePdf (number, partie, montant)
@@ -107,6 +132,35 @@ apps/web/lib/pdf/
 - `render.ts` est marqué `import "server-only"` — interdit en Edge Runtime et Client Components.
 - `@react-pdf/renderer` embarque Yoga Layout (WASM) — pas compatible Edge.
 - Police par défaut : Helvetica (intégrée, aucun enregistrement `Font.register` requis).
+
+### Orchestrateur `generate-invoice-pdf.ts`
+
+Pipeline complet exposé par `generateAndStoreInvoicePdf` :
+
+```
+getInvoiceById → early-return si pdfKey exist
+     ↓
+Promise.all(listInvoiceItems, getClientById, getBusinessProfile)
+     ↓
+toEmitterInput(profile) → resolveEmitter → BillFrom
+resolveBillingParty(client) → BillTo
+     ↓
+toInvoicePdfModel({ invoice, items, billFrom, billTo })
+     ↓
+renderInvoicePdf(model) → Buffer
+     ↓
+isPdfMagicBytes + assertPdfSize (garde-fous)
+     ↓
+buildInvoiceKey() + uploadPdfToR2(key, buffer)
+     ↓
+setInvoicePdfKey(invoiceId, key)   ← rollback deletePdfFromR2 si rejet
+     ↓
+return { pdfKey }
+```
+
+`toEmitterInput` est un helper local pur qui mappe `BusinessProfile` → `EmitterInput` (name, legalForm, siret, tvaIntra, address, email, phone). Le champ `logoUrl` est **différé** (prévu en pièce séparée).
+
+La map `STATUS_LABELS` résout le statut enum en libellé FR (`draft → "Brouillon"`, etc.) avant de le passer à `toInvoicePdfModel`, qui est agnostique des traductions.
 
 ### Adaptateurs `invoice-pdf.shared` et `quote-pdf.shared`
 
@@ -138,10 +192,13 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | **R10-1c-a** (ce module) | ✅ livré | Primitives + `renderToPdfBuffer` |
 | R10-1c-b `InvoicePdf` | ✅ livré | Composant facture + `renderInvoicePdf` + mapper pur |
 | R10-1c-c `QuotePdf` | ✅ livré | Composant devis + `renderQuotePdf` + mapper pur |
+| **R10-1e `generate-invoice-pdf`** | ✅ livré | Orchestrateur `generateAndStoreInvoicePdf` + `setInvoicePdfKey` |
 | R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
+| R10-1f-b `emit-invoice` | 🔜 | Déclencheur de `generateAndStoreInvoicePdf` (transition statut) |
 
 ## Liens vers tests
 
+- `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 7 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards, toEmitterInput sans logoUrl
 - `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 5 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal), ItemsTable (items + tableau vide), TotalsBlock
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
