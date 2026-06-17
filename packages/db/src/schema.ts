@@ -231,6 +231,7 @@ export const quotes = pgTable("quotes", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  pdfKey: text("pdf_key"),
 }, (table) => [
   uniqueIndex("quotes_owner_number_unique").on(table.ownerId, table.number),
   index("quotes_client_id_idx").on(table.clientId),
@@ -270,6 +271,7 @@ export const invoices = pgTable("invoices", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  pdfKey: text("pdf_key"),
 }, (table) => [
   uniqueIndex("invoices_owner_number_unique").on(table.ownerId, table.number),
   uniqueIndex("invoices_stripe_pi_unique").on(table.stripePaymentIntentId),
