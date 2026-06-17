@@ -20,7 +20,8 @@
     "./maintenance-contract.shared": "./src/maintenance-contract.shared.ts",
     "./report.shared": "./src/report.shared.ts",
     "./payment.service": "./src/payment.service.ts",
-    "./logger": "./src/logger.ts"
+    "./logger": "./src/logger.ts",
+    "./billing-party.shared": "./src/billing-party.shared.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",
