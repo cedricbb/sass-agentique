@@ -8,7 +8,20 @@ Ce module est **server-only** : aucun composant ne peut être importé côté Ed
 
 ## Comment l'utiliser
 
-### Rendu vers Buffer
+### Rendu d'une facture (voie haute — recommandée)
+
+```ts
+import { toInvoicePdfModel } from "@saas/services/invoice-pdf.shared"
+import { renderInvoicePdf } from "@/lib/pdf/render"
+
+const model = toInvoicePdfModel({ invoice, items, billFrom, billTo })
+const buffer = await renderInvoicePdf(model)
+```
+
+`toInvoicePdfModel` est une fonction pure (zero DB/R2/@react-pdf) :
+trie les items par `sortOrder`, calcule les totaux via `computeInvoiceTtc`, et retourne un `InvoicePdfModel` prêt au rendu.
+
+### Rendu bas-niveau (primitives directes)
 
 ```ts
 import { renderToPdfBuffer } from "@/lib/pdf/render"
@@ -59,11 +72,17 @@ Les montants sont exprimés en centimes entiers. La conversion `centsToEur` est 
 ### Fichiers
 
 ```
+packages/services/src/
+└── invoice-pdf.shared.ts   # toInvoicePdfModel — pur, zéro dépendance PDF/DB
+
 apps/web/lib/pdf/
 ├── primitives.tsx          # Composants @react-pdf stylés + StyleSheet
-├── render.ts               # renderToPdfBuffer — server-only
+├── InvoicePdf.tsx          # Composant facture — assemble les primitives
+├── render.ts               # renderToPdfBuffer + renderInvoicePdf — server-only
 └── __tests__/
+    ├── _pdf-text.ts         # Helper partagé : inflate FlateDecode + decode hex TJ
     ├── primitives.test.tsx  # Rendu → Buffer, extraction texte via zlib inflate
+    ├── invoice-pdf.test.tsx # Test end-to-end InvoicePdf (number, partie, montant)
     └── render.test.ts       # Smoke test renderToPdfBuffer
 ```
 
@@ -73,9 +92,17 @@ apps/web/lib/pdf/
 - `@react-pdf/renderer` embarque Yoga Layout (WASM) — pas compatible Edge.
 - Police par défaut : Helvetica (intégrée, aucun enregistrement `Font.register` requis).
 
+### Adaptateur `invoice-pdf.shared`
+
+`toInvoicePdfModel` vit dans `@saas/services/invoice-pdf.shared` (hors de `apps/web`) pour rester testable sans runtime @react-pdf.
+
+- Trie les items par `sortOrder` croissant — l'appelant n'a pas à garantir l'ordre.
+- Délègue les totaux à `computeInvoiceTtc` (invariant montants centralisé).
+- `status` est passé tel quel (libellé déjà résolu par l'appelant — le mapper est agnostique des traductions UI).
+
 ### Montants
 
-Tous les montants transitent en centimes entiers (`number`). L'adaptateur amont (`InvoicePdf`, `QuotePdf` — R10-1c-b/c) est responsable du calcul via `computeXxxTtc`. Ce module ne calcule pas.
+Tous les montants transitent en centimes entiers (`number`). L'adaptateur `toInvoicePdfModel` délègue à `computeInvoiceTtc` de `invoice.shared`. Ce module ne calcule pas.
 
 ### BillTo / BillFrom
 
@@ -87,7 +114,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 |---------|--------|------|
 | R10-1a `billing-party.shared` | ✅ livré | Fournit `BillTo`, `BillFrom`, `formatPostalAddress` |
 | **R10-1c-a** (ce module) | ✅ livré | Primitives + `renderToPdfBuffer` |
-| R10-1c-b `InvoicePdf` | 🔜 | Adaptateur facture → primitives |
+| R10-1c-b `InvoicePdf` | ✅ livré | Composant facture + `renderInvoicePdf` + mapper pur |
 | R10-1c-c `QuotePdf` | 🔜 | Adaptateur devis → primitives |
 | R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
 
@@ -95,3 +122,9 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 
 - `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 5 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal), ItemsTable (items + tableau vide), TotalsBlock
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
+- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
+- `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
+
+### Helper d'extraction texte
+
+`apps/web/lib/pdf/__tests__/_pdf-text.ts` expose `extractPdfText(buffer)` : inflate FlateDecode → decode opérateurs hex TJ/Tj → texte brut. Partagé par `primitives.test.tsx` et `invoice-pdf.test.tsx`.
