@@ -19,3 +19,4 @@ export * from "./notification.service";
 export { getResendClient } from "./resend.client";
 export * from "./stripe-event.service";
 export { logger } from "./logger";
+export * from "./business-profile.service";
