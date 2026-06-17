@@ -32,7 +32,7 @@ Boilerplate SaaS avec stack agentique IA. Architecture monorepo Turborepo, authe
 |---------|------|
 | `@saas/config` | Validation variables d'environnement (Zod) + plans de facturation + `LOG_LEVEL` |
 | `@saas/db` | Drizzle ORM + schéma PostgreSQL + migrations |
-| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation, projet, devis, facture, paiement, rapport, contrats de maintenance) |
+| `@saas/services` | Business logic (auth, admin, stripe, TOTP, email, profil, client, prestation, projet, devis, facture, paiement, rapport, contrats de maintenance, profil émetteur) |
 | `@saas/permissions` | CASL RBAC — rôles × actions × ressources |
 | `@saas/workflows` | Inngest jobs et CRONs (placeholder) |
 | `@saas/agents` | Stack agentique BaseAgent + tools (placeholder) |
@@ -262,6 +262,9 @@ maintenance_contracts — id, client_id (FK), prestation_id (FK),
                      status (active|past_due|canceled),
                      stripe_subscription_id, stripe_customer_id,
                      monthly_price_eur_cents, started_at, canceled_at
+business_profiles  — id, owner_id (FK, unique), name, legal_form, siret,
+                     tva_intra, address (JSONB), email, phone,
+                     iban, bic, logo_key, created_at, updated_at
 ```
 
 ### Règles d'architecture (voir `CLAUDE.md`)
@@ -375,6 +378,7 @@ Un spike d'intégration Cloudflare R2 est en cours de validation (`apps/web/app/
 | `billing-party.shared` (subpath `@saas/services/billing-party.shared`) | Contrats et résolveurs purs pour la génération PDF (R10) : types `BillTo`, `BillFrom`, `PostalAddress` ; `resolveBillingParty` (client → BillTo) ; `resolveEmitter` (EmitterInput → BillFrom) ; `formatPostalAddress`. Zéro import DB/R2/react-pdf. Voir `docs/billing-party.md`. |
 | `lib/pdf` (`apps/web/lib/pdf/`) | Infra rendu PDF server-only (R10-1c-a) : primitives `@react-pdf/renderer` partagées (PageFrame, PartyBlock, ItemsTable, TotalsBlock, LegalFooter) + `renderToPdfBuffer`. Node uniquement — incompatible Edge Runtime. Voir `docs/pdf-rendering.md`. |
 | `maintenance-contract.service` | Contrats de maintenance récurrents (stripe_auto / manual_invoice) |
+| `business-profile.service` | Profil légal de l'émetteur (raison sociale, SIRET, TVA, adresse, IBAN, logoKey R2) — singleton par owner, get/upsert. Voir `docs/business-profile.md`. |
 | `notification.service` | Infra emails auto : singleton Resend lazy, dispatch map événements, audience `clientContacts` avec portail actif. Voir `docs/email-notifications.md`. |
 | `logger` (subpath `@saas/services/logger`) | Logger structuré JSON stdout zero-dep : niveaux `debug/info/warn/error`, filtrage via `LOG_LEVEL`, sérialisation `Error` correcte. Voir `docs/logger.md`. |
 
