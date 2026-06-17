@@ -194,7 +194,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | R10-1c-c `QuotePdf` | ✅ livré | Composant devis + `renderQuotePdf` + mapper pur |
 | **R10-1e `generate-invoice-pdf`** | ✅ livré | Orchestrateur `generateAndStoreInvoicePdf` + `setInvoicePdfKey` |
 | R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
-| R10-1f-b `emit-invoice` | 🔜 | Déclencheur de `generateAndStoreInvoicePdf` (transition statut) |
+| R10-1f-b `emit-invoice` | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionInvoiceStatusAction`) |
 
 ## Liens vers tests
 
