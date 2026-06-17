@@ -335,3 +335,15 @@ export async function removeInvoiceItem(itemId: string): Promise<void> {
 export async function recomputeInvoiceTotal(invoiceId: string): Promise<number> {
   return _recomputeInTx(db as unknown as Tx, invoiceId);
 }
+
+export async function setInvoicePdfKey(invoiceId: string, pdfKey: string): Promise<void> {
+  const result = await db
+    .update(invoices)
+    .set({ pdfKey, updatedAt: new Date() })
+    .where(eq(invoices.id, invoiceId))
+    .returning({ id: invoices.id });
+
+  if (result.length === 0) {
+    throw new Error(`Invoice not found when persisting pdfKey: ${invoiceId}`);
+  }
+}
