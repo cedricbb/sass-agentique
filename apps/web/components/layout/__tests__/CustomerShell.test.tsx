@@ -44,43 +44,43 @@ describe("CustomerShell", () => {
 
   it("does not include orders in PAGE_TITLES", () => {
     pathnameValue = "/account/orders";
-    render(<CustomerShell user={USER}>content</CustomerShell>);
+    render(<CustomerShell user={USER} totpEnabled={false}>content</CustomerShell>);
     expect(screen.queryByText("Mes commandes")).toBeNull();
   });
 
   it("resolves quotes page title", () => {
     pathnameValue = "/account/quotes";
-    render(<CustomerShell user={USER}>content</CustomerShell>);
+    render(<CustomerShell user={USER} totpEnabled={false}>content</CustomerShell>);
     expect(screen.getByText("Mes devis")).toBeDefined();
   });
 
   it("resolves invoices page title", () => {
     pathnameValue = "/account/invoices";
-    render(<CustomerShell user={USER}>content</CustomerShell>);
+    render(<CustomerShell user={USER} totpEnabled={false}>content</CustomerShell>);
     expect(screen.getByText("Mes factures")).toBeDefined();
   });
 
   it("resolves reports page title", () => {
     pathnameValue = "/account/reports";
-    render(<CustomerShell user={USER}>content</CustomerShell>);
+    render(<CustomerShell user={USER} totpEnabled={false}>content</CustomerShell>);
     expect(screen.getByText("Mes rapports")).toBeDefined();
   });
 
   it("resolves account page title as Accueil", () => {
     pathnameValue = "/account";
-    render(<CustomerShell user={USER}>content</CustomerShell>);
+    render(<CustomerShell user={USER} totpEnabled={false}>content</CustomerShell>);
     expect(screen.getByText("Accueil")).toBeDefined();
   });
 
   it("displays clientName when provided", () => {
     pathnameValue = "/account";
-    render(<CustomerShell user={USER} clientName="Acme Studio">content</CustomerShell>);
+    render(<CustomerShell user={USER} clientName="Acme Studio" totpEnabled={false}>content</CustomerShell>);
     expect(screen.getByText(/Espace client — Acme Studio/)).toBeDefined();
   });
 
   it("does not display clientName span when null", () => {
     pathnameValue = "/account";
-    render(<CustomerShell user={USER} clientName={null}>content</CustomerShell>);
+    render(<CustomerShell user={USER} clientName={null} totpEnabled={false}>content</CustomerShell>);
     expect(screen.queryByText(/Espace client/)).toBeNull();
   });
 });
