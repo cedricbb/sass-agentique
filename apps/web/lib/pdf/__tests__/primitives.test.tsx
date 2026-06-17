@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import React from "react"
 import { inflateSync } from "zlib"
-import { renderToBuffer } from "@react-pdf/renderer"
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer"
 import {
   PageFrame,
   PartyBlock,
@@ -52,7 +52,7 @@ function normalize(s: string): string {
 }
 
 async function extractPdfText(element: React.ReactElement): Promise<string> {
-  const buffer = await renderToBuffer(element)
+  const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
   const decompressed = decompressPdfStreams(buffer)
   return decodePdfHexStrings(decompressed)
 }
@@ -138,7 +138,7 @@ describe("ItemsTable", () => {
       null,
       React.createElement(ItemsTable, { items: [] }),
     )
-    await expect(renderToBuffer(element)).resolves.toBeDefined()
+    await expect(renderToBuffer(element as React.ReactElement<DocumentProps>)).resolves.toBeDefined()
   })
 })
 
