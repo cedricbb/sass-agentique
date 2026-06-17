@@ -16,6 +16,7 @@ export function fail(code: string, message: string, status: number): ActionResul
 }
 
 const ERROR_MAP: Record<string, { code: string; status: number }> = {
+  BusinessProfileRequiredError: { code: "BUSINESS_PROFILE_REQUIRED", status: 400 },
   InvalidQuoteTransitionError: { code: "QUOTE_INVALID_TRANSITION", status: 409 },
   InvalidQuoteForInvoicingError: { code: "QUOTE_NOT_INVOICABLE", status: 409 },
   QuoteAlreadyInvoicedError: { code: "QUOTE_ALREADY_INVOICED", status: 409 },
