@@ -242,6 +242,35 @@ qui le consomment.
 
 ---
 
+## Invariants R10
+
+## [orchid-container-cannot-verify-db-push]
+
+Le container orchid-os ne peut pas joindre la DB SaaS live ; son `drizzle-kit push`
+/introspection peut même produire de faux ZodError. Tout YAML modifiant
+`schema.ts` se vérifie donc en DEUX TEMPS :
+
+- **EN CONTAINER** (auditable par Orchid) : édition `schema.ts` + `pnpm --filter
+  check-types` + `pnpm --filter @saas/db check` (cohérence schema sans DB live).
+- **CÔTÉ HÔTE** (`human_validation`, Pattern 14) : `pnpm --filter @saas/db push`
+  réel + assertions DB (colonne/table présente).
+
+Une phase_2/QA NE DOIT JAMAIS exiger un `push` ou un `psql` réussi depuis le
+container, ni fabriquer une preuve DB côté container. Un "ACCEPTED AVEC RÉSERVES"
+pour cause d'impossibilité de push container est ATTENDU et non bloquant : la
+confirmation push se fait côté hôte. drizzle reste push-only (jamais migrate).
+
+Ancrage R10-1b : `feat-grave-invariant-db-push` — découvert post-mortem R10-1b ;
+confirmé empiriquement depuis l'hôte (`pnpm --filter @saas/db push` → `Changes
+applied`, pdf_key appliqué), pendant que l'introspection container retournait un
+faux ZodError.
+
+Justification : l'isolation réseau du container orchid-os est structurelle et
+intentionnelle. La vérification schema en deux temps est le seul workflow correct
+pour tout YAML touchant `schema.ts` dans un projet SaaS avec DB live.
+
+---
+
 ## Observations à confirmer
 
 Les entrées ci-dessous sont des hypothèses diagnostiques remontées lors du
