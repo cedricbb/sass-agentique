@@ -21,7 +21,8 @@
     "./report.shared": "./src/report.shared.ts",
     "./payment.service": "./src/payment.service.ts",
     "./logger": "./src/logger.ts",
-    "./billing-party.shared": "./src/billing-party.shared.ts"
+    "./billing-party.shared": "./src/billing-party.shared.ts",
+    "./invoice-pdf.shared": "./src/invoice-pdf.shared.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",
