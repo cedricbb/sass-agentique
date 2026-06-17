@@ -19,9 +19,20 @@ import {
   getInvoiceById,
   listInvoices,
   createInvoiceFromQuote,
+  getBusinessProfile,
 } from "@saas/services";
 import { withAdmin, type ActionResult } from "@/lib/action-result";
 import type { Invoice } from "@saas/db";
+import { generateAndStoreInvoicePdf } from "@/lib/pdf/generate-invoice-pdf";
+
+class BusinessProfileRequiredError extends Error {
+  constructor() {
+    super(
+      "Configurez votre profil entreprise (raison sociale, SIRET…) avant d’émettre une facture.",
+    );
+    this.name = "BusinessProfileRequiredError";
+  }
+}
 
 export async function createInvoiceAction(
   input: InvoiceCreateValues,
@@ -56,10 +67,31 @@ export async function transitionInvoiceStatusAction(
 ): Promise<ActionResult<Invoice | null>> {
   return withAdmin(async () => {
     const data = transitionInvoiceStatusSchema.parse(input);
-    const invoice = await transitionInvoiceStatus(id, data.targetStatus);
-    if (invoice === null) {
-      throw new Error("INVOICE_NOT_FOUND");
+
+    if (data.targetStatus === "sent") {
+      const current = await getInvoiceById(id);
+      if (!current) throw new Error("INVOICE_NOT_FOUND");
+      const profile = await getBusinessProfile(current.ownerId);
+      if (!profile) throw new BusinessProfileRequiredError();
     }
+
+    const invoice = await transitionInvoiceStatus(id, data.targetStatus);
+    if (invoice === null) throw new Error("INVOICE_NOT_FOUND");
+
+    if (data.targetStatus === "sent") {
+      try {
+        await generateAndStoreInvoicePdf(id);
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            event: "invoice.pdf.generation_failed",
+            invoiceId: id,
+            message: (err as Error).message,
+          }),
+        );
+      }
+    }
+
     revalidatePath("/admin/invoices");
     revalidatePath(`/admin/invoices/${id}`);
     return invoice;
