@@ -17,6 +17,8 @@ import {
   getR2Client,
   __resetR2ClientForTests,
   buildReportKey,
+  buildInvoiceKey,
+  buildQuoteKey,
   isPdfMagicBytes,
   assertPdfSize,
   uploadPdfToR2,
@@ -65,6 +67,16 @@ describe("r2 storage helper", () => {
   it("buildReportKey matches expected format", () => {
     const key = buildReportKey();
     expect(key).toMatch(/^reports\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.pdf$/);
+  });
+
+  it("buildInvoiceKey matches expected format", () => {
+    const key = buildInvoiceKey();
+    expect(key).toMatch(/^invoices\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.pdf$/);
+  });
+
+  it("buildQuoteKey matches expected format", () => {
+    const key = buildQuoteKey();
+    expect(key).toMatch(/^quotes\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.pdf$/);
   });
 
   it("isPdfMagicBytes returns true for PDF", () => {

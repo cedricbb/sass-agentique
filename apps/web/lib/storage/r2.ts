@@ -68,12 +68,24 @@ export function __resetR2ClientForTests(): void {
   _r2Client = null;
 }
 
-export function buildReportKey(_filename?: string): string {
+function buildPdfKey(prefix: string): string {
   const now = new Date();
   const yyyy = now.getFullYear().toString();
   const mm = (now.getMonth() + 1).toString().padStart(2, "0");
   const uuid = crypto.randomUUID();
-  return `reports/${yyyy}/${mm}/${uuid}.pdf`;
+  return `${prefix}/${yyyy}/${mm}/${uuid}.pdf`;
+}
+
+export function buildReportKey(_filename?: string): string {
+  return buildPdfKey("reports");
+}
+
+export function buildInvoiceKey(): string {
+  return buildPdfKey("invoices");
+}
+
+export function buildQuoteKey(): string {
+  return buildPdfKey("quotes");
 }
 
 export function isPdfMagicBytes(buffer: Buffer): boolean {
