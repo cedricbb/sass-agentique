@@ -312,3 +312,15 @@ export async function recomputeQuoteTotal(
 
   return total;
 }
+
+export async function setQuotePdfKey(quoteId: string, pdfKey: string): Promise<void> {
+  const result = await db
+    .update(quotes)
+    .set({ pdfKey, updatedAt: new Date() })
+    .where(eq(quotes.id, quoteId))
+    .returning({ id: quotes.id });
+
+  if (result.length === 0) {
+    throw new Error(`Quote not found when persisting pdfKey: ${quoteId}`);
+  }
+}
