@@ -4,12 +4,51 @@
 
 Expose les factures aux clients authentifiés du portail (`/account`) :
 - `GET /api/account/invoices/[id]/file` — stream binaire PDF scopé au client connecté.
+- Page détail `/account/invoices/[id]` — bouton "Télécharger ma facture" conditionnel.
+- Page liste `/account/invoices` — icône de téléchargement par ligne, conditionnelle.
 
 La route applique des gardes séquentiels stricts : session → existence → statut (non-draft) → ownership → pdfKey présente → stream. Un brouillon ou une facture appartenant à un autre client retourne un `404` identique — non-divulgation volontaire (indiscernabilité stricte côté customer, anti-IDOR).
 
-> Les boutons UI du portail client (lien vers cette route) sont dans la prochaine itération (hors scope de cette chain).
-
 ## Comment l'utiliser
+
+### Boutons de téléchargement (UI portail client)
+
+**Page détail** (`/account/invoices/[id]`) — Server Component :
+
+```tsx
+{invoice.pdfKey != null && (
+  <Button variant="outline" size="sm" asChild>
+    <a
+      href={`/api/account/invoices/${invoice.id}/file`}
+      download={`facture-${invoice.number}.pdf`}
+    >
+      <Download className="mr-2 h-4 w-4" /> Télécharger ma facture
+    </a>
+  </Button>
+)}
+```
+
+Affiché dans l'en-tête de la page, à côté du numéro et du badge statut. Non rendu si `pdfKey == null` (PDF non encore généré → évite un lien cassé vers une route 404).
+
+**Page liste** (`/account/invoices`) — colonne par ligne :
+
+```tsx
+{invoice.pdfKey != null && (
+  <Button variant="ghost" size="icon" asChild>
+    <a
+      href={`/api/account/invoices/${invoice.id}/file`}
+      download={`facture-${invoice.number}.pdf`}
+    >
+      <Download className="h-4 w-4" />
+      <span className="sr-only">Télécharger ma facture</span>
+    </a>
+  </Button>
+)}
+```
+
+Icône seule avec label `sr-only` pour l'accessibilité. Cellule vide si `pdfKey == null`.
+
+> Les factures en statut `draft` ne sont jamais affichées côté client (`notFound()` dans les deux pages) — la condition `pdfKey != null` couvre uniquement les factures émises sans PDF généré.
 
 ### Route stream PDF
 
