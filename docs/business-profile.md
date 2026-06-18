@@ -57,6 +57,38 @@ Le script seed (`packages/db/src/seed.ts`) insère un `business_profile` pour l'
 Ce profil est requis pour débloquer le gate `transitionInvoiceStatusAction` (transition `draft→sent`) en e2e.
 Insert idempotent via `onConflictDoUpdate` sur `business_profiles_owner_unique`.
 
+## Schema Zod et Server Action (Web)
+
+### Schema de formulaire
+
+`apps/web/lib/schemas/business-profile.schemas.ts` expose `businessProfileSchema` et le type dérivé `BusinessProfileFormValues`.
+
+Validation intentionnellement légère : seul `name` est requis. Les champs `siret`, `email`, `iban`, `bic` et `tvaIntra` sont validés uniquement s'ils sont non vides (`.optional().or(z.literal(""))`) — compatible freelance en franchise TVA. `logoKey` est hors scope (upload séparé, R10-1e-c).
+
+```ts
+import {
+  businessProfileSchema,
+  type BusinessProfileFormValues,
+} from "@/lib/schemas/business-profile.schemas"
+```
+
+### Server Action
+
+`apps/web/app/actions/business-profile.ts` expose `upsertBusinessProfileAction`.
+
+```ts
+import { upsertBusinessProfileAction } from "@/app/actions/business-profile"
+
+const result = await upsertBusinessProfileAction(formValues)
+```
+
+- Protégée par `withAdmin` — seul l'admin authentifié peut upsert son propre profil (`user.id` transmis comme `ownerId`).
+- Parse le payload via `businessProfileSchema` (ZodError → exception propagée à `withAdmin`).
+- Normalise les chaînes vides → `undefined` avant de déléguer à `upsertBusinessProfile`.
+- Invalide le cache de `/admin/settings/business-profile` via `revalidatePath`.
+
 ## Liens vers tests
 
 - `packages/services/src/__tests__/business-profile.service.test.ts` — 4 tests unitaires (mock drizzle) : get null, get after upsert (address objet), create, update avec `updatedAt` postérieur.
+- `apps/web/lib/schemas/__tests__/business-profile.schemas.test.ts` — 5 tests schema : champs valides, siret format, email vide accepté, name requis.
+- `apps/web/app/actions/__tests__/business-profile.test.ts` — 5 tests action : appel `upsertBusinessProfile` avec `user.id`, normalisation vides→undefined, revalidatePath, erreur Zod propagée.
