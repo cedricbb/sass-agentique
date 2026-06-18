@@ -57,6 +57,50 @@ Le script seed (`packages/db/src/seed.ts`) insère un `business_profile` pour l'
 Ce profil est requis pour débloquer le gate `transitionInvoiceStatusAction` (transition `draft→sent`) en e2e.
 Insert idempotent via `onConflictDoUpdate` sur `business_profiles_owner_unique`.
 
+## Page d'administration
+
+Route : `/admin/settings/business-profile`
+
+Accessible depuis la barre latérale admin via le lien **"Profil entreprise"** (icône `Landmark`, groupe "Administration" dans `AdminSidebar`).
+
+### Server Component — page.tsx
+
+`apps/web/app/(admin)/admin/settings/business-profile/page.tsx`
+
+- Protégée par `requireAdmin()` (redirect si non admin).
+- Charge `getBusinessProfile(user.id)` — `null` si jamais configuré.
+- Rend `<BusinessProfileForm initialProfile={profile} />`.
+
+### BusinessProfileForm
+
+`apps/web/app/(admin)/admin/settings/business-profile/_components/BusinessProfileForm.tsx`
+
+Client Component. Pattern identique aux autres formulaires admin (`react-hook-form` + `zodResolver`).
+
+Champs exposés par groupe :
+
+| Groupe | Champs |
+|---|---|
+| Identité | `name` (requis), `legalForm`, `siret`, `tvaIntra` |
+| Adresse | `address.line1`, `address.line2`, `address.zip`, `address.city`, `address.state`, `address.country` |
+| Coordonnées | `email`, `phone` |
+| Bancaire | `iban`, `bic` |
+
+Comportement submit :
+- Appelle `upsertBusinessProfileAction(values)`.
+- Affiche un toast via `toastResult(result, { success: "Profil entreprise enregistré" })`.
+- Pas de redirect : `revalidatePath` côté action rafraîchit la page en place.
+- Logo hors scope (R10-1e-c).
+
+`defaultValues` : `initialProfile` si non null (adresse : sous-objet vide si `null`) ; sinon tous les champs à `""`.
+
+### Validation manuelle requise
+
+`human_validation_checklist` :
+1. Éditer les champs → Sauvegarder → vérifier le toast "Profil entreprise enregistré".
+2. Recharger la page → vérifier que les valeurs sont persistées.
+3. Laisser `name` vide → soumettre → vérifier l'erreur de validation inline.
+
 ## Schema Zod et Server Action (Web)
 
 ### Schema de formulaire
@@ -92,3 +136,4 @@ const result = await upsertBusinessProfileAction(formValues)
 - `packages/services/src/__tests__/business-profile.service.test.ts` — 4 tests unitaires (mock drizzle) : get null, get after upsert (address objet), create, update avec `updatedAt` postérieur.
 - `apps/web/lib/schemas/__tests__/business-profile.schemas.test.ts` — 5 tests schema : champs valides, siret format, email vide accepté, name requis.
 - `apps/web/app/actions/__tests__/business-profile.test.ts` — 5 tests action : appel `upsertBusinessProfile` avec `user.id`, normalisation vides→undefined, revalidatePath, erreur Zod propagée.
+- `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileForm.test.tsx` — 4 tests composant : render champs vides, préremplissage depuis `initialProfile`, submit → action appelée + toast succès, blocage validation (name vide).
