@@ -74,6 +74,21 @@ const mockInvoices: Invoice[] = [
   },
 ] as Invoice[];
 
+describe("InvoicesTable — Download icon", () => {
+  it("shows_download_icon_for_issued_invoice_row", () => {
+    renderWithNuqs(<InvoicesTable data={mockInvoices} clientNames={CLIENT_NAMES} />);
+    const link = screen.getByTestId("invoice-download-inv-2");
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/api/invoices/inv-2/file");
+    expect(link).toHaveAttribute("download");
+  });
+
+  it("hides_download_icon_for_draft_invoice_row", () => {
+    renderWithNuqs(<InvoicesTable data={mockInvoices} clientNames={CLIENT_NAMES} />);
+    expect(screen.queryByTestId("invoice-download-inv-1")).not.toBeInTheDocument();
+  });
+});
+
 describe("InvoicesTable", () => {
   it("renders invoice rows", () => {
     renderWithNuqs(
