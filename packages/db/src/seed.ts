@@ -45,6 +45,34 @@ async function main() {
 
   console.log(`✅ Admin créé : ${adminEmail} / admin1234`);
 
+  // ── Business Profile ────────────────────────────────────────────────────────
+  await db
+    .insert(schema.businessProfiles)
+    .values({
+      ownerId: seedAdminId,
+      name: "Super Admin Consulting",
+      legalForm: "SASU",
+      siret: "12345678900010",
+      tvaIntra: "FR12123456789",
+      address: {
+        line1: "12 rue de la Paix",
+        city: "Paris",
+        zip: "75001",
+        country: "FR",
+      },
+      email: "admin@saas.dev",
+      phone: "+33 1 23 45 67 89",
+      iban: null,
+      bic: null,
+      logoKey: null,
+    })
+    .onConflictDoUpdate({
+      target: schema.businessProfiles.ownerId,
+      set: { name: "Super Admin Consulting" },
+    });
+
+  console.log("✅ Business profile admin créé");
+
   // ── Clients ─────────────────────────────────────────────────────────────────
   const [acme] = await db
     .insert(schema.clients)
