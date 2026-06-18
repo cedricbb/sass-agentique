@@ -5,6 +5,8 @@ import type { CustomerVisibleInvoiceStatus } from "@saas/services/invoice.shared
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import Link from "next/link";
 
 const INVOICE_STATUS_LABELS: Record<CustomerVisibleInvoiceStatus, string> = {
@@ -47,6 +49,7 @@ export default async function CustomerInvoicesPage() {
                 <th className="px-4 py-3 text-right font-medium">Montant TTC</th>
                 <th className="px-4 py-3 text-left font-medium">Date</th>
                 <th className="px-4 py-3 text-left font-medium">Échéance</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -78,6 +81,20 @@ export default async function CustomerInvoicesPage() {
                     </td>
                     <td className="px-4 py-3">
                       {invoice.dueAt ? formatDate(invoice.dueAt) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {invoice.pdfKey != null && (
+                        <Button variant="ghost" size="sm" asChild>
+                          <a
+                            href={`/api/account/invoices/${invoice.id}/file`}
+                            download={`facture-${invoice.number}.pdf`}
+                            data-testid={`invoice-download-${invoice.id}`}
+                          >
+                            <Download className="h-4 w-4" />
+                            <span className="sr-only">Télécharger ma facture</span>
+                          </a>
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );

@@ -6,6 +6,8 @@ import type { CustomerVisibleInvoiceStatus } from "@saas/services/invoice.shared
 import { paymentService } from "@saas/services";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { InvoiceAmountsCard } from "../_components/InvoiceAmountsCard";
 import { InvoiceBalanceCard } from "../_components/InvoiceBalanceCard";
 
@@ -56,6 +58,13 @@ export default async function CustomerInvoiceDetailPage({
         <Badge variant={INVOICE_STATUS_VARIANT[status]} data-testid="invoice-detail-status">
           {INVOICE_STATUS_LABELS[status]}
         </Badge>
+        {invoice.pdfKey != null && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/account/invoices/${invoice.id}/file`} download={`facture-${invoice.number}.pdf`} data-testid="invoice-download-pdf">
+              <Download className="mr-2 h-4 w-4" /> Télécharger ma facture
+            </a>
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-6 text-sm text-muted-foreground">
