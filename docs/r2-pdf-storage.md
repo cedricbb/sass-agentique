@@ -67,7 +67,7 @@ function buildPdfKey(prefix: string): string {
 | `quotes`   | `pdf_key` | `text` (nullable) | PDF pas encore généré |
 | `reports`  | `file_path` | `text` (not null) | Émission obligatoire |
 
-`null` sur `pdfKey` indique qu'aucun PDF n'a encore été généré pour ce document. Le viewer `/api/invoices/[id]/file` conditionne son existence à `pdfKey != null`.
+`null` sur `pdfKey` indique qu'aucun PDF n'a encore été généré pour ce document. Le viewer `/api/invoices/[id]/file` applique une **régénération paresseuse** : si `pdfKey == null` mais `issuedAt != null` (facture émise), `generateAndStoreInvoicePdf` est appelé à la première consultation. Si `pdfKey == null` et `issuedAt == null` (brouillon), la route retourne 404 sans régénérer.
 
 ### Variables d'environnement requises
 

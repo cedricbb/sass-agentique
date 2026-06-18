@@ -195,6 +195,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | **R10-1e `generate-invoice-pdf`** | ✅ livré | Orchestrateur `generateAndStoreInvoicePdf` + `setInvoicePdfKey` |
 | R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
 | R10-1f-b `emit-invoice` | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionInvoiceStatusAction`) |
+| **R10-1g-a `invoice-pdf-route`** | ✅ livré | Route Handler `GET /api/invoices/[id]/file` — stream R2 inline + régénération paresseuse si `pdfKey` null et `issuedAt` set + lien réel dans `InvoiceRow` |
 
 ## Liens vers tests
 
