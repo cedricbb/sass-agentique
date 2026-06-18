@@ -16,6 +16,7 @@ import {
   FileBarChart,
   FileSignature,
   UserCircle,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/users", label: "Utilisateurs", icon: Users },
       { href: "/admin/agent-tasks", label: "Tâches Agent", icon: Bot },
       { href: "/admin/profile", label: "Profil", icon: UserCircle },
+      { href: "/admin/settings/business-profile", label: "Profil entreprise", icon: Landmark },
     ],
   },
 ];
