@@ -253,13 +253,14 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
 | R10-1f-b `emit-invoice` | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionInvoiceStatusAction`) |
 | **R10-1g-a `invoice-pdf-route`** | ✅ livré | Route Handler `GET /api/invoices/[id]/file` — stream R2 inline + régénération paresseuse si `pdfKey` null et `issuedAt` set + lien réel dans `InvoiceRow` |
-| R10-1g-b `emit-quote` | 🔜 | Transition statut devis + déclenchement `generateAndStoreQuotePdf` |
+| **R10-1g-b `emit-quote`** | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionQuoteStatusAction`) |
 | R10-1h-quote `quote-pdf-route` | 🔜 | Route Handler `GET /api/quotes/[id]/file` — stream R2 inline |
 
 ## Liens vers tests
 
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 7 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards, toEmitterInput sans logoUrl
 - `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 6 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards (isPdfMagicBytes/assertPdfSize avant upload), toEmitterInput sans logoUrl
+- `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
 - `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 5 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal), ItemsTable (items + tableau vide), TotalsBlock
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
