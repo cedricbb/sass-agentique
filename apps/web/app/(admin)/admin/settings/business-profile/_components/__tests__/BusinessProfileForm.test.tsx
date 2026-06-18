@@ -41,6 +41,7 @@ const mockProfile: BusinessProfile = {
   phone: "0123456789",
   iban: "FR7630006000011234567890189",
   bic: "BNPAFRPP",
+  logoKey: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
