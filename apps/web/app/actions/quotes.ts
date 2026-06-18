@@ -16,9 +16,20 @@ import {
   transitionQuoteStatus,
   getQuoteById,
   listQuotes,
+  getBusinessProfile,
 } from "@saas/services";
 import { withAdmin, type ActionResult } from "@/lib/action-result";
 import type { Quote } from "@saas/db";
+import { generateAndStoreQuotePdf } from "@/lib/pdf/generate-quote-pdf";
+
+class BusinessProfileRequiredError extends Error {
+  constructor() {
+    super(
+      "Configurez votre profil entreprise (raison sociale, SIRET…) avant d'émettre un devis.",
+    );
+    this.name = "BusinessProfileRequiredError";
+  }
+}
 
 export async function createQuoteAction(
   input: QuoteCreateValues,
@@ -53,10 +64,31 @@ export async function transitionQuoteStatusAction(
 ): Promise<ActionResult<Quote | null>> {
   return withAdmin(async () => {
     const data = transitionStatusSchema.parse(input);
-    const quote = await transitionQuoteStatus(id, data.targetStatus);
-    if (quote === null) {
-      throw new Error("QUOTE_NOT_FOUND");
+
+    if (data.targetStatus === "sent") {
+      const current = await getQuoteById(id);
+      if (!current) throw new Error("QUOTE_NOT_FOUND");
+      const profile = await getBusinessProfile(current.ownerId);
+      if (!profile) throw new BusinessProfileRequiredError();
     }
+
+    const quote = await transitionQuoteStatus(id, data.targetStatus);
+    if (quote === null) throw new Error("QUOTE_NOT_FOUND");
+
+    if (data.targetStatus === "sent") {
+      try {
+        await generateAndStoreQuotePdf(id);
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            event: "quote.pdf.generation_failed",
+            quoteId: id,
+            message: (err as Error).message,
+          }),
+        );
+      }
+    }
+
     revalidatePath("/admin/quotes");
     revalidatePath(`/admin/quotes/${id}`);
     return quote;

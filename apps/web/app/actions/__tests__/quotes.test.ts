@@ -16,9 +16,14 @@ vi.mock("@saas/services", () => {
     transitionQuoteStatus: vi.fn(),
     getQuoteById: vi.fn(),
     listQuotes: vi.fn(),
+    getBusinessProfile: vi.fn(),
     InvalidQuoteTransitionError,
   };
 });
+
+vi.mock("@/lib/pdf/generate-quote-pdf", () => ({
+  generateAndStoreQuotePdf: vi.fn(),
+}));
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -41,8 +46,10 @@ import {
   transitionQuoteStatus,
   getQuoteById,
   listQuotes,
+  getBusinessProfile,
   InvalidQuoteTransitionError,
 } from "@saas/services";
+import { generateAndStoreQuotePdf } from "@/lib/pdf/generate-quote-pdf";
 import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -52,6 +59,8 @@ const mockedUpdateQuote = vi.mocked(updateQuote);
 const mockedTransitionQuoteStatus = vi.mocked(transitionQuoteStatus);
 const mockedGetQuoteById = vi.mocked(getQuoteById);
 const mockedListQuotes = vi.mocked(listQuotes);
+const mockedGetBusinessProfile = vi.mocked(getBusinessProfile);
+const mockedGenerateAndStoreQuotePdf = vi.mocked(generateAndStoreQuotePdf);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
@@ -64,9 +73,12 @@ const fakeAdmin = {
   name: "Admin",
 } as unknown as Awaited<ReturnType<typeof requireAdmin>>;
 
+const fakeProfile = { id: "profile-1", ownerId: "owner-1" };
+
 const mockQuote = {
   id: "quote-1",
   clientId: VALID_UUID,
+  ownerId: "owner-1",
   projectId: null,
   number: "Q-2026-001",
   status: "draft",
@@ -87,6 +99,9 @@ function makeRedirectError() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockedRequireAdmin.mockResolvedValue(fakeAdmin);
+  mockedGetQuoteById.mockResolvedValue(mockQuote as never);
+  mockedGetBusinessProfile.mockResolvedValue(fakeProfile as never);
+  mockedGenerateAndStoreQuotePdf.mockResolvedValue({ pdfKey: "k" } as never);
 });
 
 // --- createQuoteAction (T1-T3) ---
@@ -286,6 +301,67 @@ describe("transitionQuoteStatusAction", () => {
       const result = transitionStatusSchema.safeParse({ targetStatus: s });
       expect(result.success).toBe(true);
     }
+  });
+
+  it("sent_without_profile_returns_business_profile_required", async () => {
+    mockedGetBusinessProfile.mockResolvedValue(null);
+    const result = await transitionQuoteStatusAction("quote-1", {
+      targetStatus: "sent",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "BUSINESS_PROFILE_REQUIRED", status: 400 },
+    });
+    expect(mockedTransitionQuoteStatus).not.toHaveBeenCalled();
+  });
+
+  it("draft_to_sent_generates_pdf", async () => {
+    const sentQuote = { ...mockQuote, status: "sent" };
+    mockedTransitionQuoteStatus.mockResolvedValue(sentQuote as never);
+    const result = await transitionQuoteStatusAction("quote-1", {
+      targetStatus: "sent",
+    });
+    expect(result).toMatchObject({ ok: true, data: sentQuote });
+    expect(mockedGenerateAndStoreQuotePdf).toHaveBeenCalledTimes(1);
+    expect(mockedGenerateAndStoreQuotePdf).toHaveBeenCalledWith("quote-1");
+  });
+
+  it("pdf_generation_failure_does_not_block_emission", async () => {
+    const sentQuote = { ...mockQuote, status: "sent" };
+    mockedTransitionQuoteStatus.mockResolvedValue(sentQuote as never);
+    mockedGenerateAndStoreQuotePdf.mockRejectedValue(new Error("R2 timeout"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await transitionQuoteStatusAction("quote-1", {
+      targetStatus: "sent",
+    });
+    expect(result).toMatchObject({ ok: true });
+    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    const logged = consoleSpy.mock.calls[0][0] as string;
+    expect(logged).toContain("quote.pdf.generation_failed");
+    consoleSpy.mockRestore();
+  });
+
+  it("non_sent_transition_skips_precheck_and_pdf", async () => {
+    const acceptedQuote = { ...mockQuote, status: "accepted" };
+    mockedTransitionQuoteStatus.mockResolvedValue(acceptedQuote as never);
+    const result = await transitionQuoteStatusAction("quote-1", {
+      targetStatus: "accepted",
+    });
+    expect(result).toMatchObject({ ok: true, data: acceptedQuote });
+    expect(mockedGetBusinessProfile).not.toHaveBeenCalled();
+    expect(mockedGenerateAndStoreQuotePdf).not.toHaveBeenCalled();
+  });
+
+  it("sent_precheck_quote_not_found", async () => {
+    mockedGetQuoteById.mockResolvedValue(null);
+    const result = await transitionQuoteStatusAction("quote-1", {
+      targetStatus: "sent",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INTERNAL_ERROR" },
+    });
+    expect(mockedTransitionQuoteStatus).not.toHaveBeenCalled();
   });
 });
 
