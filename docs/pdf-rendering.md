@@ -31,6 +31,30 @@ Erreurs exportées :
 | `ClientNotFoundError` | `invoice.clientId` introuvable |
 | `BusinessProfileRequiredError` | `getBusinessProfile(ownerId)` retourne null |
 
+### Générer et persister le PDF d'un devis (voie principale)
+
+```ts
+import { generateAndStoreQuotePdf } from "@/lib/pdf/generate-quote-pdf"
+
+const { pdfKey } = await generateAndStoreQuotePdf(quoteId)
+// pdfKey = "quotes/2026/06/<uuid>.pdf" — persisté en DB, immuable
+```
+
+Comportement garanti :
+- **Idempotent** : si `quote.pdfKey` est déjà défini, retourne la clé existante sans régénérer.
+- **Rollback best-effort** : si la persistance DB échoue après l'upload R2, `deletePdfFromR2(key)` est tenté pour éviter les objets orphelins.
+- **Guard métier** : lève `BusinessProfileRequiredError` si aucun profil d'entreprise n'est trouvé pour l'émetteur.
+- **Guard PDF** : `isPdfMagicBytes` + `assertPdfSize` sont appelés avant tout upload.
+- **Trigger-agnostique** : n'effectue aucune transition de statut devis — peut être appelé indépendamment depuis n'importe quel contexte.
+
+Erreurs exportées :
+
+| Classe | Condition |
+|--------|-----------|
+| `QuoteNotFoundError` | `quoteId` introuvable en base |
+| `ClientNotFoundError` | `quote.clientId` introuvable |
+| `BusinessProfileRequiredError` | `getBusinessProfile(ownerId)` retourne null |
+
 ### Rendu d'une facture (voie haute — recommandée)
 
 ```ts
@@ -113,13 +137,15 @@ packages/services/src/
 └── quote-pdf.shared.ts     # toQuotePdfModel — pur, zéro dépendance PDF/DB
 
 apps/web/lib/pdf/
-├── generate-invoice-pdf.ts # Orchestrateur complet : DB → R2 → persistance pdfKey
+├── generate-invoice-pdf.ts # Orchestrateur facture : DB → R2 → persistance pdfKey
+├── generate-quote-pdf.ts   # Orchestrateur devis : DB → R2 → persistance pdfKey
 ├── primitives.tsx          # Composants @react-pdf stylés + StyleSheet
 ├── InvoicePdf.tsx          # Composant facture — assemble les primitives
 ├── QuotePdf.tsx            # Composant devis — assemble les primitives (expiresAt, statut)
 ├── render.ts               # renderToPdfBuffer + renderInvoicePdf + renderQuotePdf — server-only
 └── __tests__/
     ├── generate-invoice-pdf.test.ts  # 7 tests mock-only : AC1–AC7 (immutabilité, rollback, guard)
+    ├── generate-quote-pdf.test.ts    # 6 tests mock-only : AC1–AC6 (immutabilité, rollback, guard)
     ├── _pdf-text.ts         # Helper partagé : inflate FlateDecode + decode hex TJ
     ├── primitives.test.tsx  # Rendu → Buffer, extraction texte via zlib inflate
     ├── invoice-pdf.test.tsx # Test end-to-end InvoicePdf (number, partie, montant)
@@ -162,6 +188,36 @@ return { pdfKey }
 
 La map `STATUS_LABELS` résout le statut enum en libellé FR (`draft → "Brouillon"`, etc.) avant de le passer à `toInvoicePdfModel`, qui est agnostique des traductions.
 
+### Orchestrateur `generate-quote-pdf.ts`
+
+Pipeline complet exposé par `generateAndStoreQuotePdf` (calqué sur la facture, adapté au devis) :
+
+```
+getQuoteById → early-return si pdfKey exist
+     ↓
+listQuoteItems + getClientById + getBusinessProfile
+     ↓
+toEmitterInput(profile) → resolveEmitter → BillFrom
+resolveBillingParty(client) → BillTo
+     ↓
+resolveQuoteStatusLabel(quote.status) → libellé FR
+toQuotePdfModel({ quote: { ...quote, status: label }, items, billFrom, billTo })
+     ↓
+renderQuotePdf(model) → Buffer
+     ↓
+isPdfMagicBytes + assertPdfSize (garde-fous)
+     ↓
+buildQuoteKey() + uploadPdfToR2(key, buffer)
+     ↓
+setQuotePdfKey(quoteId, key)   ← rollback deletePdfFromR2 si rejet
+     ↓
+return { pdfKey }
+```
+
+`toEmitterInput` est dupliqué localement depuis `generate-invoice-pdf.ts` (helper pur identique, pas de refactor hors blast radius). `resolveQuoteStatusLabel` est une map locale distincte de `resolveInvoiceStatusLabel` — les enums de statut devis (`draft | sent | accepted | declined | expired`) diffèrent de ceux de la facture.
+
+`setQuotePdfKey` est ajouté à `packages/services/src/quote.service.ts` : `UPDATE quotes SET pdf_key = $key, updated_at = NOW() WHERE id = $quoteId`.
+
 ### Adaptateurs `invoice-pdf.shared` et `quote-pdf.shared`
 
 `toInvoicePdfModel` et `toQuotePdfModel` vivent dans `@saas/services` (hors de `apps/web`) pour rester testables sans runtime @react-pdf.
@@ -193,13 +249,17 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | R10-1c-b `InvoicePdf` | ✅ livré | Composant facture + `renderInvoicePdf` + mapper pur |
 | R10-1c-c `QuotePdf` | ✅ livré | Composant devis + `renderQuotePdf` + mapper pur |
 | **R10-1e `generate-invoice-pdf`** | ✅ livré | Orchestrateur `generateAndStoreInvoicePdf` + `setInvoicePdfKey` |
+| **R10-1g-a `generate-quote-pdf`** | ✅ livré | Orchestrateur `generateAndStoreQuotePdf` + `setQuotePdfKey` (trigger-agnostique) |
 | R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
 | R10-1f-b `emit-invoice` | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionInvoiceStatusAction`) |
 | **R10-1g-a `invoice-pdf-route`** | ✅ livré | Route Handler `GET /api/invoices/[id]/file` — stream R2 inline + régénération paresseuse si `pdfKey` null et `issuedAt` set + lien réel dans `InvoiceRow` |
+| R10-1g-b `emit-quote` | 🔜 | Transition statut devis + déclenchement `generateAndStoreQuotePdf` |
+| R10-1h-quote `quote-pdf-route` | 🔜 | Route Handler `GET /api/quotes/[id]/file` — stream R2 inline |
 
 ## Liens vers tests
 
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 7 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards, toEmitterInput sans logoUrl
+- `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 6 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards (isPdfMagicBytes/assertPdfSize avant upload), toEmitterInput sans logoUrl
 - `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 5 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal), ItemsTable (items + tableau vide), TotalsBlock
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
