@@ -43,7 +43,7 @@ vi.mock("../generate-invoice-pdf", () => ({
   },
 }))
 
-import { generateAndStoreQuotePdf, QuoteNotFoundError, BusinessProfileRequiredError } from "../generate-quote-pdf"
+import { generateAndStoreQuotePdf, BusinessProfileRequiredError } from "../generate-quote-pdf"
 import {
   getQuoteById,
   listQuoteItems,
