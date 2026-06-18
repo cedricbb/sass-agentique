@@ -18,7 +18,7 @@ async function navigateToInvoice(
   await page.waitForLoadState("networkidle");
   const row = page.getByRole("row", { name: invoiceNumber });
   await expect(row).toBeVisible();
-  await row.getByRole("link").click();
+  await row.getByTestId(/^invoice-edit-/).click();
   await expect(page).toHaveURL(/\/admin\/invoices\/[a-zA-Z0-9-]+/);
 }
 
