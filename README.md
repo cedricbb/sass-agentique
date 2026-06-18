@@ -85,6 +85,7 @@ Le script seed peuple également :
 
 | Entité | Données |
 |--------|---------|
+| Business profile | Super Admin Consulting — SASU, SIRET 12345678900010, Paris 75001 (prérequis gate émission facture) |
 | Clients | Acme Studio (company), Bob Indep (individual), Globex (company) |
 | Prestations | Site vitrine 5 pages (€2 500, one-shot), Maintenance mensuelle (€50, recurring) |
 | Projet | Site Acme (client : Acme Studio, statut : active) |
