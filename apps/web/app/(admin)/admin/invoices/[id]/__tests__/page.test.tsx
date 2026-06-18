@@ -86,6 +86,21 @@ describe("EditInvoicePage — RecordPaymentDialog integration", () => {
   });
 });
 
+describe("EditInvoicePage — Download button", () => {
+  it("shows_download_button_when_issued", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "sent", issuedAt: new Date() });
+    const link = screen.getByRole("link", { name: /télécharger le pdf/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/api/invoices/inv-1/file");
+    expect(link).toHaveAttribute("download");
+  });
+
+  it("hides_download_button_when_draft", async () => {
+    await renderPage({ ...MOCK_INVOICE_BASE, status: "draft", issuedAt: null });
+    expect(screen.queryByRole("link", { name: /télécharger le pdf/i })).not.toBeInTheDocument();
+  });
+});
+
 describe("EditInvoicePage — InvoicePaymentsList integration", () => {
   it("P1 — renders InvoicePaymentsList when status is sent", async () => {
     await renderPage({ ...MOCK_INVOICE_BASE, status: "sent" });

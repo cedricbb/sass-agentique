@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Download } from "lucide-react";
 import { getInvoiceById, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations, paymentService } from "@saas/services";
 import { computeInvoiceTtc } from "@saas/services/invoice.shared";
+import { Button } from "@/components/ui/button";
 import { InvoiceStatusActions } from "../_components/InvoiceStatusActions";
 import { InvoiceForm } from "../_components/InvoiceForm";
 import { InvoiceItemsEditor } from "../_components/InvoiceItemsEditor";
@@ -38,7 +40,16 @@ export default async function EditInvoicePage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{invoice.number}</h1>
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">{invoice.number}</h1>
+        {invoice.issuedAt != null && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/invoices/${invoice.id}/file`} download={`facture-${invoice.number}.pdf`}>
+              <Download className="mr-2 h-4 w-4" /> Télécharger le PDF
+            </a>
+          </Button>
+        )}
+      </div>
       <section>
         <h2 className="text-xl font-semibold mb-4">Cycle de vie</h2>
         <InvoiceStatusActions
