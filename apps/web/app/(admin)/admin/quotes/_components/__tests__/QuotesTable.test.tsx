@@ -65,6 +65,25 @@ const mockQuotes: Quote[] = [
   },
 ] as Quote[];
 
+describe("QuotesTable — Download icon", () => {
+  it("shows_download_icon_for_issued_quote_row", () => {
+    renderWithNuqs(
+      <QuotesTable data={mockQuotes} clientNames={CLIENT_NAMES} />,
+    );
+    const link = screen.getByTestId("quote-download-q-2");
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/api/quotes/q-2/file");
+    expect(link).toHaveAttribute("download");
+  });
+
+  it("hides_download_icon_for_draft_quote_row", () => {
+    renderWithNuqs(
+      <QuotesTable data={mockQuotes} clientNames={CLIENT_NAMES} />,
+    );
+    expect(screen.queryByTestId("quote-download-q-1")).not.toBeInTheDocument();
+  });
+});
+
 describe("QuotesTable", () => {
   it("renders quote rows", () => {
     renderWithNuqs(
