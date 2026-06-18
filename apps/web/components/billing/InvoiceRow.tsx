@@ -1,3 +1,4 @@
+import * as React from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "./billing-utils";
@@ -7,7 +8,7 @@ export interface Invoice {
   date: Date;
   amountCents: number;
   status: string;
-  pdfUrl: string;
+  issuedAt: Date | null;
 }
 
 export function InvoiceRow({ invoice }: { invoice: Invoice }) {
@@ -21,9 +22,16 @@ export function InvoiceRow({ invoice }: { invoice: Invoice }) {
         </Badge>
       </TableCell>
       <TableCell>
-        <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
-          PDF
-        </a>
+        {invoice.issuedAt != null && (
+          <a
+            href={`/api/invoices/${invoice.id}/file`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary underline"
+          >
+            PDF
+          </a>
+        )}
       </TableCell>
     </TableRow>
   );
