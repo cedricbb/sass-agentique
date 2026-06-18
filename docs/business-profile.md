@@ -47,6 +47,16 @@ import { type BusinessProfile, type NewBusinessProfile } from "@saas/db"
 - **Consommation PDF** : `getBusinessProfile` → champs → `EmitterInput` → `resolveEmitter` (R10-1f). `resolveEmitter` reste source-agnostique : il ne connaît pas cette table.
 - **Push DB** : `drizzle-kit push` (pas de migration sqlx) — à exécuter côté hôte après livraison container.
 
+## Seed e2e
+
+Le script seed (`packages/db/src/seed.ts`) insère un `business_profile` pour l'admin (`admin@saas.dev`) :
+- **name** : "Super Admin Consulting", **legalForm** : SASU, **siret** : 12345678900010
+- **address** : 12 rue de la Paix, Paris 75001 FR
+- `logoKey`, `iban`, `bic` : null (optionnels / upload séparé)
+
+Ce profil est requis pour débloquer le gate `transitionInvoiceStatusAction` (transition `draft→sent`) en e2e.
+Insert idempotent via `onConflictDoUpdate` sur `business_profiles_owner_unique`.
+
 ## Liens vers tests
 
 - `packages/services/src/__tests__/business-profile.service.test.ts` — 4 tests unitaires (mock drizzle) : get null, get after upsert (address objet), create, update avec `updatedAt` postérieur.
