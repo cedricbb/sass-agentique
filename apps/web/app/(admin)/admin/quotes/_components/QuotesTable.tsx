@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Pencil } from "lucide-react";
+import { Download, Pencil } from "lucide-react";
 import {
   DataTable,
   DataTableColumnHeader,
@@ -132,15 +132,29 @@ function buildColumns(
     {
       id: "actions",
       cell: ({ row }) => (
-        <Button variant="ghost" size="sm" asChild>
-          <Link
-            href={`/admin/quotes/${row.original.id}`}
-            data-testid={`quote-edit-${row.original.id}`}
-          >
-            <Pencil className="h-4 w-4" />
-            <span className="sr-only">Modifier</span>
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          {row.original.issuedAt != null && (
+            <Button variant="ghost" size="sm" asChild>
+              <a
+                href={`/api/quotes/${row.original.id}/file`}
+                download={`devis-${row.original.number}.pdf`}
+                data-testid={`quote-download-${row.original.id}`}
+              >
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Télécharger le PDF</span>
+              </a>
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" asChild>
+            <Link
+              href={`/admin/quotes/${row.original.id}`}
+              data-testid={`quote-edit-${row.original.id}`}
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="sr-only">Modifier</span>
+            </Link>
+          </Button>
+        </div>
       ),
     },
   ];

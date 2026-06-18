@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Download } from "lucide-react";
 import { listClients, listAllProjects, getQuoteById, listQuoteItems, listPrestations, listInvoices } from "@saas/services";
 import { computeQuoteTtc } from "@saas/services/quote.shared";
+import { Button } from "@/components/ui/button";
 import { QuoteForm } from "../_components/QuoteForm";
 import { QuoteAmountsCard } from "../_components/QuoteAmountsCard";
 import { QuoteStatusActions } from "../_components/QuoteStatusActions";
@@ -32,6 +34,16 @@ export default async function EditQuotePage({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">{quote.number}</h1>
+        {quote.issuedAt != null && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/quotes/${quote.id}/file`} download={`devis-${quote.number}.pdf`}>
+              <Download className="mr-2 h-4 w-4" /> Télécharger le PDF
+            </a>
+          </Button>
+        )}
+      </div>
       <section>
         <h2 className="text-xl font-semibold mb-4">Lignes du devis</h2>
         <QuoteItemsEditor
