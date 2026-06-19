@@ -14,7 +14,7 @@ export async function GET(): Promise<Response> {
 
   try {
     const { buffer, contentType } = await fetchImageBytesFromR2(profile.logoKey);
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": contentType,

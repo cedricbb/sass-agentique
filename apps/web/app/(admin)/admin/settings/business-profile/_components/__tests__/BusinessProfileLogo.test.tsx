@@ -45,7 +45,7 @@ vi.mock("@/components/ui/button", () => ({
     disabled?: boolean;
     onClick?: () => void;
     "data-testid"?: string;
-    type?: string;
+    type?: "button" | "submit" | "reset";
   }) => (
     <button type={type ?? "button"} disabled={disabled} onClick={onClick} data-testid={testId}>
       {children}
