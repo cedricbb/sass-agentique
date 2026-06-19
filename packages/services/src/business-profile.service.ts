@@ -24,6 +24,18 @@ export async function getBusinessProfile(ownerId: string): Promise<BusinessProfi
   return row ?? null;
 }
 
+export async function setBusinessProfileLogoKey(
+  ownerId: string,
+  logoKey: string | null,
+): Promise<BusinessProfile | null> {
+  const [row] = await db
+    .update(businessProfiles)
+    .set({ logoKey, updatedAt: new Date() })
+    .where(eq(businessProfiles.ownerId, ownerId))
+    .returning();
+  return row ?? null;
+}
+
 export async function upsertBusinessProfile(
   ownerId: string,
   input: UpsertBusinessProfileInput,

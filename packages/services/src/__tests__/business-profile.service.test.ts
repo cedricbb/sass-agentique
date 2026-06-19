@@ -28,6 +28,7 @@ vi.mock("drizzle-orm", () => ({
 import {
   getBusinessProfile,
   upsertBusinessProfile,
+  setBusinessProfileLogoKey,
 } from "../business-profile.service";
 
 const OWNER_ID = "owner-uuid-1";
@@ -105,7 +106,7 @@ describe("business-profile.service", () => {
       expect(dbMock.returning).toHaveBeenCalled();
     });
 
-    it("updates_existing_profile_on_second_upsert", async () => {
+  it("updates_existing_profile_on_second_upsert", async () => {
       const updatedAt = new Date("2026-06-17T12:00:00Z");
       const updatedProfile = { ...BASE_PROFILE, name: "ACME SASU", legalForm: "SASU", updatedAt };
       dbMock.returning.mockResolvedValueOnce([updatedProfile]);
@@ -120,6 +121,30 @@ describe("business-profile.service", () => {
       const onConflictCall = dbMock.onConflictDoUpdate.mock.calls[0][0];
       expect(onConflictCall.set).toHaveProperty("updatedAt");
       expect(onConflictCall.set).not.toHaveProperty("createdAt");
+    });
+  });
+
+  describe("setBusinessProfileLogoKey", () => {
+    it("set_logo_key_returns_updated_profile", async () => {
+      const updatedProfile = { ...BASE_PROFILE, logoKey: "business-profiles/owner-uuid-1/logo", updatedAt: new Date() };
+      dbMock.returning.mockResolvedValueOnce([updatedProfile]);
+
+      const result = await setBusinessProfileLogoKey(OWNER_ID, "business-profiles/owner-uuid-1/logo");
+
+      expect(result).not.toBeNull();
+      expect(result!.logoKey).toBe("business-profiles/owner-uuid-1/logo");
+      expect(dbMock.update).toHaveBeenCalled();
+      expect(dbMock.set).toHaveBeenCalledWith(expect.objectContaining({ logoKey: "business-profiles/owner-uuid-1/logo" }));
+      expect(dbMock.where).toHaveBeenCalled();
+      expect(dbMock.returning).toHaveBeenCalled();
+    });
+
+    it("set_logo_key_returns_null_when_no_profile", async () => {
+      dbMock.returning.mockResolvedValueOnce([]);
+
+      const result = await setBusinessProfileLogoKey("nonexistent-owner", "some-key");
+
+      expect(result).toBeNull();
     });
   });
 });
