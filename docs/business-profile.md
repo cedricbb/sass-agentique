@@ -74,7 +74,44 @@ Accessible depuis la barre latérale admin via le lien **"Profil entreprise"** (
 
 - Protégée par `requireAdmin()` (redirect si non admin).
 - Charge `getBusinessProfile(user.id)` — `null` si jamais configuré.
+- Rend `<BusinessProfileLogo hasLogo={profile?.logoKey != null} version={profile?.updatedAt?.toISOString() ?? ""} />` (au-dessus du formulaire).
 - Rend `<BusinessProfileForm initialProfile={profile} />`.
+
+### BusinessProfileLogo
+
+`apps/web/app/(admin)/admin/settings/business-profile/_components/BusinessProfileLogo.tsx`
+
+Client Component (`"use client"`) gérant l'affichage, l'upload et le retrait du logo émetteur.
+
+Props :
+
+| Prop | Type | Description |
+|---|---|---|
+| `hasLogo` | `boolean` | `true` si `profile.logoKey != null` |
+| `version` | `string` | `profile.updatedAt.toISOString()` — cache-bust pour `?v=` |
+
+Comportement :
+- **Preview** : `<img src="/api/admin/business-profile/logo?v={version}" />` (affiché si `hasLogo`). Sinon texte "Aucun logo".
+- **Validation client avant upload** : type ∈ `{image/png, image/jpeg}` et taille ≤ 2 MB → message d'erreur inline si invalide, pas de requête serveur.
+- **Upload** : `FormData.append("logo", file)` → `uploadBusinessProfileLogoAction(fd)` → toast → `router.refresh()`.
+- **Retrait** : `removeBusinessProfileLogoAction()` → toast → `router.refresh()` (bouton visible seulement si `hasLogo`).
+- **État pending** : `useState<boolean>` + try/finally (pas `useTransition` — `toast` est un callback). Boutons disabled pendant `isPending`.
+- Icônes : `Upload` et `Trash2` (lucide-react).
+
+### Route preview logo
+
+`apps/web/app/api/admin/business-profile/logo/route.ts`
+
+`GET /api/admin/business-profile/logo` — sert le logo brut depuis R2. Protégée par `requireAdmin`.
+
+| Condition | Réponse |
+|---|---|
+| Profil absent ou `logoKey` null | 404 |
+| Clé R2 introuvable (`R2NotFoundError`) | 404 |
+| Erreur R2 inattendue | 500 (loggée) |
+| Succès | 200 + `Content-Type` + `Cache-Control: no-store` |
+
+Le cache-bust côté UI (`?v=updatedAt`) permet de rafraîchir la preview après chaque upload sans invalider le cache CDN (header `no-store` intentionnel — le logo change rarement).
 
 ### BusinessProfileForm
 
@@ -100,10 +137,15 @@ Comportement submit :
 
 ### Validation manuelle requise
 
-`human_validation_checklist` :
+`human_validation_checklist` (formulaire) :
 1. Éditer les champs → Sauvegarder → vérifier le toast "Profil entreprise enregistré".
 2. Recharger la page → vérifier que les valeurs sont persistées.
 3. Laisser `name` vide → soumettre → vérifier l'erreur de validation inline.
+
+`human_validation_checklist` (logo) :
+1. Uploader un PNG ou JPEG ≤ 2 MB → vérifier le toast "Logo enregistré" et la preview visible.
+2. Retirer le logo → vérifier le toast "Logo retiré" et la preview disparue ("Aucun logo").
+3. Tenter d'uploader un fichier hors format ou > 2 MB → vérifier l'erreur inline (pas de requête serveur).
 
 ## Schema Zod et Server Action (Web)
 
@@ -174,3 +216,5 @@ const result = await removeBusinessProfileLogoAction()
 - `apps/web/lib/schemas/__tests__/business-profile.schemas.test.ts` — 5 tests schema : champs valides, siret format, email vide accepté, name requis.
 - `apps/web/app/actions/__tests__/business-profile.test.ts` — 13 tests action : 5 pour `upsertBusinessProfileAction` (appel `upsertBusinessProfile` avec `user.id`, normalisation vides→undefined, revalidatePath, erreur Zod propagée) + 6 pour `uploadBusinessProfileLogoAction` (PNG/JPEG valides, FILE_REQUIRED, INVALID_IMAGE, FILE_TOO_LARGE, rollback BUSINESS_PROFILE_REQUIRED) + 2 pour `removeBusinessProfileLogoAction` (avec logoKey, sans logoKey no-op).
 - `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileForm.test.tsx` — 4 tests composant : render champs vides, préremplissage depuis `initialProfile`, submit → action appelée + toast succès, blocage validation (name vide).
+- `apps/web/app/api/admin/business-profile/logo/__tests__/route.test.ts` — 6 tests route GET : 200 avec buffer + Content-Type correct, 404 profil absent, 404 logoKey null, 404 R2NotFoundError, 500 erreur R2 inattendue, 401 non admin.
+- `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileLogo.test.tsx` — 7 tests composant : rendu sans logo, rendu avec logo (img visible + src cache-bust), validation inline type invalide, validation inline taille > 2 MB, upload succès → refresh, retrait succès → refresh, bouton retrait absent si !hasLogo.
