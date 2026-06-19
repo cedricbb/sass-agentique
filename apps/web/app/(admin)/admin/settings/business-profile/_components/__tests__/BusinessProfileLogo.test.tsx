@@ -22,6 +22,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mockRouterRefresh }),
 }));
 
+vi.mock("next/image", () => ({
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) =>
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    <img {...props} />,
+}));
+
 vi.mock("lucide-react", () => ({
   Upload: () => null,
   Trash2: () => null,
@@ -56,11 +62,6 @@ function makePngFile(sizeBytes: number = 100): File {
   bytes[2] = 0x4e;
   bytes[3] = 0x47;
   return new File([bytes], "logo.png", { type: "image/png" });
-}
-
-function makeJpegFile(): File {
-  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
-  return new File([bytes], "logo.jpg", { type: "image/jpeg" });
 }
 
 function selectFile(input: HTMLElement, file: File) {

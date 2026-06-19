@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toastResult } from "@/lib/toast";
@@ -69,11 +70,14 @@ export function BusinessProfileLogo({ hasLogo, version }: BusinessProfileLogoPro
   return (
     <div className="space-y-4">
       {hasLogo ? (
-        <img
+        <Image
           src={`/api/admin/business-profile/logo?v=${version}`}
           alt="Logo"
+          width={200}
+          height={96}
           className="h-24 w-auto object-contain"
           data-testid="business-profile-logo-preview"
+          unoptimized
         />
       ) : (
         <p className="text-muted-foreground text-sm">Aucun logo</p>
