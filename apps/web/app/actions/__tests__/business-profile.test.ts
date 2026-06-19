@@ -80,7 +80,7 @@ const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 const GIF_MAGIC = Buffer.from([0x47, 0x49, 0x46, 0x38]);
 
 function makeFormData(buf: Buffer, filename: string): FormData {
-  const file = new File([buf], filename, { type: "application/octet-stream" });
+  const file = new File([new Uint8Array(buf)], filename, { type: "application/octet-stream" });
   const fd = new FormData();
   fd.append("logo", file);
   return fd;
