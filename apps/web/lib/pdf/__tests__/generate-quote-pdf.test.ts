@@ -41,9 +41,11 @@ vi.mock("../generate-invoice-pdf", () => ({
       this.name = "ClientNotFoundError"
     }
   },
+  resolveEmitterLogoDataUri: vi.fn(),
 }))
 
 import { generateAndStoreQuotePdf, BusinessProfileRequiredError } from "../generate-quote-pdf"
+import { resolveEmitterLogoDataUri } from "../generate-invoice-pdf"
 import {
   getQuoteById,
   listQuoteItems,
@@ -132,6 +134,7 @@ function setupHappyPath() {
   vi.mocked(listQuoteItems).mockResolvedValue(fixtureItems as never)
   vi.mocked(getClientById).mockResolvedValue(fixtureClient as never)
   vi.mocked(getBusinessProfile).mockResolvedValue(fixtureProfile as never)
+  vi.mocked(resolveEmitterLogoDataUri).mockResolvedValue(undefined)
   vi.mocked(renderQuotePdf).mockResolvedValue(FAKE_PDF_BUFFER)
   vi.mocked(isPdfMagicBytes).mockReturnValue(true)
   vi.mocked(assertPdfSize).mockReturnValue(undefined)
@@ -203,7 +206,21 @@ describe("generateAndStoreQuotePdf", () => {
     expect(callOrder.indexOf("assertPdfSize")).toBeLessThan(callOrder.indexOf("uploadPdfToR2"))
   })
 
-  it("toEmitterInput_maps_profile_without_logoUrl", async () => {
+  it("quote_logo_data_uri_passed_to_renderer_when_profile_has_logo_key", async () => {
+    setupHappyPath()
+    vi.mocked(resolveEmitterLogoDataUri).mockResolvedValue("data:image/png;base64,AAAA")
+    let capturedBillFrom: unknown = null
+    vi.mocked(renderQuotePdf).mockImplementation(async (model) => {
+      capturedBillFrom = model.billFrom
+      return FAKE_PDF_BUFFER
+    })
+
+    await generateAndStoreQuotePdf(QUOTE_ID)
+
+    expect((capturedBillFrom as Record<string, unknown>).logoUrl).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it("quote_logo_url_undefined_when_profile_has_no_logo_key", async () => {
     setupHappyPath()
     let capturedEmitter: unknown = null
     vi.mocked(renderQuotePdf).mockImplementation(async (model) => {
@@ -216,5 +233,18 @@ describe("generateAndStoreQuotePdf", () => {
     expect(capturedEmitter).toBeDefined()
     expect((capturedEmitter as Record<string, unknown>).logoUrl).toBeUndefined()
     expect((capturedEmitter as Record<string, unknown>).name).toBe("Mon Entreprise SAS")
+  })
+
+  it("quote_logo_fetch_failure_does_not_break_generation", async () => {
+    setupHappyPath()
+    vi.mocked(resolveEmitterLogoDataUri).mockResolvedValue(undefined)
+    let capturedBillFrom: unknown = null
+    vi.mocked(renderQuotePdf).mockImplementation(async (model) => {
+      capturedBillFrom = model.billFrom
+      return FAKE_PDF_BUFFER
+    })
+
+    await expect(generateAndStoreQuotePdf(QUOTE_ID)).resolves.toEqual({ pdfKey: PDF_KEY })
+    expect((capturedBillFrom as Record<string, unknown>).logoUrl).toBeUndefined()
   })
 })

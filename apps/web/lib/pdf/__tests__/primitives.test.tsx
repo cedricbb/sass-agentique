@@ -37,6 +37,35 @@ const minimalBillTo: BillTo = {
   },
 }
 
+const billFromWithLogo: BillFrom = {
+  ...fullBillFrom,
+  logoUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+}
+
+describe("PartyBlock logo rendering", () => {
+  it("party_block_renders_image_when_logo_url_present", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PartyBlock, { label: "Emetteur", party: billFromWithLogo }),
+    )
+    const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+    expect(buffer).toBeDefined()
+    expect(buffer.length).toBeGreaterThan(0)
+  })
+
+  it("party_block_renders_without_image_when_no_logo_url", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PartyBlock, { label: "Emetteur", party: fullBillFrom }),
+    )
+    const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+    expect(buffer).toBeDefined()
+    expect(buffer.length).toBeGreaterThan(0)
+  })
+})
+
 describe("PartyBlock", () => {
   it("party_block_renders_all_fields_of_full_bill_from", async () => {
     const element = React.createElement(

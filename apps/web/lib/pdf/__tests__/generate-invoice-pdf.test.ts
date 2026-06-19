@@ -16,6 +16,7 @@ vi.mock("@/lib/storage/r2", () => ({
   deletePdfFromR2: vi.fn(),
   isPdfMagicBytes: vi.fn(),
   assertPdfSize: vi.fn(),
+  fetchImageBytesFromR2: vi.fn(),
   InvalidPdfMagicBytesError: class InvalidPdfMagicBytesError extends Error {
     constructor() {
       super("not valid PDF")
@@ -42,6 +43,7 @@ import {
   deletePdfFromR2,
   isPdfMagicBytes,
   assertPdfSize,
+  fetchImageBytesFromR2,
 } from "@/lib/storage/r2"
 import { renderInvoicePdf } from "../render"
 
@@ -197,7 +199,22 @@ describe("generateAndStoreInvoicePdf", () => {
     expect(callOrder.indexOf("assertPdfSize")).toBeLessThan(callOrder.indexOf("uploadPdfToR2"))
   })
 
-  it("toEmitterInput_maps_profile_without_logoUrl", async () => {
+  it("logo_data_uri_passed_to_renderer_when_profile_has_logo_key", async () => {
+    setupHappyPath()
+    vi.mocked(getBusinessProfile).mockResolvedValue({ ...fixtureProfile, logoKey: "logos/test.png" } as never)
+    vi.mocked(fetchImageBytesFromR2).mockResolvedValue({ buffer: Buffer.from("PNG"), contentType: "image/png" } as never)
+    let capturedBillFrom: unknown = null
+    vi.mocked(renderInvoicePdf).mockImplementation(async (model) => {
+      capturedBillFrom = model.billFrom
+      return FAKE_PDF_BUFFER
+    })
+
+    await generateAndStoreInvoicePdf(INVOICE_ID)
+
+    expect((capturedBillFrom as Record<string, unknown>).logoUrl).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it("logo_url_undefined_when_profile_has_no_logo_key", async () => {
     setupHappyPath()
     let capturedEmitter: unknown = null
     vi.mocked(renderInvoicePdf).mockImplementation(async (model) => {
@@ -210,5 +227,19 @@ describe("generateAndStoreInvoicePdf", () => {
     expect(capturedEmitter).toBeDefined()
     expect((capturedEmitter as Record<string, unknown>).logoUrl).toBeUndefined()
     expect((capturedEmitter as Record<string, unknown>).name).toBe("Mon Entreprise SAS")
+  })
+
+  it("logo_fetch_failure_does_not_break_invoice_generation", async () => {
+    setupHappyPath()
+    vi.mocked(getBusinessProfile).mockResolvedValue({ ...fixtureProfile, logoKey: "logos/broken.png" } as never)
+    vi.mocked(fetchImageBytesFromR2).mockRejectedValue(new Error("R2 fetch failed"))
+    let capturedBillFrom: unknown = null
+    vi.mocked(renderInvoicePdf).mockImplementation(async (model) => {
+      capturedBillFrom = model.billFrom
+      return FAKE_PDF_BUFFER
+    })
+
+    await expect(generateAndStoreInvoicePdf(INVOICE_ID)).resolves.toEqual({ pdfKey: PDF_KEY })
+    expect((capturedBillFrom as Record<string, unknown>).logoUrl).toBeUndefined()
   })
 })
