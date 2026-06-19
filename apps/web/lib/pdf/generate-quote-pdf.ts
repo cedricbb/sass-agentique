@@ -23,7 +23,11 @@ import {
   InvalidPdfMagicBytesError,
 } from "@/lib/storage/r2"
 import { renderQuotePdf } from "./render"
-import { BusinessProfileRequiredError, ClientNotFoundError } from "./generate-invoice-pdf"
+import {
+  BusinessProfileRequiredError,
+  ClientNotFoundError,
+  resolveEmitterLogoDataUri,
+} from "./generate-invoice-pdf"
 
 export class QuoteNotFoundError extends Error {
   constructor(quoteId: string) {
@@ -74,7 +78,8 @@ export async function generateAndStoreQuotePdf(quoteId: string): Promise<{ pdfKe
   if (!profile) throw new BusinessProfileRequiredError(quote.ownerId)
 
   const billTo = resolveBillingParty(client)
-  const billFrom = resolveEmitter(toEmitterInput(profile))
+  const logoUrl = await resolveEmitterLogoDataUri(profile)
+  const billFrom = resolveEmitter({ ...toEmitterInput(profile), logoUrl })
   const statusLabel = resolveQuoteStatusLabel(quote.status)
 
   const model = toQuotePdfModel({

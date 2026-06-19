@@ -1,5 +1,5 @@
 import React from "react"
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer"
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
 import { formatPostalAddress } from "@saas/services/billing-party.shared"
 
@@ -89,6 +89,12 @@ const styles = StyleSheet.create({
     borderTopColor: "#333333",
     marginTop: 2,
   },
+  logo: {
+    height: 50,
+    width: 120,
+    objectFit: "contain",
+    marginBottom: 6,
+  },
   legalFooter: {
     position: "absolute",
     bottom: 30,
@@ -116,6 +122,7 @@ export function PartyBlock(props: { label: string; party: BillFrom | BillTo }): 
   return (
     <View style={styles.partyBlockContainer}>
       <Text style={styles.partyLabel}>{label}</Text>
+      {"logoUrl" in party && party.logoUrl ? <Image src={party.logoUrl} style={styles.logo} /> : null}
       <Text style={styles.partyName}>{party.name}</Text>
       {addressLines.map((line, i) => (
         <Text key={i} style={styles.partyLine}>{line}</Text>

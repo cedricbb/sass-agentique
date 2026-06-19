@@ -20,6 +20,7 @@ import {
   deletePdfFromR2,
   isPdfMagicBytes,
   assertPdfSize,
+  fetchImageBytesFromR2,
   InvalidPdfMagicBytesError,
 } from "@/lib/storage/r2"
 import { renderInvoicePdf } from "./render"
@@ -57,6 +58,17 @@ function resolveInvoiceStatusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status
 }
 
+export async function resolveEmitterLogoDataUri(profile: BusinessProfile): Promise<string | undefined> {
+  if (profile.logoKey == null) return undefined
+  try {
+    const { buffer, contentType } = await fetchImageBytesFromR2(profile.logoKey)
+    return `data:${contentType};base64,${buffer.toString("base64")}`
+  } catch (err) {
+    console.error("[resolveEmitterLogoDataUri] logo fetch failed (best-effort)", profile.logoKey, err)
+    return undefined
+  }
+}
+
 function toEmitterInput(profile: BusinessProfile): EmitterInput {
   return {
     name: profile.name,
@@ -85,7 +97,8 @@ export async function generateAndStoreInvoicePdf(invoiceId: string): Promise<{ p
   if (!profile) throw new BusinessProfileRequiredError(invoice.ownerId)
 
   const billTo = resolveBillingParty(client)
-  const billFrom = resolveEmitter(toEmitterInput(profile))
+  const logoUrl = await resolveEmitterLogoDataUri(profile)
+  const billFrom = resolveEmitter({ ...toEmitterInput(profile), logoUrl })
   const statusLabel = resolveInvoiceStatusLabel(invoice.status)
 
   const model = toInvoicePdfModel({
