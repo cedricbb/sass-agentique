@@ -12,6 +12,7 @@ Le champ `logoKey` référence une clé R2 (upload géré en R10-1e).
 import {
   getBusinessProfile,
   upsertBusinessProfile,
+  setBusinessProfileLogoKey,
   type UpsertBusinessProfileInput,
 } from "@saas/services"
 
@@ -29,8 +30,12 @@ const updated = await upsertBusinessProfile(ownerId, {
   phone: "+33 1 23 45 67 89",
   iban: "FR76 3000 6000 0112 3456 7890 189",
   bic: "BNPAFRPPXXX",
-  logoKey: "logos/owner-uuid/logo.png",   // null si pas encore uploadé
 })
+
+// Mise à jour de la clé logo uniquement (null pour retrait)
+const withLogo = await setBusinessProfileLogoKey(ownerId, "business-profiles/uuid/logo")
+const noLogo   = await setBusinessProfileLogoKey(ownerId, null)
+// Retourne null si aucun profil n'existe pour cet ownerId (ne crée pas de profil)
 ```
 
 Types importables depuis `@saas/db` :
@@ -42,7 +47,7 @@ import { type BusinessProfile, type NewBusinessProfile } from "@saas/db"
 ## Architecture interne
 
 - **Table** : `business_profiles` dans `packages/db/src/schema.ts`. Champ `address` en `jsonb` typé `BusinessProfileAddress` (type structurel local, aligné sur `PostalAddress` de `billing-party.shared` sans créer de dépendance circulaire `db → services`).
-- **Service** : `packages/services/src/business-profile.service.ts` — exposé via le barrel `packages/services/src/index.ts`.
+- **Service** : `packages/services/src/business-profile.service.ts` — exposé via le barrel `packages/services/src/index.ts`. Méthodes : `getBusinessProfile`, `upsertBusinessProfile`, `setBusinessProfileLogoKey`.
 - **Upsert** : `onConflictDoUpdate` sur l'index unique `business_profiles_owner_unique` (`ownerId`). Garantit l'atomicité création/mise à jour sans race condition.
 - **Consommation PDF** : `getBusinessProfile` → champs → `EmitterInput` → `resolveEmitter` (R10-1f). `resolveEmitter` reste source-agnostique : il ne connaît pas cette table.
 - **Push DB** : `drizzle-kit push` (pas de migration sqlx) — à exécuter côté hôte après livraison container.
@@ -90,7 +95,6 @@ Comportement submit :
 - Appelle `upsertBusinessProfileAction(values)`.
 - Affiche un toast via `toastResult(result, { success: "Profil entreprise enregistré" })`.
 - Pas de redirect : `revalidatePath` côté action rafraîchit la page en place.
-- Logo hors scope (R10-1e-c).
 
 `defaultValues` : `initialProfile` si non null (adresse : sous-objet vide si `null`) ; sinon tous les champs à `""`.
 
@@ -116,9 +120,11 @@ import {
 } from "@/lib/schemas/business-profile.schemas"
 ```
 
-### Server Action
+### Server Actions
 
-`apps/web/app/actions/business-profile.ts` expose `upsertBusinessProfileAction`.
+`apps/web/app/actions/business-profile.ts` expose trois actions :
+
+#### `upsertBusinessProfileAction`
 
 ```ts
 import { upsertBusinessProfileAction } from "@/app/actions/business-profile"
@@ -131,9 +137,40 @@ const result = await upsertBusinessProfileAction(formValues)
 - Normalise les chaînes vides → `undefined` avant de déléguer à `upsertBusinessProfile`.
 - Invalide le cache de `/admin/settings/business-profile` via `revalidatePath`.
 
+#### `uploadBusinessProfileLogoAction`
+
+```ts
+import { uploadBusinessProfileLogoAction } from "@/app/actions/business-profile"
+
+const formData = new FormData()
+formData.append("logo", file)
+const result = await uploadBusinessProfileLogoAction(formData)
+// result: ActionResult<BusinessProfile>
+```
+
+- Accepte un `FormData` avec le champ `"logo"` (File PNG ou JPEG, max 2 MB).
+- Valide le format via `detectImageFormat` (magic bytes) et la taille via `assertImageSize`.
+- Upload dans R2 sous la clé stable `business-profiles/<ownerId>/logo` via `uploadImageToR2`.
+- Persiste la clé dans `business_profiles.logo_key` via `setBusinessProfileLogoKey`.
+- **Rollback best-effort** : si `setBusinessProfileLogoKey` retourne `null` (pas de profil existant), supprime l'objet R2 et retourne `fail("BUSINESS_PROFILE_REQUIRED")`.
+- Codes d'erreur : `FILE_REQUIRED` · `INVALID_IMAGE` · `FILE_TOO_LARGE` · `BUSINESS_PROFILE_REQUIRED`.
+
+#### `removeBusinessProfileLogoAction`
+
+```ts
+import { removeBusinessProfileLogoAction } from "@/app/actions/business-profile"
+
+const result = await removeBusinessProfileLogoAction()
+// result: ActionResult<BusinessProfile | null>
+```
+
+- Idempotente : si le profil n'a pas de `logoKey`, retourne `ok(profile)` sans appel R2.
+- Supprime l'objet R2 (best-effort — erreur logguée, non bloquante), puis nullifie `logo_key` via `setBusinessProfileLogoKey(userId, null)`.
+- Invalide le cache de `/admin/settings/business-profile` via `revalidatePath`.
+
 ## Liens vers tests
 
-- `packages/services/src/__tests__/business-profile.service.test.ts` — 4 tests unitaires (mock drizzle) : get null, get after upsert (address objet), create, update avec `updatedAt` postérieur.
+- `packages/services/src/__tests__/business-profile.service.test.ts` — 6 tests unitaires (mock drizzle) : get null, get after upsert (address objet), create, update avec `updatedAt` postérieur + `setBusinessProfileLogoKey` (owner existant → profil mis à jour, owner inexistant → null).
 - `apps/web/lib/schemas/__tests__/business-profile.schemas.test.ts` — 5 tests schema : champs valides, siret format, email vide accepté, name requis.
-- `apps/web/app/actions/__tests__/business-profile.test.ts` — 5 tests action : appel `upsertBusinessProfile` avec `user.id`, normalisation vides→undefined, revalidatePath, erreur Zod propagée.
+- `apps/web/app/actions/__tests__/business-profile.test.ts` — 13 tests action : 5 pour `upsertBusinessProfileAction` (appel `upsertBusinessProfile` avec `user.id`, normalisation vides→undefined, revalidatePath, erreur Zod propagée) + 6 pour `uploadBusinessProfileLogoAction` (PNG/JPEG valides, FILE_REQUIRED, INVALID_IMAGE, FILE_TOO_LARGE, rollback BUSINESS_PROFILE_REQUIRED) + 2 pour `removeBusinessProfileLogoAction` (avec logoKey, sans logoKey no-op).
 - `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileForm.test.tsx` — 4 tests composant : render champs vides, préremplissage depuis `initialProfile`, submit → action appelée + toast succès, blocage validation (name vide).
