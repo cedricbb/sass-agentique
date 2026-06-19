@@ -5,6 +5,8 @@ import type { CustomerVisibleQuoteStatus } from "@saas/services/quote.shared";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import Link from "next/link";
 
 const QUOTE_STATUS_LABELS: Record<CustomerVisibleQuoteStatus, string> = {
@@ -46,6 +48,7 @@ export default async function CustomerQuotesPage() {
                 <th className="px-4 py-3 text-left font-medium">Statut</th>
                 <th className="px-4 py-3 text-right font-medium">Montant TTC</th>
                 <th className="px-4 py-3 text-left font-medium">Date</th>
+                <th className="px-4 py-3 w-8"></th>
               </tr>
             </thead>
             <tbody>
@@ -74,6 +77,17 @@ export default async function CustomerQuotesPage() {
                     </td>
                     <td className="px-4 py-3">
                       {formatDate(displayDate)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {quote.pdfKey != null && (
+                        <Button variant="ghost" size="sm" asChild>
+                          <a href={`/api/account/quotes/${quote.id}/file`} download={`devis-${quote.number}.pdf`}
+                             data-testid={`quote-download-${quote.id}`}>
+                            <Download className="h-4 w-4" />
+                            <span className="sr-only">Télécharger mon devis</span>
+                          </a>
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );

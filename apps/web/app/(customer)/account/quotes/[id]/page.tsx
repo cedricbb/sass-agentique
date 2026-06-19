@@ -5,6 +5,8 @@ import { getQuoteById, listQuoteItems, computeQuoteTtc } from "@saas/services/qu
 import type { CustomerVisibleQuoteStatus } from "@saas/services/quote.shared";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { QuoteAmountsCard } from "../_components/QuoteAmountsCard";
 import { QuoteCustomerActions } from "./QuoteCustomerActions";
 
@@ -49,6 +51,13 @@ export default async function CustomerQuoteDetailPage({
         <Badge variant={QUOTE_STATUS_VARIANT[status]} data-testid="quote-detail-status">
           {QUOTE_STATUS_LABELS[status]}
         </Badge>
+        {quote.pdfKey != null && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/account/quotes/${quote.id}/file`} download={`devis-${quote.number}.pdf`} data-testid="quote-download-pdf">
+              <Download className="mr-2 h-4 w-4" /> Télécharger mon devis
+            </a>
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-6 text-sm text-muted-foreground">
