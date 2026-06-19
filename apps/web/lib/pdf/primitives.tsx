@@ -122,6 +122,7 @@ export function PartyBlock(props: { label: string; party: BillFrom | BillTo }): 
   return (
     <View style={styles.partyBlockContainer}>
       <Text style={styles.partyLabel}>{label}</Text>
+      {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt prop */}
       {"logoUrl" in party && party.logoUrl ? <Image src={party.logoUrl} style={styles.logo} /> : null}
       <Text style={styles.partyName}>{party.name}</Text>
       {addressLines.map((line, i) => (
