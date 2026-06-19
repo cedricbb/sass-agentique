@@ -178,3 +178,89 @@ export async function streamPdfFromR2(
     throw err;
   }
 }
+
+export function detectImageFormat(buffer: Buffer): "png" | "jpeg" | null {
+  if (buffer.length < 4) return null;
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) return "png";
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "jpeg";
+  return null;
+}
+
+export function imageContentType(format: "png" | "jpeg"): string {
+  return format === "png" ? "image/png" : "image/jpeg";
+}
+
+export function assertImageSize(
+  buffer: Buffer,
+  maxBytes: number = 2 * 1024 * 1024,
+): void {
+  if (buffer.byteLength > maxBytes) {
+    throw new FileTooLargeError(Math.floor(maxBytes / (1024 * 1024)));
+  }
+}
+
+export function buildLogoKey(ownerId: string): string {
+  if (!ownerId) throw new Error("ownerId requis");
+  return `business-profiles/${ownerId}/logo`;
+}
+
+export async function uploadImageToR2(
+  key: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<void> {
+  if (!key) throw new Error("key requise");
+  if (!buffer.length) throw new Error("buffer requis");
+
+  const client = getR2Client();
+  const bucket = process.env.R2_BUCKET;
+
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+  } catch (err) {
+    throw new R2UploadError(err as Error);
+  }
+}
+
+export async function fetchImageBytesFromR2(
+  key: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!key) throw new Error("key requise");
+
+  const client = getR2Client();
+  const bucket = process.env.R2_BUCKET;
+
+  try {
+    const res = await client.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+    );
+
+    const body = res.Body as { transformToByteArray: () => Promise<Uint8Array> };
+    const bytes = await body.transformToByteArray();
+    return {
+      buffer: Buffer.from(bytes),
+      contentType: res.ContentType ?? "application/octet-stream",
+    };
+  } catch (err: unknown) {
+    const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (e.name === "NoSuchKey" || e.$metadata?.httpStatusCode === 404) {
+      throw new R2NotFoundError(key);
+    }
+    throw err;
+  }
+}
