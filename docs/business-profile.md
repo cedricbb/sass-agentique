@@ -92,6 +92,9 @@ Props :
 
 Comportement :
 - **Preview** : `<img src="/api/admin/business-profile/logo?v={version}" />` (affiché si `hasLogo`). Sinon texte "Aucun logo".
+- **Flux upload (deux temps)** :
+  1. Le bouton "Téléverser le logo" (`data-testid="logo-upload-button"`) appelle `fileInputRef.current?.click()` — ouvre le sélecteur de fichier natif. Ne déclenche pas l'upload directement.
+  2. L'`input type="file"` masqué (`data-testid="logo-file-input"`) déclenche la validation puis l'upload via son `onChange`. Après upload, `event.target.value = ""` est réinitialisé pour permettre la re-sélection du même fichier.
 - **Validation client avant upload** : type ∈ `{image/png, image/jpeg}` et taille ≤ 2 MB → message d'erreur inline si invalide, pas de requête serveur.
 - **Upload** : `FormData.append("logo", file)` → `uploadBusinessProfileLogoAction(fd)` → toast → `router.refresh()`.
 - **Retrait** : `removeBusinessProfileLogoAction()` → toast → `router.refresh()` (bouton visible seulement si `hasLogo`).
@@ -217,4 +220,4 @@ const result = await removeBusinessProfileLogoAction()
 - `apps/web/app/actions/__tests__/business-profile.test.ts` — 13 tests action : 5 pour `upsertBusinessProfileAction` (appel `upsertBusinessProfile` avec `user.id`, normalisation vides→undefined, revalidatePath, erreur Zod propagée) + 6 pour `uploadBusinessProfileLogoAction` (PNG/JPEG valides, FILE_REQUIRED, INVALID_IMAGE, FILE_TOO_LARGE, rollback BUSINESS_PROFILE_REQUIRED) + 2 pour `removeBusinessProfileLogoAction` (avec logoKey, sans logoKey no-op).
 - `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileForm.test.tsx` — 4 tests composant : render champs vides, préremplissage depuis `initialProfile`, submit → action appelée + toast succès, blocage validation (name vide).
 - `apps/web/app/api/admin/business-profile/logo/__tests__/route.test.ts` — 6 tests route GET : 200 avec buffer + Content-Type correct, 404 profil absent, 404 logoKey null, 404 R2NotFoundError, 500 erreur R2 inattendue, 401 non admin.
-- `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileLogo.test.tsx` — 7 tests composant : rendu sans logo, rendu avec logo (img visible + src cache-bust), validation inline type invalide, validation inline taille > 2 MB, upload succès → refresh, retrait succès → refresh, bouton retrait absent si !hasLogo.
+- `apps/web/app/(admin)/admin/settings/business-profile/_components/__tests__/BusinessProfileLogo.test.tsx` — 7 tests composant : rendu sans logo, rendu avec logo (img visible + src cache-bust), upload flux réel (clic bouton → spy `fileInput.click()` + `fireEvent.change` → action appelée), validation inline taille > 2 MB, validation inline type invalide, retrait succès → refresh, bouton retrait absent si !hasLogo.
