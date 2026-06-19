@@ -25,8 +25,8 @@ export function BusinessProfileLogo({ hasLogo, version }: BusinessProfileLogoPro
   const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleUpload() {
-    const file = fileInputRef.current?.files?.[0];
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     if (!ACCEPTED_TYPES.has(file.type)) {
@@ -50,6 +50,7 @@ export function BusinessProfileLogo({ hasLogo, version }: BusinessProfileLogoPro
       }
     } finally {
       setIsPending(false);
+      event.target.value = "";
     }
   }
 
@@ -85,7 +86,7 @@ export function BusinessProfileLogo({ hasLogo, version }: BusinessProfileLogoPro
           accept="image/png,image/jpeg"
           data-testid="logo-file-input"
           className="hidden"
-          onChange={() => setValidationError(null)}
+          onChange={handleFileChange}
         />
 
         {validationError && (
@@ -100,7 +101,7 @@ export function BusinessProfileLogo({ hasLogo, version }: BusinessProfileLogoPro
             variant="outline"
             disabled={isPending}
             data-testid="logo-upload-button"
-            onClick={handleUpload}
+            onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="mr-2 h-4 w-4" />
             Téléverser le logo
