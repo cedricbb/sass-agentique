@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { getBusinessProfile } from "@saas/services";
 import { BusinessProfileForm } from "./_components/BusinessProfileForm";
+import { BusinessProfileLogo } from "./_components/BusinessProfileLogo";
 
 export default async function BusinessProfileSettingsPage() {
   const user = await requireAdmin();
@@ -14,6 +15,10 @@ export default async function BusinessProfileSettingsPage() {
           Renseignez l&apos;identité de votre structure (raison sociale, SIRET, adresse, coordonnées bancaires).
         </p>
       </div>
+      <BusinessProfileLogo
+        hasLogo={profile?.logoKey != null}
+        version={profile?.updatedAt?.toISOString() ?? ""}
+      />
       <BusinessProfileForm initialProfile={profile} />
     </div>
   );
