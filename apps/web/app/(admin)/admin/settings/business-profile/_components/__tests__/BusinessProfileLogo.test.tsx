@@ -103,9 +103,12 @@ describe("BusinessProfileLogo", () => {
     render(<BusinessProfileLogo hasLogo={false} version="" />);
 
     const fileInput = screen.getByTestId("logo-file-input");
-    selectFile(fileInput, makePngFile());
+    const clickSpy = vi.spyOn(fileInput, "click").mockImplementation(() => {});
 
     fireEvent.click(screen.getByTestId("logo-upload-button"));
+    expect(clickSpy).toHaveBeenCalledOnce();
+
+    selectFile(fileInput, makePngFile());
 
     await waitFor(() => {
       expect(mockUploadBusinessProfileLogoAction).toHaveBeenCalledOnce();
@@ -121,8 +124,6 @@ describe("BusinessProfileLogo", () => {
     const fileInput = screen.getByTestId("logo-file-input");
     selectFile(fileInput, makePngFile(3 * 1024 * 1024));
 
-    fireEvent.click(screen.getByTestId("logo-upload-button"));
-
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("2 MB");
     });
@@ -137,8 +138,6 @@ describe("BusinessProfileLogo", () => {
       type: "image/gif",
     });
     selectFile(fileInput, gifFile);
-
-    fireEvent.click(screen.getByTestId("logo-upload-button"));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("PNG ou un JPEG");
@@ -172,8 +171,6 @@ describe("BusinessProfileLogo", () => {
 
     const fileInput = screen.getByTestId("logo-file-input");
     selectFile(fileInput, makePngFile());
-
-    fireEvent.click(screen.getByTestId("logo-upload-button"));
 
     await waitFor(() => {
       expect(screen.getByTestId("logo-upload-button")).toBeDisabled();
