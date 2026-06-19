@@ -3,8 +3,9 @@
 ## Ce que fait ce module
 
 Expose les devis aux clients authentifiés du portail (`/account`) :
-- `/account/quotes` — liste read-only des devis **visibles** du client connecté.
-- `/account/quotes/[id]` — détail avec métadonnées + lignes + boutons d'action si statut `sent`.
+- `/account/quotes` — liste read-only des devis **visibles** du client connecté, avec icône de téléchargement PDF par ligne.
+- `/account/quotes/[id]` — détail avec métadonnées + lignes + boutons d'action si statut `sent` + bouton téléchargement PDF.
+- `GET /api/account/quotes/[id]/file` — stream PDF sécurisé depuis R2 (ownership-checked, stream-only).
 
 Chaque niveau applique des gardes séquentiels : session → existence → UUID valide → statut non-draft → ownership.
 Un devis brouillon ou appartenant à un autre client retourne un `404` identique — non-divulgation volontaire.
@@ -21,8 +22,10 @@ GET /account/quotes
 Session: cookie customer (requireCustomer)
 ```
 
-Affiche un tableau (`data-testid="quotes-table"`) avec colonnes Numéro, Statut, Dates.
+Affiche un tableau (`data-testid="quotes-table"`) avec colonnes Numéro, Statut, Dates, et une icône téléchargement par ligne si `pdfKey != null`.
 Si aucun devis visible : card `data-testid="quotes-empty"`.
+
+Icône download par ligne (`data-testid="quote-download-{id}"`) : lien `<a download>` vers `/api/account/quotes/{id}/file`. Affiché uniquement si `quote.pdfKey != null` — les devis sans PDF (jamais les drafts côté client) n'ont pas de lien cassé.
 
 ```
 GET /account/quotes/{id}
@@ -36,7 +39,9 @@ Affiche le bloc `data-testid="quote-detail"` avec :
 - Lignes de devis (`data-testid="quote-items-table"`)
 
 Si `quote.status === "sent"` : boutons **Accepter** (`data-testid="quote-accept-trigger"`) et **Refuser** (`data-testid="quote-decline-trigger"`) avec AlertDialog de confirmation.
-Si tout autre statut (`accepted`, `declined`, `expired`) : page read-only, aucun bouton.
+Si tout autre statut (`accepted`, `declined`, `expired`) : page read-only, aucun bouton d'action.
+
+Bouton **Télécharger mon devis** (`data-testid="quote-download-pdf"`) : affiché si `quote.pdfKey != null`, déclenche un download du PDF depuis `/api/account/quotes/{id}/file`.
 
 ### Actions customer (statut `sent` uniquement)
 
@@ -90,12 +95,32 @@ Un contact d'un autre client ne peut pas accepter/refuser un devis qui ne lui ap
 
 `listQuotesByClient(clientId)` filtre par `clientId` ET `status IN (CUSTOMER_VISIBLE_QUOTE_STATUSES)` — les brouillons et les devis d'autres clients sont structurellement absents du résultat.
 
+### Route PDF — `/api/account/quotes/[id]/file`
+
+`apps/web/app/api/account/quotes/[id]/file/route.ts` (`runtime = "nodejs"`) — gardes stricts dans l'ordre :
+
+```
+1. requireCustomer()              → session + { user, client }
+2. getQuoteById(id)               → null → 404
+3. quote.status === "draft"       → 404 (non-divulgation)
+4. quote.clientId !== client.id   → 404 (anti-IDOR)
+5. quote.pdfKey == null           → 404 (pas de régénération lazy côté client)
+6. streamPdfFromR2(pdfKey)        → Response 200 application/pdf inline
+   R2NotFoundError                → 404
+   Autre erreur                   → 500 + log
+```
+
+Réponse 200 : `Content-Type: application/pdf`, `Content-Disposition: inline; filename="devis-{number}.pdf"`, `Cache-Control: no-store`.
+
+Aucune régénération paresseuse côté client — les devis émis possèdent déjà leur `pdfKey`. Ce garde évite d'importer `generateAndStoreQuotePdf` dans la surface client.
+
 ### Routes concernées
 
 | Route | Guard principal | Portée |
 |---|---|---|
 | `GET /account/quotes` | `requireCustomer` | devis visibles du client connecté |
 | `GET /account/quotes/[id]` | `requireCustomer` | devis non-draft, ownership validé |
+| `GET /api/account/quotes/[id]/file` | `requireCustomer` + ownership + pdfKey | stream PDF R2 (stream-only) |
 | `POST acceptCustomerQuoteAction` | `withCustomer` + ownership | transition sent→accepted |
 | `POST declineCustomerQuoteAction` | `withCustomer` + ownership | transition sent→declined |
 
@@ -103,6 +128,7 @@ Un contact d'un autre client ne peut pas accepter/refuser un devis qui ne lui ap
 
 - `apps/web/lib/auth.ts` — `requireCustomer()`, `assertClientOwnership()`, `assertClientOwnershipOrThrow()`
 - `apps/web/lib/action-result.ts` — `withCustomer()`, `ActionResult<T>`
+- `apps/web/lib/r2.ts` — `streamPdfFromR2()`, `R2NotFoundError`
 - `packages/services/src/quote.service.ts` — `getQuoteById`, `listQuotesByClient`, `transitionQuoteStatus`, `countPendingQuotesForClient`, `InvalidQuoteTransitionError`, `UUID_RE`
 - `packages/services/src/quote.shared.ts` — `CUSTOMER_VISIBLE_QUOTE_STATUSES`, `CustomerVisibleQuoteStatus`
 - `packages/db/src/seed.ts` — devis seed : Q-2026-001 (draft acme), Q-2026-004 (declined acme), Q-2026-005 (expired bob)
@@ -111,5 +137,6 @@ Un contact d'un autre client ne peut pas accepter/refuser un devis qui ne lui ap
 
 - `apps/web/app/actions/__tests__/customer-quotes.test.ts` — 7 tests server actions (happy path accept/decline, RBAC cross-client, transition invalide, redirect)
 - `apps/web/app/(customer)/account/quotes/[id]/__tests__/QuoteCustomerActions.test.tsx` — 5 tests composant UI (visibilité boutons, masquage hors sent, AlertDialog, isPending)
+- `apps/web/app/api/account/quotes/[id]/file/__tests__/route.test.ts` — 8 tests route PDF (404 draft, 404 cross-client, 404 pdfKey null, 200 stream, R2NotFoundError, 500 R2 error, unauthenticated)
 - `apps/web/tests/e2e/customer-quotes.spec.ts` — tests e2e Playwright (isolation cross-client, guard draft, liste)
 - `packages/services/src/__tests__/quote.service.test.ts` — tests unitaires `getQuoteById` incluant guard UUID, `countPendingQuotesForClient` (sent only + zero)
