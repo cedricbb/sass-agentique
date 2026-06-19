@@ -105,7 +105,7 @@ const buffer = await renderToPdfBuffer(element)
 | Composant | Props | Rôle |
 |-----------|-------|------|
 | `PageFrame` | `children` | Document A4 avec marges 40pt, police Helvetica |
-| `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — adresse formatée, email, tél, SIRET/TVA conditionnels |
+| `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — logo en tête si `logoUrl` défini, adresse formatée, email, tél, SIRET/TVA conditionnels |
 | `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT |
 | `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC |
 | `LegalFooter` | `text?` | Mentions légales (placeholder jusqu'à R10-1f) |
@@ -168,7 +168,8 @@ getInvoiceById → early-return si pdfKey exist
      ↓
 Promise.all(listInvoiceItems, getClientById, getBusinessProfile)
      ↓
-toEmitterInput(profile) → resolveEmitter → BillFrom
+resolveEmitterLogoDataUri(profile) → logoUrl?  ← best-effort (undefined si absent/erreur)
+toEmitterInput(profile) → resolveEmitter({ ...input, logoUrl }) → BillFrom
 resolveBillingParty(client) → BillTo
      ↓
 toInvoicePdfModel({ invoice, items, billFrom, billTo })
@@ -184,7 +185,11 @@ setInvoicePdfKey(invoiceId, key)   ← rollback deletePdfFromR2 si rejet
 return { pdfKey }
 ```
 
-`toEmitterInput` est un helper local pur qui mappe `BusinessProfile` → `EmitterInput` (name, legalForm, siret, tvaIntra, address, email, phone). Le champ `logoUrl` est **différé** (prévu en pièce séparée).
+`toEmitterInput` est un helper local pur qui mappe `BusinessProfile` → `EmitterInput` (name, legalForm, siret, tvaIntra, address, email, phone). Le champ `logoUrl` est résolu de façon asynchrone par l'orchestrateur via `resolveEmitterLogoDataUri` (voir ci-dessous) et injecté dans le `BillFrom` avant le rendu.
+
+**`resolveEmitterLogoDataUri(profile: BusinessProfile): Promise<string | undefined>`** est exporté depuis `generate-invoice-pdf.ts` et réutilisé par `generate-quote-pdf.ts`. Si `profile.logoKey` est null, retourne `undefined`. Sinon, appelle `fetchImageBytesFromR2(logoKey)` et construit un data URI `data:<contentType>;base64,<b64>`. En cas d'erreur R2 (clé absente, timeout, corruption), log structuré et retourne `undefined` — la génération PDF continue sans logo (best-effort). Un logo manquant ne lève jamais d'exception.
+
+**Immutabilité** : les PDF sont figés à la génération (idempotence via `pdfKey`). Un logo ajouté au profil après l'émission d'une facture ou d'un devis n'apparaît pas rétroactivement sur les documents déjà stockés — seulement sur les nouvelles émissions. Comportement légal correct.
 
 La map `STATUS_LABELS` résout le statut enum en libellé FR (`draft → "Brouillon"`, etc.) avant de le passer à `toInvoicePdfModel`, qui est agnostique des traductions.
 
@@ -197,7 +202,8 @@ getQuoteById → early-return si pdfKey exist
      ↓
 listQuoteItems + getClientById + getBusinessProfile
      ↓
-toEmitterInput(profile) → resolveEmitter → BillFrom
+resolveEmitterLogoDataUri(profile) → logoUrl?  ← best-effort (undefined si absent/erreur)
+toEmitterInput(profile) → resolveEmitter({ ...input, logoUrl }) → BillFrom
 resolveBillingParty(client) → BillTo
      ↓
 resolveQuoteStatusLabel(quote.status) → libellé FR
@@ -250,7 +256,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | R10-1c-c `QuotePdf` | ✅ livré | Composant devis + `renderQuotePdf` + mapper pur |
 | **R10-1e `generate-invoice-pdf`** | ✅ livré | Orchestrateur `generateAndStoreInvoicePdf` + `setInvoicePdfKey` |
 | **R10-1g-a `generate-quote-pdf`** | ✅ livré | Orchestrateur `generateAndStoreQuotePdf` + `setQuotePdfKey` (trigger-agnostique) |
-| R10-1f `business_profile` | 🔜 | Émetteur réel + logo dans `LegalFooter` / `PartyBlock` |
+| R10-1e-e `pdf-logo-embedding` | ✅ livré | Logo émetteur via `resolveEmitterLogoDataUri` (data URI best-effort) dans `PartyBlock` |
 | R10-1f-b `emit-invoice` | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionInvoiceStatusAction`) |
 | **R10-1g-a `invoice-pdf-route`** | ✅ livré | Route Handler `GET /api/invoices/[id]/file` — stream R2 inline + régénération paresseuse si `pdfKey` null et `issuedAt` set + lien réel dans `InvoiceRow` |
 | **R10-1g-b `emit-quote`** | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionQuoteStatusAction`) |
@@ -258,10 +264,10 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 
 ## Liens vers tests
 
-- `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 7 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards, toEmitterInput sans logoUrl
-- `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 6 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards (isPdfMagicBytes/assertPdfSize avant upload), toEmitterInput sans logoUrl
+- `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 10 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
+- `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 9 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
-- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 5 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal), ItemsTable (items + tableau vide), TotalsBlock
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 7 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
