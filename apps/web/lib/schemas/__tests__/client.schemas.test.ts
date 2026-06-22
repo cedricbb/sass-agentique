@@ -53,6 +53,32 @@ describe("createClientSchema", () => {
   });
 });
 
+describe("company identity fields", () => {
+  it("accepts_company_identity_fields", () => {
+    const result = createClientSchema.parse({
+      name: "X",
+      slug: "x",
+      type: "company",
+      siret: "12345678900010",
+      tvaIntra: "FR12123456789",
+      legalForm: "SASU",
+    });
+    expect(result).toMatchObject({ siret: "12345678900010", tvaIntra: "FR12123456789", legalForm: "SASU" });
+  });
+
+  it("company_identity_fields_optional", () => {
+    const result = createClientSchema.parse({ name: "X", slug: "x", type: "company" });
+    expect(result.siret).toBeUndefined();
+    expect(result.tvaIntra).toBeUndefined();
+    expect(result.legalForm).toBeUndefined();
+  });
+
+  it("accepts_empty_siret_string", () => {
+    const result = createClientSchema.parse({ name: "X", slug: "x", type: "company", siret: "" });
+    expect(result.siret).toBe("");
+  });
+});
+
 describe("updateClientSchema", () => {
   it("accepts partial input", () => {
     const input = { name: "Updated" };
