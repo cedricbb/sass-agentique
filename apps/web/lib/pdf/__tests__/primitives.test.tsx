@@ -11,6 +11,7 @@ import {
   PDF_ON_DARK,
   PDF_ACCENT,
   PDF_ON_ACCENT,
+  PDF_ACCENT_SOFT,
   type PdfLineItem,
 } from "../primitives"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
@@ -135,6 +136,11 @@ describe("PdfHeader palette", () => {
     expect(hexPattern.test(PDF_ON_DARK)).toBe(true)
     expect(hexPattern.test(PDF_ACCENT)).toBe(true)
     expect(hexPattern.test(PDF_ON_ACCENT)).toBe(true)
+  })
+
+  it("pdf_accent_soft_is_valid_hex", () => {
+    const hexPattern = /^#[0-9A-Fa-f]{6}$/
+    expect(hexPattern.test(PDF_ACCENT_SOFT)).toBe(true)
   })
 })
 

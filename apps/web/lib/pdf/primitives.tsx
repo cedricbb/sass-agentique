@@ -7,6 +7,7 @@ export const PDF_DARK = "#2A2A2A"
 export const PDF_ON_DARK = "#FFFFFF"
 export const PDF_ACCENT = "#D4941A"
 export const PDF_ON_ACCENT = "#000000"
+export const PDF_ACCENT_SOFT = "#FDF3E1"
 
 export type PdfLineItem = {
   description: string
@@ -49,14 +50,16 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    paddingVertical: 4,
+    borderBottomColor: "#ECECEC",
+    paddingVertical: 6,
+    paddingHorizontal: 6,
   },
   tableHeader: {
     flexDirection: "row",
-    borderBottomWidth: 2,
-    borderBottomColor: "#333333",
+    backgroundColor: PDF_ACCENT_SOFT,
+    borderRadius: 4,
     paddingVertical: 4,
+    paddingHorizontal: 6,
     fontFamily: "Helvetica-Bold",
   },
   colDescription: {
@@ -76,7 +79,12 @@ const styles = StyleSheet.create({
   },
   totalsContainer: {
     marginTop: 8,
-    alignItems: "flex-end",
+    alignSelf: "flex-end",
+    width: 220,
+    borderWidth: 1,
+    borderColor: "#CCCCCC",
+    borderRadius: 6,
+    padding: 8,
   },
   totalsRow: {
     flexDirection: "row",
@@ -88,11 +96,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     width: 200,
     justifyContent: "space-between",
-    paddingVertical: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     fontFamily: "Helvetica-Bold",
-    borderTopWidth: 1,
-    borderTopColor: "#333333",
-    marginTop: 2,
+    backgroundColor: PDF_ACCENT_SOFT,
+    color: PDF_ON_ACCENT,
+    borderRadius: 3,
   },
   logo: {
     height: 50,
