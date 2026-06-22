@@ -3,6 +3,7 @@ import {
   resolveBillingParty,
   resolveEmitter,
   formatPostalAddress,
+  formatPostalAddressOneLine,
 } from "../billing-party.shared"
 
 describe("resolveBillingParty", () => {
@@ -78,6 +79,18 @@ describe("resolveEmitter", () => {
     expect(result.logoUrl).toBe("https://cdn.example.com/logo.png")
   })
 
+  it("resolves_emitter_maps_iban_and_bic", () => {
+    const input = {
+      name: "Test SAS",
+      address: {},
+      iban: "FR7630006000011234567890189",
+      bic: "BNPAFRPP",
+    }
+    const result = resolveEmitter(input)
+    expect(result.iban).toBe("FR7630006000011234567890189")
+    expect(result.bic).toBe("BNPAFRPP")
+  })
+
   it("resolves_emitter_with_optional_fields_missing", () => {
     const input = {
       name: "Cédric Dupont",
@@ -89,6 +102,17 @@ describe("resolveEmitter", () => {
     expect(result.siret).toBeUndefined()
     expect(result.tvaIntra).toBeUndefined()
     expect(result.logoUrl).toBeUndefined()
+  })
+})
+
+describe("formatPostalAddressOneLine", () => {
+  it("format_postal_address_one_line_returns_empty_for_empty_address", () => {
+    expect(formatPostalAddressOneLine({})).toBe("")
+  })
+
+  it("format_postal_address_one_line_formats_complete_address", () => {
+    const addr = { line1: "12 rue X", zip: "75001", city: "Paris", country: "France" }
+    expect(formatPostalAddressOneLine(addr)).toBe("12 rue X, 75001 Paris, France")
   })
 })
 

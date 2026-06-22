@@ -16,6 +16,8 @@ export type BillFrom = {
   email?: string
   phone?: string
   logoUrl?: string
+  iban?: string
+  bic?: string
 }
 
 export type BillTo = {
@@ -45,6 +47,8 @@ export type EmitterInput = {
   email?: string
   phone?: string
   logoUrl?: string
+  iban?: string
+  bic?: string
 }
 
 export function parseAddressJsonb(raw: unknown): PostalAddress {
@@ -84,7 +88,19 @@ export function resolveEmitter(input: EmitterInput): BillFrom {
     email: input.email,
     phone: input.phone,
     logoUrl: input.logoUrl,
+    iban: input.iban,
+    bic: input.bic,
   }
+}
+
+export function formatPostalAddressOneLine(addr: PostalAddress): string {
+  const parts: string[] = []
+  if (addr.line1) parts.push(addr.line1)
+  if (addr.line2) parts.push(addr.line2)
+  const zipCity = [addr.zip, addr.city].filter(Boolean).join(" ")
+  if (zipCity) parts.push(zipCity)
+  if (addr.country) parts.push(addr.country)
+  return parts.join(", ")
 }
 
 export function formatPostalAddress(addr: PostalAddress): string[] {
