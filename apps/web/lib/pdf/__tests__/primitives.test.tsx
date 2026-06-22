@@ -6,6 +6,11 @@ import {
   PartyBlock,
   ItemsTable,
   TotalsBlock,
+  PdfHeader,
+  PDF_DARK,
+  PDF_ON_DARK,
+  PDF_ACCENT,
+  PDF_ON_ACCENT,
   type PdfLineItem,
 } from "../primitives"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
@@ -120,6 +125,51 @@ describe("ItemsTable", () => {
       React.createElement(ItemsTable, { items: [] }),
     )
     await expect(renderToBuffer(element as React.ReactElement<DocumentProps>)).resolves.toBeDefined()
+  })
+})
+
+describe("PdfHeader palette", () => {
+  it("pdf_palette_constants_are_hex_strings", () => {
+    const hexPattern = /^#[0-9A-Fa-f]{6}$/
+    expect(hexPattern.test(PDF_DARK)).toBe(true)
+    expect(hexPattern.test(PDF_ON_DARK)).toBe(true)
+    expect(hexPattern.test(PDF_ACCENT)).toBe(true)
+    expect(hexPattern.test(PDF_ON_ACCENT)).toBe(true)
+  })
+})
+
+describe("PdfHeader rendering", () => {
+  it("pdf_header_renders_valid_pdf_with_logo", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PdfHeader, {
+        docType: "FACTURE",
+        number: "INV-2024-001",
+        logoUrl: billFromWithLogo.logoUrl,
+        emitterName: "Acme SAS",
+      }),
+    )
+    const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+    expect(buffer.length).toBeGreaterThan(0)
+    expect(buffer.slice(0, 4).toString()).toBe("%PDF")
+  })
+
+  it("pdf_header_renders_without_logo_when_absent", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PdfHeader, {
+        docType: "DEVIS",
+        number: "DEV-2024-001",
+        emitterName: "Acme SAS",
+      }),
+    )
+    const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+    expect(buffer.length).toBeGreaterThan(0)
+    expect(buffer.slice(0, 4).toString()).toBe("%PDF")
+    const text = await extractPdfText(element)
+    expect(normalize(text)).not.toContain("undefined")
   })
 })
 

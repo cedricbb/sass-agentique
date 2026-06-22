@@ -7,16 +7,12 @@ import {
   ItemsTable,
   TotalsBlock,
   LegalFooter,
+  PdfHeader,
 } from "./primitives"
 
 const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
-  },
-  quoteNumber: {
-    fontSize: 16,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 4,
   },
   headerMeta: {
     fontSize: 10,
@@ -48,8 +44,8 @@ export function QuotePdf(props: { model: QuotePdfModel }): React.ReactElement {
   const { model } = props
   return (
     <PageFrame>
+      <PdfHeader docType="DEVIS" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
       <View style={styles.header}>
-        <Text style={styles.quoteNumber}>Devis {model.number}</Text>
         <Text style={styles.headerMeta}>Statut : {model.status}</Text>
         <Text style={styles.headerMeta}>Date d&apos;émission : {formatDate(model.issuedAt)}</Text>
         <Text style={styles.headerMeta}>Date d&apos;expiration : {formatDate(model.expiresAt)}</Text>

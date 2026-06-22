@@ -1,7 +1,12 @@
 import React from "react"
-import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer"
+import { Document, Page, View, Text, Image, StyleSheet, Svg, Polygon } from "@react-pdf/renderer"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
 import { formatPostalAddress } from "@saas/services/billing-party.shared"
+
+export const PDF_DARK = "#2A2A2A"
+export const PDF_ON_DARK = "#FFFFFF"
+export const PDF_ACCENT = "#D4941A"
+export const PDF_ON_ACCENT = "#000000"
 
 export type PdfLineItem = {
   description: string
@@ -105,6 +110,91 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 })
+
+const headerStyles = StyleSheet.create({
+  banner: {
+    position: "relative",
+    height: 95,
+    marginBottom: 8,
+  },
+  svgWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+  },
+  leftZone: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    height: 95,
+    width: 210,
+    justifyContent: "center",
+    paddingLeft: 16,
+  },
+  logo: {
+    height: 36,
+    maxWidth: 180,
+    objectFit: "contain",
+    marginBottom: 4,
+  },
+  emitterName: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 11,
+    color: PDF_ON_DARK,
+    maxWidth: 200,
+  },
+  rightZone: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    height: 95,
+    width: 300,
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingRight: 20,
+  },
+  docType: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 22,
+    color: PDF_ON_ACCENT,
+  },
+  docNumber: {
+    fontSize: 11,
+    color: PDF_ON_ACCENT,
+    maxWidth: 280,
+  },
+})
+
+export function PdfHeader(props: {
+  docType: "FACTURE" | "DEVIS"
+  number: string
+  logoUrl?: string
+  emitterName: string
+  accent?: string
+}): React.ReactElement {
+  const accentColor = props.accent ?? PDF_ACCENT
+  return (
+    <View style={headerStyles.banner}>
+      <View style={headerStyles.svgWrapper}>
+        <Svg viewBox="0 0 595.28 95" width={595.28} height={95}>
+          <Polygon points="0,0 249,0 226,95 0,95" fill={PDF_DARK} />
+          <Polygon points="249,0 595.28,0 595.28,95 226,95" fill={accentColor} />
+        </Svg>
+      </View>
+      <View style={headerStyles.leftZone}>
+        {props.logoUrl ? (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <Image src={props.logoUrl} style={headerStyles.logo} />
+        ) : null}
+        <Text style={headerStyles.emitterName}>{props.emitterName}</Text>
+      </View>
+      <View style={headerStyles.rightZone}>
+        <Text style={headerStyles.docType}>{props.docType}</Text>
+        <Text style={headerStyles.docNumber}>{props.number}</Text>
+      </View>
+    </View>
+  )
+}
 
 export function PageFrame(props: { children: React.ReactNode }): React.ReactElement {
   return (

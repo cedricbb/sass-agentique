@@ -7,16 +7,12 @@ import {
   ItemsTable,
   TotalsBlock,
   LegalFooter,
+  PdfHeader,
 } from "./primitives"
 
 const styles = StyleSheet.create({
   header: {
     marginBottom: 24,
-  },
-  invoiceNumber: {
-    fontSize: 16,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 4,
   },
   headerMeta: {
     fontSize: 10,
@@ -48,8 +44,8 @@ export function InvoicePdf(props: { model: InvoicePdfModel }): React.ReactElemen
   const { model } = props
   return (
     <PageFrame>
+      <PdfHeader docType="FACTURE" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
       <View style={styles.header}>
-        <Text style={styles.invoiceNumber}>Facture {model.number}</Text>
         <Text style={styles.headerMeta}>Statut : {model.status}</Text>
         <Text style={styles.headerMeta}>Date d&apos;émission : {formatDate(model.issuedAt)}</Text>
         <Text style={styles.headerMeta}>Date d&apos;échéance : {formatDate(model.dueAt)}</Text>
