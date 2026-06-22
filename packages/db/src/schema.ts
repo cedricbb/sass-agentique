@@ -13,6 +13,15 @@ import {
   integer,
 } from "drizzle-orm/pg-core";
 
+export type PostalAddress = {
+  line1?: string
+  line2?: string
+  city?: string
+  state?: string
+  zip?: string
+  country?: string
+}
+
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["admin", "client"]);
 export const clientTypeEnum = pgEnum("client_type", ["company", "individual"]);
@@ -118,7 +127,7 @@ export const clients = pgTable("clients", {
   type: clientTypeEnum("type").notNull().default("company"),
   email: text("email"),
   phone: text("phone"),
-  billingAddress: jsonb("billing_address"),
+  billingAddress: jsonb("billing_address").$type<PostalAddress>(),
   notes: text("notes"),
   archivedAt: timestamp("archived_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
