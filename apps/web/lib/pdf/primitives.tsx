@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     fontSize: 10,
-    padding: 40,
+    paddingBottom: 40,
   },
   partyBlockContainer: {
     marginBottom: 8,
@@ -111,6 +111,12 @@ const styles = StyleSheet.create({
   },
 })
 
+const sharedStyles = StyleSheet.create({
+  contentPadding: { paddingHorizontal: 40 },
+})
+
+export const contentPadding = sharedStyles.contentPadding
+
 const headerStyles = StyleSheet.create({
   banner: {
     position: "relative",
@@ -128,20 +134,21 @@ const headerStyles = StyleSheet.create({
     left: 0,
     height: 95,
     width: 210,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingLeft: 16,
   },
   logo: {
-    height: 36,
-    maxWidth: 180,
+    height: 38,
+    maxWidth: 120,
     objectFit: "contain",
-    marginBottom: 4,
   },
   emitterName: {
     fontFamily: "Helvetica-Bold",
     fontSize: 11,
     color: PDF_ON_DARK,
-    maxWidth: 200,
+    maxWidth: 160,
   },
   rightZone: {
     position: "absolute",
@@ -158,16 +165,10 @@ const headerStyles = StyleSheet.create({
     fontSize: 22,
     color: PDF_ON_ACCENT,
   },
-  docNumber: {
-    fontSize: 11,
-    color: PDF_ON_ACCENT,
-    maxWidth: 280,
-  },
 })
 
 export function PdfHeader(props: {
   docType: "FACTURE" | "DEVIS"
-  number: string
   logoUrl?: string
   emitterName: string
   accent?: string
@@ -190,7 +191,6 @@ export function PdfHeader(props: {
       </View>
       <View style={headerStyles.rightZone}>
         <Text style={headerStyles.docType}>{props.docType}</Text>
-        <Text style={headerStyles.docNumber}>{props.number}</Text>
       </View>
     </View>
   )

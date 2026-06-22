@@ -145,7 +145,6 @@ describe("PdfHeader rendering", () => {
       null,
       React.createElement(PdfHeader, {
         docType: "FACTURE",
-        number: "INV-2024-001",
         logoUrl: billFromWithLogo.logoUrl,
         emitterName: "Acme SAS",
       }),
@@ -161,7 +160,6 @@ describe("PdfHeader rendering", () => {
       null,
       React.createElement(PdfHeader, {
         docType: "DEVIS",
-        number: "DEV-2024-001",
         emitterName: "Acme SAS",
       }),
     )
@@ -170,6 +168,38 @@ describe("PdfHeader rendering", () => {
     expect(buffer.slice(0, 4).toString()).toBe("%PDF")
     const text = await extractPdfText(element)
     expect(normalize(text)).not.toContain("undefined")
+  })
+
+  it("pdf_header_renders_without_number_prop", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PdfHeader, {
+        docType: "FACTURE",
+        emitterName: "Test Corp",
+      }),
+    )
+    const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+    expect(buffer.slice(0, 5).toString()).toBe("%PDF-")
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "FACTURE")).toBe(true)
+  })
+
+  it("pdf_header_renders_with_logo_inline", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PdfHeader, {
+        docType: "DEVIS",
+        logoUrl: billFromWithLogo.logoUrl,
+        emitterName: "Acme SAS",
+      }),
+    )
+    const buffer = await renderToBuffer(element as React.ReactElement<DocumentProps>)
+    expect(buffer.slice(0, 5).toString()).toBe("%PDF-")
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "Acme SAS")).toBe(true)
+    expect(containsNormalized(text, "DEVIS")).toBe(true)
   })
 })
 
