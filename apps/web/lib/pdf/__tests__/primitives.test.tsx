@@ -7,6 +7,7 @@ import {
   ItemsTable,
   TotalsBlock,
   PdfHeader,
+  PdfFooter,
   PDF_DARK,
   PDF_ON_DARK,
   PDF_ACCENT,
@@ -32,6 +33,12 @@ const fullBillFrom: BillFrom = {
   phone: "+33 1 23 45 67 89",
   siret: "123 456 789 00012",
   tvaIntra: "FR12345678900",
+}
+
+const billFromWithBank: BillFrom = {
+  ...fullBillFrom,
+  iban: "FR7630006000011234567890189",
+  bic: "BNPAFRPP",
 }
 
 const minimalBillTo: BillTo = {
@@ -224,5 +231,79 @@ describe("TotalsBlock", () => {
     expect(normalize(text)).toContain("100.00")
     expect(normalize(text)).toContain("20.00")
     expect(normalize(text)).toContain("120.00")
+  })
+})
+
+describe("PdfFooter", () => {
+  it("pdf_footer_renders_siret_and_removes_placeholder", async () => {
+    const element = React.createElement(PageFrame, null, React.createElement(PdfFooter, { billFrom: fullBillFrom }))
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "SIRET")).toBe(true)
+    expect(containsNormalized(text, "123 456 789 00012")).toBe(true)
+    expect(normalize(text)).not.toContain("completer")
+  })
+
+  it("pdf_footer_renders_all_emitter_fields", async () => {
+    const element = React.createElement(PageFrame, null, React.createElement(PdfFooter, { billFrom: fullBillFrom }))
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "contact@acme.fr")).toBe(true)
+    expect(containsNormalized(text, "+33 1 23 45 67 89")).toBe(true)
+    expect(containsNormalized(text, "FR12345678900")).toBe(true)
+    expect(containsNormalized(text, "SAS")).toBe(true)
+  })
+
+  it("pdf_footer_hides_iban_bic_when_null", async () => {
+    const billFromNoBank: BillFrom = { ...fullBillFrom, iban: undefined, bic: undefined }
+    const element = React.createElement(PageFrame, null, React.createElement(PdfFooter, { billFrom: billFromNoBank }))
+    const text = await extractPdfText(element)
+    const normalized = normalize(text)
+    expect(normalized).not.toContain("IBAN")
+    expect(normalized).not.toContain("BIC")
+    expect(normalized).not.toContain("null")
+    expect(normalized).not.toContain("undefined")
+  })
+
+  it("pdf_footer_renders_iban_bic_when_present", async () => {
+    const element = React.createElement(PageFrame, null, React.createElement(PdfFooter, { billFrom: billFromWithBank }))
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "FR7630006000011234567890189")).toBe(true)
+    expect(containsNormalized(text, "BNPAFRPP")).toBe(true)
+  })
+
+  it("pdf_footer_renders_legal_mentions", async () => {
+    const element = React.createElement(PageFrame, null, React.createElement(PdfFooter, { billFrom: fullBillFrom }))
+    const text = await extractPdfText(element)
+    expect(normalize(text)).toContain("40")
+    expect(containsNormalized(text, "CGV")).toBe(true)
+  })
+
+  it("pdf_footer_renders_payment_delay_from_dates", async () => {
+    const issuedAt = new Date("2024-01-01")
+    const dueAt = new Date("2024-01-31")
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PdfFooter, { billFrom: fullBillFrom, dueAt, issuedAt }),
+    )
+    const text = await extractPdfText(element)
+    expect(normalize(text)).toContain("30")
+  })
+
+  it("pdf_footer_renders_payment_a_reception_when_no_due_date", async () => {
+    const element = React.createElement(
+      PageFrame,
+      null,
+      React.createElement(PdfFooter, { billFrom: fullBillFrom, dueAt: null }),
+    )
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "reception")).toBe(true)
+  })
+
+  it("pdf_footer_renders_in_quote_context", async () => {
+    const element = React.createElement(PageFrame, null, React.createElement(PdfFooter, { billFrom: fullBillFrom }))
+    const text = await extractPdfText(element)
+    expect(containsNormalized(text, "Acme SAS")).toBe(true)
+    expect(containsNormalized(text, "123 456 789 00012")).toBe(true)
+    expect(containsNormalized(text, "CGV")).toBe(true)
   })
 })

@@ -1,7 +1,7 @@
 import React from "react"
 import { Document, Page, View, Text, Image, StyleSheet, Svg, Polygon } from "@react-pdf/renderer"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
-import { formatPostalAddress } from "@saas/services/billing-party.shared"
+import { formatPostalAddress, formatPostalAddressOneLine } from "@saas/services/billing-party.shared"
 
 export const PDF_DARK = "#2A2A2A"
 export const PDF_ON_DARK = "#FFFFFF"
@@ -108,15 +108,6 @@ const styles = StyleSheet.create({
     width: 120,
     objectFit: "contain",
     marginBottom: 6,
-  },
-  legalFooter: {
-    position: "absolute",
-    bottom: 30,
-    left: 40,
-    right: 40,
-    fontSize: 7,
-    color: "#888888",
-    textAlign: "center",
   },
 })
 
@@ -283,7 +274,68 @@ export function TotalsBlock(props: {
   )
 }
 
-export function LegalFooter(props: { text?: string }): React.ReactElement {
-  const content = props.text ?? "Mentions légales — à compléter (R10-1f)"
-  return <Text style={styles.legalFooter}>{content}</Text>
+const footerStyles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    bottom: 10,
+    left: 40,
+    right: 40,
+  },
+  rule: {
+    borderTopWidth: 0.5,
+    borderTopColor: "#CCCCCC",
+    marginBottom: 4,
+  },
+  line: {
+    fontSize: 7,
+    color: "#5F5E5A",
+    textAlign: "center",
+    lineHeight: 1.4,
+  },
+})
+
+export function PdfFooter(props: {
+  billFrom: BillFrom
+  dueAt?: Date | null
+  issuedAt?: Date | null
+}): React.ReactElement {
+  const { billFrom, dueAt, issuedAt } = props
+
+  const addressOneLine = formatPostalAddressOneLine(billFrom.address)
+
+  const line1Parts = [billFrom.name]
+  if (addressOneLine) line1Parts.push(addressOneLine)
+  if (billFrom.email) line1Parts.push(billFrom.email)
+  if (billFrom.phone) line1Parts.push(billFrom.phone)
+  const line1 = line1Parts.join(" · ")
+
+  const line2Parts: string[] = []
+  if (billFrom.siret) line2Parts.push(`SIRET ${billFrom.siret}`)
+  if (billFrom.tvaIntra) line2Parts.push(`TVA ${billFrom.tvaIntra}`)
+  if (billFrom.legalForm) line2Parts.push(billFrom.legalForm)
+  const line2 = line2Parts.length > 0 ? line2Parts.join(" · ") : null
+
+  const line3Parts: string[] = []
+  if (billFrom.iban) line3Parts.push(`IBAN ${billFrom.iban}`)
+  if (billFrom.bic) line3Parts.push(`BIC ${billFrom.bic}`)
+
+  const paymentDelay =
+    dueAt && issuedAt
+      ? `Paiement a ${Math.round((dueAt.getTime() - issuedAt.getTime()) / 86_400_000)} jours`
+      : "Paiement a reception"
+
+  line3Parts.push(paymentDelay)
+  line3Parts.push("Penalites de retard : 3 fois le taux d'interet legal")
+  line3Parts.push("Indemnite forfaitaire pour frais de recouvrement : 40 euros")
+  line3Parts.push("CGV sur demande")
+  const line3 = line3Parts.join(" · ")
+
+  return (
+    <View fixed style={footerStyles.container}>
+      <View style={footerStyles.rule} />
+      <Text style={footerStyles.line}>{line1}</Text>
+      {line2 ? <Text style={footerStyles.line}>{line2}</Text> : null}
+      <Text style={footerStyles.line}>{line3}</Text>
+    </View>
+  )
 }
