@@ -48,7 +48,14 @@ export function ClientForm({ initialData }: ClientFormProps) {
       type: initialData?.type ?? "company",
       email: initialData?.email ?? "",
       phone: initialData?.phone ?? "",
-      address: typeof initialData?.billingAddress === "string" ? initialData.billingAddress : "",
+      billingAddress: {
+        line1: initialData?.billingAddress?.line1 ?? "",
+        line2: initialData?.billingAddress?.line2 ?? "",
+        city: initialData?.billingAddress?.city ?? "",
+        state: initialData?.billingAddress?.state ?? "",
+        zip: initialData?.billingAddress?.zip ?? "",
+        country: initialData?.billingAddress?.country ?? "",
+      },
       notes: initialData?.notes ?? "",
     },
   });
@@ -147,12 +154,82 @@ export function ClientForm({ initialData }: ClientFormProps) {
 
         <FormField
           control={form.control}
-          name="address"
+          name="billingAddress.line1"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Adresse de facturation</FormLabel>
+              <FormLabel>Adresse ligne 1</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="billingAddress.line2"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Adresse ligne 2</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="billingAddress.city"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ville</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="billingAddress.state"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>État / Région</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="billingAddress.zip"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Code postal</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="billingAddress.country"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pays</FormLabel>
+              <FormControl>
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
