@@ -1,6 +1,6 @@
 import { db, businessProfiles, type BusinessProfile } from "@saas/db";
 import { eq } from "drizzle-orm";
-import { type PostalAddress } from "./billing-party.shared";
+import type { PostalAddress } from "@saas/db";
 
 export type UpsertBusinessProfileInput = {
   name: string

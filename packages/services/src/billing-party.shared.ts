@@ -1,11 +1,5 @@
-export type PostalAddress = {
-  line1?: string
-  line2?: string
-  city?: string
-  state?: string
-  zip?: string
-  country?: string
-}
+import type { PostalAddress } from "@saas/db"
+export type { PostalAddress }
 
 export type BillFrom = {
   name: string
