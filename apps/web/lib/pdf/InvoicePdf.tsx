@@ -6,7 +6,7 @@ import {
   PageFrame,
   ItemsTable,
   TotalsBlock,
-  LegalFooter,
+  PdfFooter,
   PdfHeader,
   contentPadding,
   PDF_ACCENT,
@@ -111,8 +111,8 @@ export function InvoicePdf(props: { model: InvoicePdfModel }): React.ReactElemen
           totalTtcCents={model.totalTtcCents}
         />
         {model.notes ? <Text style={styles.notes}>{model.notes}</Text> : null}
-        <LegalFooter />
       </View>
+      <PdfFooter billFrom={model.billFrom} dueAt={model.dueAt} issuedAt={model.issuedAt} />
     </PageFrame>
   )
 }

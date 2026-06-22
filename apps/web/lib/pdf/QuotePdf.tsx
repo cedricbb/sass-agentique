@@ -6,7 +6,7 @@ import {
   PageFrame,
   ItemsTable,
   TotalsBlock,
-  LegalFooter,
+  PdfFooter,
   PdfHeader,
   contentPadding,
   PDF_ACCENT,
@@ -111,8 +111,8 @@ export function QuotePdf(props: { model: QuotePdfModel }): React.ReactElement {
           totalTtcCents={model.totalTtcCents}
         />
         {model.notes ? <Text style={styles.notes}>{model.notes}</Text> : null}
-        <LegalFooter />
       </View>
+      <PdfFooter billFrom={model.billFrom} />
     </PageFrame>
   )
 }
