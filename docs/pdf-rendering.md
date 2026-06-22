@@ -104,12 +104,24 @@ const buffer = await renderToPdfBuffer(element)
 
 | Composant | Props | Rôle |
 |-----------|-------|------|
-| `PdfHeader` | `docType`, `number`, `emitterName`, `logoUrl?`, `accent?` | Bandeau diagonal en tête de document — polygones SVG sombre/accent + logo émetteur à gauche + libellé et numéro à droite |
-| `PageFrame` | `children` | Document A4 avec marges 40pt, police Helvetica |
+| `PdfHeader` | `docType`, `emitterName`, `logoUrl?`, `accent?` | Bandeau diagonal full-bleed en tête de document — polygones SVG sombre/accent + logo + nom émetteur inline à gauche + libellé docType à droite (sans numéro) |
+| `PageFrame` | `children` | Document A4 sans padding global (padding horizontal délégué au contenu via `contentPadding`), police Helvetica |
 | `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — logo en tête si `logoUrl` défini, adresse formatée, email, tél, SIRET/TVA conditionnels |
 | `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT |
 | `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC |
 | `LegalFooter` | `text?` | Mentions légales (placeholder jusqu'à R10-1f) |
+
+### Export `contentPadding`
+
+`primitives.tsx` exporte également `contentPadding = { paddingHorizontal: 40 }` — à appliquer en `style` sur un `<View>` wrappant le contenu sous le bandeau (`PdfHeader` lui-même est full-bleed sans padding).
+
+```tsx
+import { contentPadding } from "@/lib/pdf/primitives"
+
+<View style={contentPadding}>
+  {/* destinataire, méta, tableau, totaux, pied de page */}
+</View>
+```
 
 ### Palette PDF
 
@@ -124,34 +136,60 @@ const buffer = await renderToPdfBuffer(element)
 
 ### Bandeau diagonal `PdfHeader`
 
-Rendu technique : deux `<Polygon>` SVG superposés en arrière-plan (via `<Svg viewBox="0 0 595.28 95">`), puis deux zones en position absolue par-dessus.
+Rendu technique : deux `<Polygon>` SVG superposés en arrière-plan (via `<Svg viewBox="0 0 595.28 95">`), puis deux zones en position absolue par-dessus. Le bandeau est **full-bleed** — `PageFrame` n'applique aucun padding top/horizontal, et `PdfHeader` occupe toute la largeur A4 (595.28pt) depuis y=0.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [sombre]        ╱  [accent]                              │
-│  logo + nom    ╱    FACTURE / DEVIS                      │
-│  émetteur     ╱     numéro                               │
-└──────────────╱──────────────────────────────────────────-┘
-               ↑ diagonale : 249pt en haut → 226pt en bas
+│ [sombre]            ╱  [accent]                          │
+│  [logo] nom émett. ╱    FACTURE / DEVIS                  │
+│  (row inline)      ╱                                     │
+└────────────────────╱────────────────────────────────────-┘
+                     ↑ diagonale : 249pt en haut → 226pt en bas
 ```
 
 - Polygone sombre : `0,0 249,0 226,95 0,95`
 - Polygone accent : `249,0 595.28,0 595.28,95 226,95`
 - Hauteur bandeau : 95pt
+- Zone gauche (sombre) : `flexDirection: "row"`, `alignItems: "center"`, logo `height: 38, maxWidth: 120` suivi du nom émetteur en `PDF_ON_DARK` bold — le tout borné en largeur pour ne pas mordre la diagonale
 - `logoUrl` absent → seul le nom émetteur est rendu (aucun espace vide)
+- Zone droite (accent) : libellé `docType` uniquement — le numéro est affiché dans le bloc méta sous le bandeau
 - `accent` non fourni → fallback sur `PDF_ACCENT`
+- Signature : `PdfHeader({ docType, emitterName, logoUrl?, accent? })` — prop `number` supprimée
 
 Câblage dans les documents :
 
 ```ts
 // InvoicePdf.tsx
-<PdfHeader docType="FACTURE" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
+<PdfHeader docType="FACTURE" logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
 
 // QuotePdf.tsx
-<PdfHeader docType="DEVIS" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
+<PdfHeader docType="DEVIS" logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
 ```
 
-Le bandeau remplace l'ancien `<Text>` titre (`Facture INV-XXXX` / `Devis DV-XXXX`). Le bloc émetteur détaillé (adresse, SIRET, TVA) reste inchangé en dessous.
+### Layout sous le bandeau (InvoicePdf / QuotePdf)
+
+Sous le `PdfHeader`, tout le contenu est wrappé dans `<View style={contentPadding}>`. La première rangée est un `flexDirection: "row"` `justifyContent: "space-between"` à deux colonnes :
+
+**Colonne gauche — Destinataire**
+- Libellé `"DESTINATAIRE"` (petit, couleur accent)
+- `billTo.name` (bold, toujours présent)
+- `billTo.email` — rendu uniquement si non-vide
+- `billTo.address` — rendu uniquement si non-vide
+- `billTo.phone` — rendu uniquement si non-vide
+- Aucune ligne vide n'est rendue si le champ est absent
+
+**Colonne droite — Méta**
+
+| Libellé | Valeur | Document |
+|---------|--------|----------|
+| N° de facture | `number` | FACTURE |
+| N° de devis | `number` | DEVIS |
+| Date d'émission | `issuedAt` | les deux |
+| Date d'échéance | `dueAt` | FACTURE |
+| Date de validité | `expiresAt` | DEVIS |
+| Statut | libellé FR | les deux |
+
+**Bloc émetteur retiré du corps** : `<PartyBlock label="Émetteur" ...>` a été supprimé de `InvoicePdf` et `QuotePdf`. Le nom + logo émetteur figurent dans le bandeau ; l'adresse, SIRET et TVA seront ajoutés au pied de page dans une livraison ultérieure (R10-polish-b). Les données restent disponibles dans le modèle `billFrom`.
 
 ### Type `PdfLineItem`
 
@@ -310,11 +348,11 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 10 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 9 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
-- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 10 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF (`pdf_palette_constants_are_hex_strings`) ; + `PdfHeader` (rendu avec/sans logo)
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 12 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF (`pdf_palette_constants_are_hex_strings`) ; + `PdfHeader` (rendu avec/sans logo, `pdf_header_renders_without_number_prop`, `pdf_header_renders_with_logo_inline`)
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
-- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
+- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 3 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`)
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
-- `apps/web/lib/pdf/__tests__/quote-pdf.test.tsx` — test end-to-end `renderQuotePdf` : buffer `%PDF`, number et nom émetteur présents dans le texte extrait
+- `apps/web/lib/pdf/__tests__/quote-pdf.test.tsx` — 1 test end-to-end `renderQuotePdf` : buffer `%PDF`, "DEVIS"/"Jean Dupont"/"validit" présents dans le texte extrait
 - `packages/services/src/__tests__/quote-pdf.shared.test.ts` — 5 tests purs `toQuotePdfModel` : tri sortOrder, calcul lignes, TTC via computeQuoteTtc, notes null/texte, dates null
 
 ### Helper d'extraction texte
