@@ -3,7 +3,6 @@ import { renderInvoicePdf } from "../render"
 import { toInvoicePdfModel } from "@saas/services/invoice-pdf.shared"
 import { decompressPdfStreams, decodePdfHexStrings, containsNormalized } from "./_pdf-text"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
-import { normalize } from "./_pdf-text"
 
 vi.mock("server-only", () => ({}))
 
