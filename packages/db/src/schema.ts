@@ -425,15 +425,6 @@ export type NewStripeEvent = typeof stripeEvents.$inferInsert;
 
 // ── Business Profiles ─────────────────────────────────────────────────────────
 
-type BusinessProfileAddress = {
-  line1?: string
-  line2?: string
-  city?: string
-  state?: string
-  zip?: string
-  country?: string
-}
-
 export const businessProfiles = pgTable("business_profiles", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -441,7 +432,7 @@ export const businessProfiles = pgTable("business_profiles", {
   legalForm: text("legal_form"),
   siret: text("siret"),
   tvaIntra: text("tva_intra"),
-  address: jsonb("address").$type<BusinessProfileAddress>(),
+  address: jsonb("address").$type<PostalAddress>(),
   email: text("email"),
   phone: text("phone"),
   iban: text("iban"),
