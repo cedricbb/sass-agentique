@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { renderQuotePdf } from "../render"
 import { toQuotePdfModel } from "@saas/services/quote-pdf.shared"
-import { decompressPdfStreams, decodePdfHexStrings, containsNormalized } from "./_pdf-text"
+import { decompressPdfStreams, decodePdfHexStrings, containsNormalized, normalize } from "./_pdf-text"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
 
 vi.mock("server-only", () => ({}))
@@ -42,6 +42,9 @@ describe("renderQuotePdf", () => {
     const decompressed = decompressPdfStreams(buffer)
     const text = decodePdfHexStrings(decompressed)
     expect(containsNormalized(text, "DEV-2024-001")).toBe(true)
+    expect(containsNormalized(text, "DEVIS")).toBe(true)
     expect(containsNormalized(text, "Acme SAS")).toBe(true)
+    expect(containsNormalized(text, "Jean Dupont")).toBe(true)
+    expect(normalize(text)).toContain("validit")
   })
 })

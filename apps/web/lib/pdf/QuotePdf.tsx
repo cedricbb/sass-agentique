@@ -1,32 +1,60 @@
 import React from "react"
 import { View, Text, StyleSheet } from "@react-pdf/renderer"
 import type { QuotePdfModel } from "@saas/services/quote-pdf.shared"
+import { formatPostalAddress } from "@saas/services/billing-party.shared"
 import {
   PageFrame,
-  PartyBlock,
   ItemsTable,
   TotalsBlock,
   LegalFooter,
   PdfHeader,
+  contentPadding,
+  PDF_ACCENT,
 } from "./primitives"
 
 const styles = StyleSheet.create({
-  header: {
-    marginBottom: 24,
-  },
-  headerMeta: {
-    fontSize: 10,
-    marginBottom: 2,
-    color: "#444444",
-  },
-  partiesRow: {
+  infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 24,
+    marginTop: 8,
   },
-  partyColumn: {
+  recipientColumn: {
     flex: 1,
     marginRight: 16,
+  },
+  metaColumn: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  sectionLabel: {
+    fontSize: 8,
+    textTransform: "uppercase",
+    color: PDF_ACCENT,
+    marginBottom: 4,
+  },
+  recipientName: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 2,
+  },
+  recipientLine: {
+    fontSize: 10,
+    lineHeight: 1.4,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 2,
+  },
+  metaLabel: {
+    fontSize: 9,
+    color: "#444444",
+    marginRight: 8,
+  },
+  metaValue: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
   },
   notes: {
     marginTop: 16,
@@ -42,30 +70,49 @@ function formatDate(date: Date | null): string {
 
 export function QuotePdf(props: { model: QuotePdfModel }): React.ReactElement {
   const { model } = props
+  const addressLines = formatPostalAddress(model.billTo.address)
   return (
     <PageFrame>
-      <PdfHeader docType="DEVIS" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
-      <View style={styles.header}>
-        <Text style={styles.headerMeta}>Statut : {model.status}</Text>
-        <Text style={styles.headerMeta}>Date d&apos;émission : {formatDate(model.issuedAt)}</Text>
-        <Text style={styles.headerMeta}>Date d&apos;expiration : {formatDate(model.expiresAt)}</Text>
-      </View>
-      <View style={styles.partiesRow}>
-        <View style={styles.partyColumn}>
-          <PartyBlock label="Émetteur" party={model.billFrom} />
+      <PdfHeader docType="DEVIS" logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
+      <View style={contentPadding}>
+        <View style={styles.infoRow}>
+          <View style={styles.recipientColumn}>
+            <Text style={styles.sectionLabel}>Destinataire</Text>
+            <Text style={styles.recipientName}>{model.billTo.name}</Text>
+            {model.billTo.email ? <Text style={styles.recipientLine}>{model.billTo.email}</Text> : null}
+            {addressLines.map((line, i) => (
+              <Text key={i} style={styles.recipientLine}>{line}</Text>
+            ))}
+            {model.billTo.phone ? <Text style={styles.recipientLine}>{model.billTo.phone}</Text> : null}
+          </View>
+          <View style={styles.metaColumn}>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>N° de devis</Text>
+              <Text style={styles.metaValue}>{model.number}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Date d&apos;émission</Text>
+              <Text style={styles.metaValue}>{formatDate(model.issuedAt)}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Date de validité</Text>
+              <Text style={styles.metaValue}>{formatDate(model.expiresAt)}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Statut</Text>
+              <Text style={styles.metaValue}>{model.status}</Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.partyColumn}>
-          <PartyBlock label="Destinataire" party={model.billTo} />
-        </View>
+        <ItemsTable items={model.items} />
+        <TotalsBlock
+          totalHtCents={model.totalHtCents}
+          vatCents={model.vatCents}
+          totalTtcCents={model.totalTtcCents}
+        />
+        {model.notes ? <Text style={styles.notes}>{model.notes}</Text> : null}
+        <LegalFooter />
       </View>
-      <ItemsTable items={model.items} />
-      <TotalsBlock
-        totalHtCents={model.totalHtCents}
-        vatCents={model.vatCents}
-        totalTtcCents={model.totalTtcCents}
-      />
-      {model.notes ? <Text style={styles.notes}>{model.notes}</Text> : null}
-      <LegalFooter />
     </PageFrame>
   )
 }
