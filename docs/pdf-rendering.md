@@ -85,15 +85,14 @@ trie les items par `sortOrder`, calcule les totaux via `computeQuoteTtc`, et ret
 
 ```ts
 import { renderToPdfBuffer } from "@/lib/pdf/render"
-import { PageFrame, PartyBlock, ItemsTable, TotalsBlock, LegalFooter } from "@/lib/pdf/primitives"
+import { PageFrame, PartyBlock, ItemsTable, TotalsBlock, PdfFooter } from "@/lib/pdf/primitives"
 
 const element = (
   <PageFrame>
-    <PartyBlock label="ÉMETTEUR" party={billFrom} />
     <PartyBlock label="DESTINATAIRE" party={billTo} />
     <ItemsTable items={lineItems} />
     <TotalsBlock totalHtCents={ht} vatCents={vat} totalTtcCents={ttc} />
-    <LegalFooter />
+    <PdfFooter billFrom={billFrom} dueAt={dueAt} issuedAt={issuedAt} />
   </PageFrame>
 )
 
@@ -109,7 +108,7 @@ const buffer = await renderToPdfBuffer(element)
 | `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — logo en tête si `logoUrl` défini, adresse formatée, email, tél, SIRET/TVA conditionnels |
 | `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT — en-tête sur fond `PDF_ACCENT_SOFT`, filet `#ECECEC` entre lignes |
 | `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC — bloc encadré (bordure `#CCCCCC`, `borderRadius: 6`), ligne TTC en gras sur fond `PDF_ACCENT_SOFT` |
-| `LegalFooter` | `text?` | Mentions légales (placeholder jusqu'à R10-1f) |
+| `PdfFooter` | `billFrom: BillFrom`, `dueAt?: Date \| null`, `issuedAt?: Date \| null` | Pied de page ancré en bas — émetteur, identifiants, IBAN/BIC (conditionnel), mentions légales B2B. Fixé (`fixed`) pour répétition multi-pages. |
 
 ### Export `contentPadding`
 
@@ -122,6 +121,34 @@ import { contentPadding } from "@/lib/pdf/primitives"
   {/* destinataire, méta, tableau, totaux, pied de page */}
 </View>
 ```
+
+### Pied de page `PdfFooter`
+
+`PdfFooter` est un composant `fixed` (répété sur chaque page en multi-pages) ancré en bas via `position: "absolute", bottom: 20`. Il repose sur le `paddingBottom: 40` déjà posé sur `PageFrame`.
+
+Trois lignes conditionnelles, items séparés par ` · `, filet fin au-dessus :
+
+| Ligne | Contenu |
+|-------|---------|
+| 1 — Émetteur + contact | `name · adresse une ligne · email · phone · site` — chaque item rendu uniquement si non-vide |
+| 2 — Identifiants | `SIRET <siret> · TVA <tvaIntra> · <legalForm>` — `legalForm` conditionnel |
+| 3 — Bancaire + mentions | `IBAN <iban> · BIC <bic>` (conditionnel si renseignés) + `Paiement à <N> jours · Pénalités de retard : 3× le taux d'intérêt légal · Indemnité forfaitaire pour frais de recouvrement : 40 € · CGV sur demande` |
+
+Le délai de paiement (ligne 3) est calculé depuis `dueAt - issuedAt` si les deux sont fournis, sinon `"Paiement à réception"`. Les mentions légales sont des constantes texte (pas de champ DB).
+
+```tsx
+// Facture — dueAt + issuedAt disponibles
+<PdfFooter billFrom={model.billFrom} dueAt={model.dueAt} issuedAt={model.issuedAt} />
+
+// Devis — pas de dueAt → "Paiement à réception"
+<PdfFooter billFrom={model.billFrom} />
+```
+
+Le composant est mutualisé dans `primitives.tsx` et consommé par `InvoicePdf` et `QuotePdf` en dehors du `contentPadding` (positionnement absolu — pas de flux).
+
+`formatPostalAddressOneLine` (exportée depuis `billing-party.shared.ts`) est utilisée pour compresser l'adresse postale émetteur sur une ligne (`rue, codePostal ville, pays`).
+
+**Champs `iban`/`bic` sur `BillFrom`** : `billing-party.shared.ts` expose `iban?: string | null` et `bic?: string | null` sur `BillFrom` et `EmitterInput`. Câblés depuis `business_profile` (colonnes `iban`, `bic`). Actuellement null dans le seed — la ligne bancaire ne s'affiche pas si les deux champs sont absents.
 
 ### Palette PDF
 
@@ -190,7 +217,7 @@ Sous le `PdfHeader`, tout le contenu est wrappé dans `<View style={contentPaddi
 | Date de validité | `expiresAt` | DEVIS |
 | Statut | libellé FR | les deux |
 
-**Bloc émetteur retiré du corps** : `<PartyBlock label="Émetteur" ...>` a été supprimé de `InvoicePdf` et `QuotePdf`. Le nom + logo émetteur figurent dans le bandeau ; l'adresse, SIRET et TVA seront ajoutés au pied de page dans une livraison ultérieure (R10-polish-b). Les données restent disponibles dans le modèle `billFrom`.
+**Bloc émetteur retiré du corps** : `<PartyBlock label="Émetteur" ...>` a été supprimé de `InvoicePdf` et `QuotePdf`. Le nom + logo émetteur figurent dans le bandeau ; l'adresse complète, SIRET, TVA, IBAN/BIC et mentions légales sont dans le `PdfFooter` ancré en bas de page.
 
 ### Type `PdfLineItem`
 
@@ -342,6 +369,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | R10-1f-b `emit-invoice` | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionInvoiceStatusAction`) |
 | **R10-1g-a `invoice-pdf-route`** | ✅ livré | Route Handler `GET /api/invoices/[id]/file` — stream R2 inline + régénération paresseuse si `pdfKey` null et `issuedAt` set + lien réel dans `InvoiceRow` |
 | **R10-1g-b `emit-quote`** | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionQuoteStatusAction`) |
+| **feat-pdf-footer-legal-mentions** | ✅ livré | `PdfFooter` ancré — émetteur, IBAN/BIC, mentions légales B2B ; `formatPostalAddressOneLine` ; `iban`/`bic` sur `BillFrom` |
 | R10-1h-quote `quote-pdf-route` | 🔜 | Route Handler `GET /api/quotes/[id]/file` — stream R2 inline |
 
 ## Liens vers tests
@@ -349,7 +377,8 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 10 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 9 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
-- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 13 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF (`pdf_palette_constants_are_hex_strings`, `pdf_accent_soft_is_valid_hex`) ; + `PdfHeader` (rendu avec/sans logo, `pdf_header_renders_without_number_prop`, `pdf_header_renders_with_logo_inline`)
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 21 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF ; + `PdfHeader` (rendu avec/sans logo, sans `number` prop, logo inline) ; + `PdfFooter` (8 tests : émetteur ligne 1, identifiants ligne 2, mentions légales, délai paiement depuis dueAt/issuedAt, "Paiement à réception" sans dates, IBAN/BIC masqués si null, IBAN/BIC affichés si renseignés, "BIC" absent si iban/bic null)
+- `packages/services/src/__tests__/billing-party.shared.test.ts` — 10 tests dont 2 `formatPostalAddressOneLine` (vide/complet) + 1 `resolveEmitter` avec iban/bic
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 3 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`)
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
