@@ -22,6 +22,7 @@ vi.mock("@/lib/toast", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 
 afterEach(cleanup);
@@ -108,6 +109,60 @@ describe("ClientForm", () => {
     });
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/admin/clients");
+    });
+  });
+
+  it("company_type_shows_identity_fields", () => {
+    render(<ClientForm />);
+    expect(screen.getByTestId("siret-input")).toBeInTheDocument();
+    expect(screen.getByTestId("tvaIntra-input")).toBeInTheDocument();
+    expect(screen.getByTestId("legalForm-input")).toBeInTheDocument();
+  });
+
+  it("individual_type_hides_identity_fields", () => {
+    const individualClient = {
+      id: "c2",
+      name: "Alice",
+      slug: "alice",
+      type: "individual" as const,
+      email: null,
+      phone: null,
+      billingAddress: null,
+      notes: null,
+      siret: null,
+      tvaIntra: null,
+      legalForm: null,
+    };
+    render(<ClientForm initialData={individualClient as never} />);
+    expect(screen.queryByTestId("siret-input")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("tvaIntra-input")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("legalForm-input")).not.toBeInTheDocument();
+  });
+
+  it("individual_submit_strips_identity_fields", async () => {
+    mockUpdateClientAction.mockResolvedValue({ ok: true, data: null });
+
+    const individualClient = {
+      id: "c2",
+      name: "Alice",
+      slug: "alice",
+      type: "individual" as const,
+      email: null,
+      phone: null,
+      billingAddress: null,
+      notes: null,
+      siret: null,
+      tvaIntra: null,
+      legalForm: null,
+    };
+    render(<ClientForm initialData={individualClient as never} />);
+    fireEvent.click(screen.getByRole("button", { name: /mettre à jour/i }));
+
+    await waitFor(() => {
+      const callArg = mockUpdateClientAction.mock.calls[0][1] as Record<string, unknown>;
+      expect(callArg.siret).toBeUndefined();
+      expect(callArg.tvaIntra).toBeUndefined();
+      expect(callArg.legalForm).toBeUndefined();
     });
   });
 

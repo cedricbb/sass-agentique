@@ -57,14 +57,23 @@ export function ClientForm({ initialData }: ClientFormProps) {
         country: initialData?.billingAddress?.country ?? "",
       },
       notes: initialData?.notes ?? "",
+      siret: initialData?.siret ?? "",
+      tvaIntra: initialData?.tvaIntra ?? "",
+      legalForm: initialData?.legalForm ?? "",
     },
   });
 
+  const clientType = form.watch("type");
+
   const onSubmit = (data: FormValues) => {
     startTransition(async () => {
+      const payload =
+        data.type !== "company"
+          ? { ...data, siret: undefined, tvaIntra: undefined, legalForm: undefined }
+          : data;
       const result = initialData
-        ? await updateClientAction(initialData.id, data)
-        : await createClientAction(data);
+        ? await updateClientAction(initialData.id, payload)
+        : await createClientAction(payload);
       if (toastResult(result, initialData ? "Client mis à jour" : "Client créé")) {
         router.push("/admin/clients");
       }
@@ -123,6 +132,52 @@ export function ClientForm({ initialData }: ClientFormProps) {
             </FormItem>
           )}
         />
+
+        {clientType === "company" && (
+          <>
+            <FormField
+              control={form.control}
+              name="siret"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SIRET</FormLabel>
+                  <FormControl>
+                    <Input data-testid="siret-input" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tvaIntra"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>TVA Intracommunautaire</FormLabel>
+                  <FormControl>
+                    <Input data-testid="tvaIntra-input" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="legalForm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Forme juridique</FormLabel>
+                  <FormControl>
+                    <Input data-testid="legalForm-input" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
 
         <FormField
           control={form.control}
