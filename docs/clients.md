@@ -2,7 +2,7 @@
 
 ## Ce que fait le module Clients
 
-Gestion des clients de l'admin solo : création, édition des informations (nom, type, email, téléphone, adresse de facturation structurée, notes), gestion des accès portail (contacts, invitations), et visualisation de l'historique devis et factures associés.
+Gestion des clients de l'admin solo : création, édition des informations (nom, type, email, téléphone, adresse de facturation structurée, identité d'entreprise, notes), gestion des accès portail (contacts, invitations), et visualisation de l'historique devis et factures associés.
 
 ## Comment l'utiliser
 
@@ -34,6 +34,22 @@ La clé Zod et la clé Drizzle sont identiques (`billingAddress`) — le spread 
 
 Pour le rendu PDF, `resolveBillingParty(client)` → `parseAddressJsonb(client.billingAddress)` normalise l'objet en `PostalAddress` (voir `docs/billing-party.md`).
 
+## Identité d'entreprise (clients `company`)
+
+Les clients de type `company` peuvent porter trois champs d'identité légale, alignés sur les colonnes équivalentes de `businessProfiles` (l'émetteur) :
+
+| Champ React Hook Form | Colonne DB | Description |
+|---|---|---|
+| `siret` | `siret` (TEXT NULL) | Numéro SIRET (14 chiffres) |
+| `tvaIntra` | `tva_intra` (TEXT NULL) | Numéro de TVA intracommunautaire |
+| `legalForm` | `legal_form` (TEXT NULL) | Forme juridique (ex. SASU, SAS, SARL…) |
+
+Ces champs sont **optionnels** (nullable) — aucun backfill sur les clients existants, les clients étrangers ou sans SIRET restent valides.
+
+**Visibilité conditionnelle** : dans `ClientForm`, les trois champs sont affichés uniquement quand `type === "company"`. Pour un client `individual`, ils sont absents du DOM et leurs valeurs sont nettoyées à `null` au submit — un particulier ne porte jamais de SIRET ni de forme juridique.
+
+Ces colonnes alimenteront le bloc `BillTo` du PDF dans la feature `feat-client-company-pdf-recipient` (le type `BillTo` de `billing-party.shared` expose déjà `siret?` et `tvaIntra?`).
+
 ## Architecture interne
 
 La page `apps/web/app/(admin)/admin/clients/[id]/page.tsx` est un Server Component. Les données sont chargées en parallèle via `Promise.all` :
@@ -59,4 +75,5 @@ Les helpers `formatCurrency` / `formatDate` viennent de `@/lib/format`. Les mont
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientInvoicesSection.test.tsx`
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` — soumet `billingAddress` comme objet structuré, vérifie l'absence de la clé `address`
 - `packages/services/src/__tests__/client.service.test.ts` — persistance create/update billingAddress, round-trip via `resolveBillingParty`
-- `apps/web/lib/schemas/__tests__/client.schemas.test.ts` — validation Zod `billingAddress` object / optionnel / clé `address` ignorée
+- `apps/web/lib/schemas/__tests__/client.schemas.test.ts` — validation Zod `billingAddress` object / optionnel / clé `address` ignorée ; identité entreprise (`siret`, `tvaIntra`, `legalForm`) optionnels et acceptent chaîne vide
+- `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` — visibilité conditionnelle des champs identité selon `type`, strip au submit pour `individual`
