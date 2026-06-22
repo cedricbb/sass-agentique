@@ -34,6 +34,23 @@ describe("createClientSchema", () => {
       createClientSchema.parse({ name: "x", slug: "x", email: "bad" }),
     ).toThrow();
   });
+
+  it("accepts_billingAddress_object", () => {
+    const result = createClientSchema.parse({ name: "X", slug: "x", billingAddress: { line1: "A", city: "B" } });
+    expect(result).toHaveProperty("billingAddress");
+    expect((result as Record<string, unknown>).billingAddress).toMatchObject({ line1: "A", city: "B" });
+  });
+
+  it("billingAddress_optional", () => {
+    const result = createClientSchema.parse({ name: "X", slug: "x" });
+    expect(result).not.toHaveProperty("address");
+    expect(result.billingAddress).toBeUndefined();
+  });
+
+  it("address string key is stripped not in schema", () => {
+    const result = createClientSchema.parse({ name: "X", slug: "x", address: "foo" });
+    expect(result).not.toHaveProperty("address");
+  });
 });
 
 describe("updateClientSchema", () => {

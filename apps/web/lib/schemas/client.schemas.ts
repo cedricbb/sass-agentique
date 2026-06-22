@@ -23,7 +23,14 @@ export const createClientSchema = z.object({
   type: z.enum(["company", "individual"]).default("company"),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
-  address: z.string().optional(),
+  billingAddress: z.object({
+    line1: z.string().optional(),
+    line2: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
   notes: z.string().optional(),
 });
 
