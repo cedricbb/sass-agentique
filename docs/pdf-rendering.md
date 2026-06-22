@@ -104,11 +104,54 @@ const buffer = await renderToPdfBuffer(element)
 
 | Composant | Props | Rôle |
 |-----------|-------|------|
+| `PdfHeader` | `docType`, `number`, `emitterName`, `logoUrl?`, `accent?` | Bandeau diagonal en tête de document — polygones SVG sombre/accent + logo émetteur à gauche + libellé et numéro à droite |
 | `PageFrame` | `children` | Document A4 avec marges 40pt, police Helvetica |
 | `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — logo en tête si `logoUrl` défini, adresse formatée, email, tél, SIRET/TVA conditionnels |
 | `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT |
 | `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC |
 | `LegalFooter` | `text?` | Mentions légales (placeholder jusqu'à R10-1f) |
+
+### Palette PDF
+
+`primitives.tsx` exporte quatre constantes hex utilisables dans tout composant PDF :
+
+| Constante | Valeur | Usage |
+|-----------|--------|-------|
+| `PDF_DARK` | `#2A2A2A` | Fond du bloc sombre (côté gauche du bandeau) |
+| `PDF_ON_DARK` | `#FFFFFF` | Texte sur fond sombre |
+| `PDF_ACCENT` | `#D4941A` | Couleur d'accent (primaire app — amber) |
+| `PDF_ON_ACCENT` | `#000000` | Texte sur fond accent (foncé pour contraste sur amber) |
+
+### Bandeau diagonal `PdfHeader`
+
+Rendu technique : deux `<Polygon>` SVG superposés en arrière-plan (via `<Svg viewBox="0 0 595.28 95">`), puis deux zones en position absolue par-dessus.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ [sombre]        ╱  [accent]                              │
+│  logo + nom    ╱    FACTURE / DEVIS                      │
+│  émetteur     ╱     numéro                               │
+└──────────────╱──────────────────────────────────────────-┘
+               ↑ diagonale : 249pt en haut → 226pt en bas
+```
+
+- Polygone sombre : `0,0 249,0 226,95 0,95`
+- Polygone accent : `249,0 595.28,0 595.28,95 226,95`
+- Hauteur bandeau : 95pt
+- `logoUrl` absent → seul le nom émetteur est rendu (aucun espace vide)
+- `accent` non fourni → fallback sur `PDF_ACCENT`
+
+Câblage dans les documents :
+
+```ts
+// InvoicePdf.tsx
+<PdfHeader docType="FACTURE" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
+
+// QuotePdf.tsx
+<PdfHeader docType="DEVIS" number={model.number} logoUrl={model.billFrom.logoUrl} emitterName={model.billFrom.name} />
+```
+
+Le bandeau remplace l'ancien `<Text>` titre (`Facture INV-XXXX` / `Devis DV-XXXX`). Le bloc émetteur détaillé (adresse, SIRET, TVA) reste inchangé en dessous.
 
 ### Type `PdfLineItem`
 
@@ -267,7 +310,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 10 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 9 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
-- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 7 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 10 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF (`pdf_palette_constants_are_hex_strings`) ; + `PdfHeader` (rendu avec/sans logo)
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — test end-to-end `renderInvoicePdf` : buffer `%PDF`, number et nom de partie présents dans le texte extrait
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
