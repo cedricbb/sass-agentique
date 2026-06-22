@@ -60,7 +60,7 @@ const lines: string[] = formatPostalAddress(billTo.address)
 | `formatPostalAddress(addr)` | Retourne un tableau de lignes non-vides : `[line1, line2, "zip city", state, country]`. |
 
 **Invariants de design**
-- Zéro import `@saas/db`, `drizzle-orm`, `@react-pdf/renderer`, ou toute dépendance I/O.
+- `PostalAddress` est importé depuis `@saas/db` via `import type` (erasure à la compilation — zéro dépendance runtime vers `@saas/db`, `drizzle-orm` ou toute dépendance I/O).
 - `siret`/`tvaIntra` sur `BillTo` sont typés mais volontairement `undefined` jusqu'à R10-3 — le contrat du template est déjà prêt.
 - La source de `EmitterInput` (config env vs future table `business_profile`) est délibérément hors scope — arbitrage R10-1d.
 
@@ -68,6 +68,7 @@ const lines: string[] = formatPostalAddress(billTo.address)
 
 `packages/services/src/__tests__/billing-party.shared.test.ts`
 
-7 cas unitaires couvrant : company avec adresse string, adresse null, jsonb structuré,
-émetteur complet, émetteur avec champs optionnels absents, formatPostalAddress complet,
-formatPostalAddress vide.
+10 cas unitaires couvrant : company avec adresse string, adresse null, jsonb structuré,
+émetteur complet, émetteur avec champs optionnels absents, émetteur iban/bic,
+formatPostalAddress complet, formatPostalAddress vide, formatPostalAddress ordre complet,
+formatPostalAddress tableau vide.

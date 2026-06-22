@@ -46,7 +46,7 @@ import { type BusinessProfile, type NewBusinessProfile } from "@saas/db"
 
 ## Architecture interne
 
-- **Table** : `business_profiles` dans `packages/db/src/schema.ts`. Champ `address` en `jsonb` typé `BusinessProfileAddress` (type structurel local, aligné sur `PostalAddress` de `billing-party.shared` sans créer de dépendance circulaire `db → services`).
+- **Table** : `business_profiles` dans `packages/db/src/schema.ts`. Champ `address` en `jsonb` typé `PostalAddress` (source canonique unique définie dans `@saas/db`, partagée avec `clients.billingAddress`).
 - **Service** : `packages/services/src/business-profile.service.ts` — exposé via le barrel `packages/services/src/index.ts`. Méthodes : `getBusinessProfile`, `upsertBusinessProfile`, `setBusinessProfileLogoKey`.
 - **Upsert** : `onConflictDoUpdate` sur l'index unique `business_profiles_owner_unique` (`ownerId`). Garantit l'atomicité création/mise à jour sans race condition.
 - **Consommation PDF** : `getBusinessProfile` → champs → `EmitterInput` → `resolveEmitter` (R10-1f). `resolveEmitter` reste source-agnostique : il ne connaît pas cette table.
