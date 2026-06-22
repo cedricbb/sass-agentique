@@ -56,6 +56,7 @@ import {
   getPrimaryClientForUser,
 } from "../client.service";
 import { generateSlug } from "../utils/slug";
+import { resolveBillingParty } from "../billing-party.shared";
 
 const CLIENT_FIXTURE = { id: "c1", name: "Acme", slug: "acme", archivedAt: null };
 const CONTACT_FIXTURE = { id: "cc1", clientId: "c1", userId: "u1", name: "Test User", email: "test@example.com", isPrimary: false, role: null };
@@ -291,6 +292,44 @@ describe("getClientsForUser", () => {
     ]);
     const result = await getClientsForUser("u1");
     expect(result).toHaveLength(2);
+  });
+});
+
+describe("persist_structured_billingAddress_on_create", () => {
+  it("persist_structured_billingAddress_on_create", async () => {
+    const billingAddress = { line1: "10 rue Test", city: "Paris", zip: "75001", country: "France" };
+    dbMock.returning.mockResolvedValueOnce([{ ...CLIENT_FIXTURE, billingAddress }]);
+    await createClient({ name: "X", slug: "x", billingAddress } as never);
+    const valuesArg = dbMock.values.mock.calls[0][0];
+    expect(valuesArg.billingAddress).toEqual(billingAddress);
+  });
+});
+
+describe("persist_structured_billingAddress_on_update", () => {
+  it("persist_structured_billingAddress_on_update", async () => {
+    const billingAddress = { line1: "99 av. Test", city: "Lyon", zip: "69000", country: "France" };
+    dbMock.returning.mockResolvedValueOnce([{ ...CLIENT_FIXTURE, billingAddress }]);
+    await updateClient("c1", { billingAddress } as never);
+    const setArg = dbMock.set.mock.calls[0][0];
+    expect(setArg.billingAddress).toEqual(billingAddress);
+  });
+});
+
+describe("round_trip_billingAddress_through_resolveBillingParty", () => {
+  it("round_trip_billingAddress_through_resolveBillingParty", async () => {
+    const billingAddress = { line1: "10 rue Test", city: "Paris", zip: "75001", country: "France" };
+    dbMock.returning.mockResolvedValueOnce([{ ...CLIENT_FIXTURE, billingAddress }]);
+    const client = await createClient({ name: "Acme", slug: "acme" } as never);
+    const billTo = resolveBillingParty({
+      name: client.name,
+      type: "company",
+      email: null,
+      phone: null,
+      billingAddress: client.billingAddress,
+    });
+    expect(billTo.address).toEqual(billingAddress);
+    expect(billTo.address.line1).toBe("10 rue Test");
+    expect(billTo.address.city).toBe("Paris");
   });
 });
 
