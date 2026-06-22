@@ -107,8 +107,8 @@ const buffer = await renderToPdfBuffer(element)
 | `PdfHeader` | `docType`, `emitterName`, `logoUrl?`, `accent?` | Bandeau diagonal full-bleed en tête de document — polygones SVG sombre/accent + logo + nom émetteur inline à gauche + libellé docType à droite (sans numéro) |
 | `PageFrame` | `children` | Document A4 sans padding global (padding horizontal délégué au contenu via `contentPadding`), police Helvetica |
 | `PartyBlock` | `label`, `party: BillFrom \| BillTo` | Bloc émetteur ou destinataire — logo en tête si `logoUrl` défini, adresse formatée, email, tél, SIRET/TVA conditionnels |
-| `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT |
-| `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC |
+| `ItemsTable` | `items: PdfLineItem[]` | Tableau Description / Qté / PU HT / Total HT — en-tête sur fond `PDF_ACCENT_SOFT`, filet `#ECECEC` entre lignes |
+| `TotalsBlock` | `totalHtCents`, `vatCents`, `totalTtcCents` | Récapitulatif financier HT / TVA / TTC — bloc encadré (bordure `#CCCCCC`, `borderRadius: 6`), ligne TTC en gras sur fond `PDF_ACCENT_SOFT` |
 | `LegalFooter` | `text?` | Mentions légales (placeholder jusqu'à R10-1f) |
 
 ### Export `contentPadding`
@@ -125,7 +125,7 @@ import { contentPadding } from "@/lib/pdf/primitives"
 
 ### Palette PDF
 
-`primitives.tsx` exporte quatre constantes hex utilisables dans tout composant PDF :
+`primitives.tsx` exporte cinq constantes hex utilisables dans tout composant PDF :
 
 | Constante | Valeur | Usage |
 |-----------|--------|-------|
@@ -133,6 +133,7 @@ import { contentPadding } from "@/lib/pdf/primitives"
 | `PDF_ON_DARK` | `#FFFFFF` | Texte sur fond sombre |
 | `PDF_ACCENT` | `#D4941A` | Couleur d'accent (primaire app — amber) |
 | `PDF_ON_ACCENT` | `#000000` | Texte sur fond accent (foncé pour contraste sur amber) |
+| `PDF_ACCENT_SOFT` | `#FDF3E1` | Accent très clair (~12% opacity) — fond en-tête tableau et ligne TTC |
 
 ### Bandeau diagonal `PdfHeader`
 
@@ -348,7 +349,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 10 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 9 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
-- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 12 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF (`pdf_palette_constants_are_hex_strings`) ; + `PdfHeader` (rendu avec/sans logo, `pdf_header_renders_without_number_prop`, `pdf_header_renders_with_logo_inline`)
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 13 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF (`pdf_palette_constants_are_hex_strings`, `pdf_accent_soft_is_valid_hex`) ; + `PdfHeader` (rendu avec/sans logo, `pdf_header_renders_without_number_prop`, `pdf_header_renders_with_logo_inline`)
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
 - `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 3 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`)
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
