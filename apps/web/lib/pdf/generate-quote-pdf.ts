@@ -59,6 +59,8 @@ function toEmitterInput(profile: BusinessProfile): EmitterInput {
     address: parseAddressJsonb(profile.address),
     email: profile.email ?? undefined,
     phone: profile.phone ?? undefined,
+    iban: profile.iban ?? undefined,
+    bic: profile.bic ?? undefined,
   }
 }
 
