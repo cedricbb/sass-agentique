@@ -71,7 +71,7 @@ describe("ClientForm", () => {
       type: "company" as const,
       email: "a@b.com",
       phone: "0123456789",
-      address: "1 rue Test",
+      billingAddress: { line1: "1 rue Test", city: "Paris", zip: "75001", country: "France" },
       notes: "VIP",
     };
     render(<ClientForm initialData={client as never} />);
@@ -79,6 +79,8 @@ describe("ClientForm", () => {
     expect(nameInput()).toHaveValue("Acme");
     expect(slugInput()).toHaveValue("acme");
     expect(screen.getByRole("textbox", { name: /email/i })).toHaveValue("a@b.com");
+    expect(screen.getByRole("textbox", { name: /ligne 1/i })).toHaveValue("1 rue Test");
+    expect(screen.getByRole("textbox", { name: /ville/i })).toHaveValue("Paris");
   });
 
   it("submit mode edit — appelle updateClientAction avec id et données", async () => {
@@ -91,7 +93,7 @@ describe("ClientForm", () => {
       type: "company" as const,
       email: "",
       phone: null,
-      address: null,
+      billingAddress: null,
       notes: null,
     };
     render(<ClientForm initialData={client as never} />);
@@ -106,6 +108,25 @@ describe("ClientForm", () => {
     });
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/admin/clients");
+    });
+  });
+
+  it("submits_billingAddress_as_structured_object", async () => {
+    mockCreateClientAction.mockResolvedValue({ ok: true, data: { id: "c1", name: "X", slug: "x" } });
+
+    render(<ClientForm />);
+    fireEvent.change(nameInput(), { target: { value: "X" } });
+    fireEvent.change(slugInput(), { target: { value: "x" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /ligne 1/i }), { target: { value: "10 rue Test" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /ville/i }), { target: { value: "Paris" } });
+    fireEvent.click(screen.getByRole("button", { name: /créer/i }));
+
+    await waitFor(() => {
+      const callArg = mockCreateClientAction.mock.calls[0][0] as Record<string, unknown>;
+      expect(callArg).not.toHaveProperty("address");
+      expect(typeof callArg.billingAddress).toBe("object");
+      expect((callArg.billingAddress as Record<string, string>).line1).toBe("10 rue Test");
+      expect((callArg.billingAddress as Record<string, string>).city).toBe("Paris");
     });
   });
 });
