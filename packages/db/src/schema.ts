@@ -233,6 +233,8 @@ export const quotes = pgTable("quotes", {
     .references(() => clients.id, { onDelete: "restrict" }),
   projectId: uuid("project_id")
     .references(() => projects.id, { onDelete: "set null" }),
+  contactId: uuid("contact_id")
+    .references(() => clientContacts.id, { onDelete: "set null" }),
   number: text("number").notNull(),
   status: quoteStatusEnum("status").notNull().default("draft"),
   issuedAt: timestamp("issued_at"),
@@ -271,6 +273,8 @@ export const invoices = pgTable("invoices", {
     .references(() => quotes.id, { onDelete: "set null" }),
   projectId: uuid("project_id")
     .references(() => projects.id, { onDelete: "set null" }),
+  contactId: uuid("contact_id")
+    .references(() => clientContacts.id, { onDelete: "set null" }),
   number: text("number").notNull(),
   status: invoiceStatusEnum("status").notNull().default("draft"),
   issuedAt: timestamp("issued_at"),

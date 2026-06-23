@@ -206,7 +206,7 @@ describe("schema — table quotes", () => {
   });
   it("contient les colonnes attendues", () => {
     const cols = Object.keys(quotes);
-    for (const col of ["id", "ownerId", "clientId", "projectId", "number", "status",
+    for (const col of ["id", "ownerId", "clientId", "projectId", "contactId", "number", "status",
       "issuedAt", "expiresAt", "acceptedAt", "totalEurCents", "vatRateBps",
       "notes", "createdAt", "updatedAt"]) {
       expect(cols).toContain(col);
@@ -233,7 +233,7 @@ describe("schema — table invoices", () => {
   });
   it("contient les colonnes attendues", () => {
     const cols = Object.keys(invoices);
-    for (const col of ["id", "ownerId", "clientId", "quoteId", "projectId", "number",
+    for (const col of ["id", "ownerId", "clientId", "quoteId", "projectId", "contactId", "number",
       "status", "issuedAt", "dueAt", "paidAt", "totalEurCents", "vatRateBps",
       "stripePaymentIntentId", "stripeCheckoutSessionId", "notes",
       "createdAt", "updatedAt"]) {
