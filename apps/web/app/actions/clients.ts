@@ -12,6 +12,7 @@ import {
   updateClientContact,
   deleteClientContact,
   createInvitation,
+  setPrimaryContact,
 } from "@saas/services";
 import { withAdmin, ok, fail, handleActionError, type ActionResult } from "@/lib/action-result";
 import { requireAdmin } from "@/lib/auth";
@@ -151,6 +152,24 @@ export async function deleteClientContactAction(
     await deleteClientContact(contactId);
     revalidatePath(`/admin/clients/${clientId}`);
     return ok(undefined);
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    return handleActionError(error);
+  }
+}
+
+export async function setPrimaryClientContactAction(
+  contactId: string,
+  clientId: string,
+): Promise<ActionResult<ClientContact | null>> {
+  try {
+    await requireAdmin();
+    const result = await setPrimaryContact(clientId, contactId);
+    if (result === null) {
+      return fail("CONTACT_NOT_FOUND", "Contact introuvable ou n'appartient pas à ce client.", 404);
+    }
+    revalidatePath(`/admin/clients/${clientId}`);
+    return ok(result);
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     return handleActionError(error);

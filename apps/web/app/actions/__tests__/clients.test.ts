@@ -8,6 +8,7 @@ vi.mock("@saas/services", () => ({
   listClientContacts: vi.fn(),
   addClientContact: vi.fn(),
   createInvitation: vi.fn(),
+  setPrimaryContact: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -25,6 +26,7 @@ import {
   getClientByIdAction,
   inviteCustomerAction,
   addClientContactAction,
+  setPrimaryClientContactAction,
 } from "../clients";
 import {
   createClient,
@@ -34,6 +36,7 @@ import {
   listClientContacts,
   addClientContact,
   createInvitation,
+  setPrimaryContact,
 } from "@saas/services";
 import { inviteCustomerSchema } from "@/lib/schemas/client.schemas";
 import { requireAdmin } from "@/lib/auth";
@@ -48,6 +51,7 @@ const mockedRevalidatePath = vi.mocked(revalidatePath);
 const mockedListClientContacts = vi.mocked(listClientContacts);
 const mockedAddClientContact = vi.mocked(addClientContact);
 const mockedCreateInvitation = vi.mocked(createInvitation);
+const mockedSetPrimaryContact = vi.mocked(setPrimaryContact);
 
 const VALID_CLIENT_ID = "123e4567-e89b-12d3-a456-426614174001";
 const VALID_CONTACT_ID = "123e4567-e89b-12d3-a456-426614174002";
@@ -384,5 +388,38 @@ describe("addClientContactAction", () => {
       error: expect.objectContaining({ code: "VALIDATION_ERROR" }),
     });
     expect(mockedGetClientById).not.toHaveBeenCalled();
+  });
+});
+
+describe("setPrimaryClientContactAction", () => {
+  const primaryContact = { ...fakeContact, isPrimary: true };
+
+  it("set_primary_action_returns_ok_with_updated_contact", async () => {
+    mockedSetPrimaryContact.mockResolvedValue(primaryContact as never);
+
+    const result = await setPrimaryClientContactAction(VALID_CONTACT_ID, VALID_CLIENT_ID);
+
+    expect(result).toEqual({ ok: true, data: primaryContact });
+    expect(mockedSetPrimaryContact).toHaveBeenCalledWith(VALID_CLIENT_ID, VALID_CONTACT_ID);
+    expect(mockedRevalidatePath).toHaveBeenCalledWith(`/admin/clients/${VALID_CLIENT_ID}`);
+  });
+
+  it("set_primary_action_returns_fail_404_when_service_returns_null", async () => {
+    mockedSetPrimaryContact.mockResolvedValue(null as never);
+
+    const result = await setPrimaryClientContactAction(VALID_CONTACT_ID, VALID_CLIENT_ID);
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "CONTACT_NOT_FOUND", status: 404 }),
+    });
+    expect(mockedRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("set_primary_action_rejects_unauthenticated_caller", async () => {
+    mockedRequireAdmin.mockRejectedValue(makeRedirectError());
+
+    await expect(setPrimaryClientContactAction(VALID_CONTACT_ID, VALID_CLIENT_ID)).rejects.toThrow("NEXT_REDIRECT");
+    expect(mockedSetPrimaryContact).not.toHaveBeenCalled();
   });
 });
