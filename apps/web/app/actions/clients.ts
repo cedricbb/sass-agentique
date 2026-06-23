@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClientSchema, updateClientSchema, inviteCustomerSchema, addClientContactSchema } from "@/lib/schemas/client.schemas";
+import { createClientSchema, updateClientSchema, inviteCustomerSchema, addClientContactSchema, updateClientContactSchema } from "@/lib/schemas/client.schemas";
 import {
   createClient,
   updateClient,
@@ -9,6 +9,8 @@ import {
   getClientById,
   listClientContacts,
   addClientContact,
+  updateClientContact,
+  deleteClientContact,
   createInvitation,
 } from "@saas/services";
 import { withAdmin, ok, fail, handleActionError, type ActionResult } from "@/lib/action-result";
@@ -108,6 +110,47 @@ export async function addClientContactAction(
     const result = await addClientContact({ ...parsed, userId: null });
     revalidatePath(`/admin/clients/${parsed.clientId}`);
     return ok(result);
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    return handleActionError(error);
+  }
+}
+
+export async function updateClientContactAction(
+  contactId: string,
+  clientId: string,
+  input: unknown,
+): Promise<ActionResult<ClientContact | null>> {
+  try {
+    await requireAdmin();
+    const parsed = updateClientContactSchema.parse(input);
+    if (parsed.email !== undefined) {
+      const contacts = await listClientContacts(clientId);
+      const duplicate = contacts.find(
+        (c) => c.id !== contactId && c.email.toLowerCase() === parsed.email!.toLowerCase(),
+      );
+      if (duplicate) {
+        return fail("EMAIL_ALREADY_EXISTS", "Un contact avec cet email existe déjà.", 409);
+      }
+    }
+    const result = await updateClientContact(contactId, parsed);
+    revalidatePath(`/admin/clients/${clientId}`);
+    return ok(result);
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    return handleActionError(error);
+  }
+}
+
+export async function deleteClientContactAction(
+  contactId: string,
+  clientId: string,
+): Promise<ActionResult<void>> {
+  try {
+    await requireAdmin();
+    await deleteClientContact(contactId);
+    revalidatePath(`/admin/clients/${clientId}`);
+    return ok(undefined);
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     return handleActionError(error);

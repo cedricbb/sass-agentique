@@ -15,6 +15,9 @@ export const addClientContactSchema = z.object({
 
 export type AddClientContactInput = z.infer<typeof addClientContactSchema>;
 
+export const updateClientContactSchema = addClientContactSchema.omit({ clientId: true }).partial();
+export type UpdateClientContactInput = z.infer<typeof updateClientContactSchema>;
+
 export type InviteCustomerInput = z.infer<typeof inviteCustomerSchema>;
 
 export const createClientSchema = z.object({

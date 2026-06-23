@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createClientSchema, updateClientSchema } from "../client.schemas";
+import { createClientSchema, updateClientSchema, updateClientContactSchema } from "../client.schemas";
 
 describe("createClientSchema", () => {
   it("accepts valid input", () => {
@@ -87,5 +87,14 @@ describe("updateClientSchema", () => {
 
   it("accepts empty object", () => {
     expect(updateClientSchema.parse({})).toEqual({});
+  });
+});
+
+describe("updateClientContactSchema", () => {
+  it("update_client_contact_schema_accepts_partial", () => {
+    expect(updateClientContactSchema.parse({ name: "X" })).toEqual({ name: "X" });
+    expect(updateClientContactSchema.parse({})).toEqual({});
+    const withClientId = updateClientContactSchema.parse({ clientId: "550e8400-e29b-41d4-a716-446655440000", name: "X" });
+    expect(withClientId).not.toHaveProperty("clientId");
   });
 });
