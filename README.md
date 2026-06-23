@@ -240,14 +240,15 @@ projects           — id, client_id (FK), slug, name,
 prestations        — id, slug, name, kind (one_shot|recurring),
                      base_price_eur_cents, stripe_product_id, stripe_price_id,
                      is_active, sort_order, created_at, updated_at
-quotes             — id, client_id (FK), project_id (FK, opt.), number,
-                     status (draft|sent|accepted|declined|expired),
+quotes             — id, client_id (FK), project_id (FK, opt.), contact_id (FK, opt.),
+                     number, status (draft|sent|accepted|declined|expired),
                      issued_at, expires_at, accepted_at, total_eur_cents,
                      vat_rate_bps, notes, created_at, updated_at
 quote_items        — id, quote_id (FK), prestation_id (FK, opt.),
                      description, quantity, unit_price_eur_cents, sort_order
 invoices           — id, client_id (FK), quote_id (FK, opt.), project_id (FK, opt.),
-                     number, status (draft|sent|paid|overdue|cancelled),
+                     contact_id (FK, opt.), number,
+                     status (draft|sent|paid|overdue|cancelled),
                      issued_at, due_at, paid_at, total_eur_cents, vat_rate_bps,
                      stripe_payment_intent_id, stripe_checkout_session_id, notes
 invoice_items      — id, invoice_id (FK), description, quantity,
