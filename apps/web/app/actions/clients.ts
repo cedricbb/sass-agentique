@@ -5,7 +5,7 @@ import { createClientSchema, updateClientSchema, inviteCustomerSchema, addClient
 import {
   createClient,
   updateClient,
-  deleteClient,
+  archiveClient,
   getClientById,
   listClientContacts,
   addClientContact,
@@ -51,7 +51,7 @@ export async function deleteClientAction(
   id: string,
 ): Promise<ActionResult<void>> {
   return withAdmin(async () => {
-    await deleteClient(id);
+    await archiveClient(id);
     revalidatePath("/admin/clients");
   });
 }
