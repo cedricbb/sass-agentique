@@ -11,6 +11,7 @@ export const quoteStatusSchema = z.enum([
 export const createQuoteSchema = z.object({
   clientId: z.string().uuid(),
   projectId: z.string().uuid().optional(),
+  contactId: z.string().uuid().nullable().optional(),
   expiresAt: z.coerce.date().optional(),
   vatRateBps: z.number().int().min(0).max(10000).optional(),
   notes: z.string().optional(),
@@ -18,6 +19,7 @@ export const createQuoteSchema = z.object({
 
 export const updateQuoteSchema = z.object({
   projectId: z.string().uuid().nullable().optional(),
+  contactId: z.string().uuid().nullable().optional(),
   expiresAt: z.coerce.date().nullable().optional(),
   vatRateBps: z.number().int().min(0).max(10000).optional(),
   notes: z.string().nullable().optional(),

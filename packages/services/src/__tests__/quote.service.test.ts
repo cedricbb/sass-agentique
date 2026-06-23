@@ -68,6 +68,7 @@ const QUOTE_FIXTURE = {
   ownerId: OWNER_ID,
   clientId: "c1",
   projectId: null,
+  contactId: null,
   number: "Q-2026-001",
   status: "draft" as const,
   issuedAt: null,

@@ -411,6 +411,22 @@ describe("createInvoiceFromQuote", () => {
     expect(result.quoteId).toBe("q1");
     expect(dbMock.transaction).toHaveBeenCalled();
   });
+
+  it("copies_contact_id_from_quote", async () => {
+    const quoteWithContact = { ...QUOTE, contactId: "00000000-0000-0000-0000-000000000001" };
+    dbMock.limit!.mockResolvedValueOnce([quoteWithContact]);
+    dbMock.limit!.mockResolvedValueOnce([]);
+    dbMock.limit!.mockResolvedValueOnce([]);
+    dbMock.returning!.mockResolvedValueOnce([{ ...INV_FIXTURE, quoteId: "q1", contactId: "00000000-0000-0000-0000-000000000001" }]);
+    dbMock.where!
+      .mockReturnValueOnce(dbMock)
+      .mockReturnValueOnce(dbMock)
+      .mockReturnValueOnce(dbMock)
+      .mockResolvedValueOnce([]);
+    await createInvoiceFromQuote("q1");
+    const valuesCall = dbMock.values!.mock.calls[0][0];
+    expect(valuesCall.contactId).toBe("00000000-0000-0000-0000-000000000001");
+  });
 });
 
 describe("listInvoiceItems", () => {
