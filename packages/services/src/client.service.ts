@@ -208,7 +208,7 @@ export async function getPrimaryClientForUser(userId: string): Promise<Client | 
 
 export async function setPrimaryContact(
   clientId: string,
-  userId: string,
+  contactId: string,
 ): Promise<ClientContact | null> {
   return db.transaction(async (tx) => {
     await tx
@@ -221,7 +221,7 @@ export async function setPrimaryContact(
       .where(
         and(
           eq(clientContacts.clientId, clientId),
-          eq(clientContacts.userId, userId),
+          eq(clientContacts.id, contactId),
         ),
       )
       .returning();

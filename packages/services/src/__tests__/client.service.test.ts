@@ -250,10 +250,10 @@ describe("removeClientContact", () => {
 });
 
 describe("setPrimaryContact", () => {
-  it("uses transaction to reset then set", async () => {
+  it("resets_all_contacts_then_sets_target", async () => {
     dbMock.where.mockResolvedValueOnce(undefined);
     dbMock.returning.mockResolvedValueOnce([{ ...CONTACT_FIXTURE, isPrimary: true }]);
-    const result = await setPrimaryContact("c1", "u1");
+    const result = await setPrimaryContact("c1", "cc1");
     expect(dbMock.transaction).toHaveBeenCalled();
     expect(dbMock.update).toHaveBeenCalledTimes(2);
     const firstSet = dbMock.set.mock.calls[0][0];
@@ -263,10 +263,10 @@ describe("setPrimaryContact", () => {
     expect(result).toEqual({ ...CONTACT_FIXTURE, isPrimary: true });
   });
 
-  it("returns null when contact not found", async () => {
+  it("returns_null_when_contact_not_found_for_client", async () => {
     dbMock.where.mockResolvedValueOnce(undefined);
     dbMock.returning.mockResolvedValueOnce([]);
-    const result = await setPrimaryContact("c1", "unknown");
+    const result = await setPrimaryContact("c1", "inexistant");
     expect(result).toBeNull();
   });
 });
