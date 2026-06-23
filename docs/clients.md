@@ -63,6 +63,7 @@ La section "Accès portail" de la fiche client expose le CRUD complet des contac
 | `updateClientContact(id, patch)` | `→ ClientContact` | Met à jour name/email/role/isPrimary |
 | `deleteClientContact(contactId)` | `→ void` | Supprime par `id` du contact (transaction : purge les dépendances FK en amont) |
 | `removeClientContact(clientId, userId)` | `→ void` | Supprime par `userId` — flux portail existant, conservé |
+| `setPrimaryContact(clientId, contactId)` | `→ void` | Transaction exclusive : remet tous les contacts du client à `isPrimary = false`, puis marque le contact ciblé. Garde : le contact doit appartenir au client (sinon no-op). |
 
 `deleteClientContact` opère en transaction : supprime d'abord les lignes dépendantes (ex. invitations référençant `contactId`), puis le contact. Ne jamais l'utiliser à la place de `removeClientContact` pour un contact avec compte portail actif.
 
@@ -79,8 +80,9 @@ La section "Accès portail" de la fiche client expose le CRUD complet des contac
 |---|---|---|
 | `updateClientContactAction(contactId, input)` | `→ ActionResult` | `requireAdmin` ; rejette si email dupliqué sur un *autre* contact du même client (`EMAIL_ALREADY_EXISTS`) |
 | `deleteClientContactAction(contactId, clientId)` | `→ ActionResult` | `requireAdmin` ; idempotent (pas de garde IDOR) |
+| `setPrimaryClientContactAction(contactId, clientId)` | `→ ActionResult` | `requireAdmin` ; délègue à `setPrimaryContact(clientId, contactId)` — exclusivité garantie en transaction |
 
-Les deux actions appellent `revalidatePath(/admin/clients/${clientId})` et suivent le pattern `try/catch → ok/fail/handleActionError` cohérent avec `addClientContactAction`.
+Les trois actions appellent `revalidatePath(/admin/clients/${clientId})` et suivent le pattern `try/catch → ok/fail/handleActionError` cohérent avec `addClientContactAction`.
 
 ### Composants UI contacts (`apps/web/app/(admin)/admin/clients/_components/`)
 
@@ -89,6 +91,7 @@ Les deux actions appellent `revalidatePath(/admin/clients/${clientId})` et suive
 | `AddClientContactDialog.tsx` | Dialog ajout contact (nom, email, rôle, isPrimary) |
 | `EditClientContactDialog.tsx` | Dialog édition contact (nom, email, rôle uniquement — isPrimary hors scope) |
 | `DeleteClientContactButton.tsx` | Bouton suppression contact avec AlertDialog de confirmation |
+| `SetPrimaryContactButton.tsx` | Bouton icône (Star, ghost) "Définir comme principal" — action directe sans dialog |
 
 #### `EditClientContactDialog`
 
@@ -101,7 +104,15 @@ Pré-remplissage du Select rôle au montage et à chaque réouverture :
 
 La fermeture du dialog sans submit (clic extérieur, Échap) réinitialise le state role à la valeur initiale du contact.
 
-`isPrimary` n'est pas exposé : deux contacts primaires sur un même client seraient possibles via édition concurrente. La désignation d'un contact principal fera l'objet d'une action dédiée ultérieure.
+`isPrimary` n'est pas exposé dans ce dialog : la désignation du contact principal passe par `SetPrimaryContactButton` (exclusivité garantie en transaction côté service).
+
+#### `SetPrimaryContactButton`
+
+Props : `contactId`, `clientId`.
+
+Affiché dans la cellule Action du tableau contacts uniquement si `isPrimary === false`. Pour le contact principal, la cellule affiche un badge "Principal" (lecture seule).
+
+Click → appel direct `setPrimaryClientContactAction(contactId, clientId)` via `useTransition`, résultat affiché en toast. Pas de dialog de confirmation (action légère et réversible).
 
 #### `DeleteClientContactButton`
 
@@ -142,3 +153,5 @@ Les helpers `formatCurrency` / `formatDate` viennent de `@/lib/format`. Les mont
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` — visibilité conditionnelle des champs identité selon `type`, strip au submit pour `individual`
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/EditClientContactDialog.test.tsx` — trigger, pré-remplissage name/email, pré-remplissage rôle prédéfini/custom/null, submit
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientContactButton.test.tsx` — trigger, alertdialog, wording portail vs sans portail, confirm, cancel
+- `apps/web/app/actions/__tests__/clients.test.ts` — `setPrimaryClientContactAction` : rejet non-admin, succès, échec service
+- `packages/services/src/__tests__/client.service.test.ts` — `setPrimaryContact` : exclusivité en transaction, garde appartenance client
