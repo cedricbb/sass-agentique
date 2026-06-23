@@ -247,6 +247,7 @@ export async function createInvoiceFromQuote(quoteId: string): Promise<Invoice> 
         ownerId: quote.ownerId,
         clientId: quote.clientId,
         projectId: quote.projectId,
+        contactId: quote.contactId,
         quoteId,
         number,
         totalEurCents: quote.totalEurCents,
