@@ -5,6 +5,7 @@ import { InviteCustomerDialog } from "../_components/InviteCustomerDialog";
 import { AddClientContactDialog } from "../_components/AddClientContactDialog";
 import { EditClientContactDialog } from "../_components/EditClientContactDialog";
 import { DeleteClientContactButton } from "../_components/DeleteClientContactButton";
+import { SetPrimaryContactButton } from "../_components/SetPrimaryContactButton";
 import { ClientQuotesSection } from "../_components/ClientQuotesSection";
 import { ClientInvoicesSection } from "../_components/ClientInvoicesSection";
 import {
@@ -13,6 +14,7 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import {
   listClientContacts,
   getClientContactWithUser,
@@ -107,6 +109,11 @@ export default async function EditClientPage({
                   </td>
                   <td className="p-2">
                     <div className="flex items-center gap-1">
+                      {contact.isPrimary ? (
+                        <Badge variant="secondary">Principal</Badge>
+                      ) : (
+                        <SetPrimaryContactButton contactId={contact.id} clientId={id} />
+                      )}
                       {contact.userId ? (
                         <span className="text-muted-foreground text-sm">
                           {portalAccountCreatedLabel(lastConsumedInvitation?.consumedAt ?? null)}
