@@ -131,7 +131,12 @@ export async function listClientContacts(
   return db
     .select()
     .from(clientContacts)
-    .where(eq(clientContacts.clientId, clientId));
+    .where(eq(clientContacts.clientId, clientId))
+    .orderBy(desc(clientContacts.isPrimary), asc(clientContacts.name));
+}
+
+export async function deleteClientContact(contactId: string): Promise<void> {
+  await db.delete(clientContacts).where(eq(clientContacts.id, contactId));
 }
 
 export async function addClientContact(

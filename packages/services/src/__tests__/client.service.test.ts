@@ -51,6 +51,7 @@ import {
   listClientContacts,
   addClientContact,
   removeClientContact,
+  deleteClientContact,
   setPrimaryContact,
   getClientsForUser,
   getPrimaryClientForUser,
@@ -181,12 +182,25 @@ describe("deleteClient", () => {
 
 describe("listClientContacts", () => {
   it("returns contacts for clientId", async () => {
-    dbMock.where.mockResolvedValueOnce([CONTACT_FIXTURE]);
+    dbMock.orderBy.mockResolvedValueOnce([CONTACT_FIXTURE]);
     const result = await listClientContacts("c1");
     expect(dbMock.select).toHaveBeenCalled();
     expect(dbMock.from).toHaveBeenCalled();
     expect(dbMock.where).toHaveBeenCalled();
     expect(result).toEqual([CONTACT_FIXTURE]);
+  });
+
+  it("list_client_contacts_ordered_by_primary_then_name", async () => {
+    const ZOE = { ...CONTACT_FIXTURE, id: "z", name: "Zoe", isPrimary: true };
+    const ALICE = { ...CONTACT_FIXTURE, id: "a", name: "Alice", isPrimary: false };
+    const BOB = { ...CONTACT_FIXTURE, id: "b", name: "Bob", isPrimary: false };
+    dbMock.orderBy.mockResolvedValueOnce([ZOE, ALICE, BOB]);
+    const result = await listClientContacts("c1");
+    expect(dbMock.orderBy).toHaveBeenCalled();
+    const orderArgs = dbMock.orderBy.mock.calls[0];
+    expect(orderArgs[0]).toMatchObject({ op: "desc" });
+    expect(orderArgs[1]).toMatchObject({ op: "asc" });
+    expect(result).toEqual([ZOE, ALICE, BOB]);
   });
 });
 
@@ -212,6 +226,17 @@ describe("addClientContact", () => {
     expect(valuesArg.email).toBe("test@example.com");
     expect(valuesArg.userId).toBe("u1");
     expect(result).toEqual(CONTACT_FIXTURE);
+  });
+});
+
+describe("deleteClientContact", () => {
+  it("delete_client_contact_by_id", async () => {
+    dbMock.where.mockResolvedValueOnce(undefined);
+    await deleteClientContact("cc1");
+    expect(dbMock.delete).toHaveBeenCalled();
+    expect(dbMock.where).toHaveBeenCalled();
+    const whereArg = dbMock.where.mock.calls[0][0];
+    expect(whereArg).toHaveProperty("op", "eq");
   });
 });
 
@@ -373,3 +398,4 @@ describe("getPrimaryClientForUser", () => {
     expect(result).toBeNull();
   });
 });
+
