@@ -3,6 +3,8 @@ import { getClientByIdAction } from "@/app/actions/clients";
 import { ClientForm } from "../_components/ClientForm";
 import { InviteCustomerDialog } from "../_components/InviteCustomerDialog";
 import { AddClientContactDialog } from "../_components/AddClientContactDialog";
+import { EditClientContactDialog } from "../_components/EditClientContactDialog";
+import { DeleteClientContactButton } from "../_components/DeleteClientContactButton";
 import { ClientQuotesSection } from "../_components/ClientQuotesSection";
 import { ClientInvoicesSection } from "../_components/ClientInvoicesSection";
 import {
@@ -104,20 +106,37 @@ export default async function EditClientPage({
                     )}
                   </td>
                   <td className="p-2">
-                    {contact.userId ? (
-                      <span className="text-muted-foreground text-sm">
-                        {portalAccountCreatedLabel(lastConsumedInvitation?.consumedAt ?? null)}
-                      </span>
-                    ) : (
-                      <InviteCustomerDialog
+                    <div className="flex items-center gap-1">
+                      {contact.userId ? (
+                        <span className="text-muted-foreground text-sm">
+                          {portalAccountCreatedLabel(lastConsumedInvitation?.consumedAt ?? null)}
+                        </span>
+                      ) : (
+                        <InviteCustomerDialog
+                          clientId={id}
+                          contactId={contact.id}
+                          contactName={contact.name}
+                          contactEmail={contact.email}
+                          hasActiveInvitation={!!activeInvitation}
+                          activeExpiresAt={activeInvitation?.expiresAt}
+                        />
+                      )}
+                      <EditClientContactDialog
+                        contact={{
+                          id: contact.id,
+                          name: contact.name,
+                          email: contact.email,
+                          role: contact.role,
+                        }}
                         clientId={id}
-                        contactId={contact.id}
-                        contactName={contact.name}
-                        contactEmail={contact.email}
-                        hasActiveInvitation={!!activeInvitation}
-                        activeExpiresAt={activeInvitation?.expiresAt}
                       />
-                    )}
+                      <DeleteClientContactButton
+                        contactId={contact.id}
+                        clientId={id}
+                        contactName={contact.name}
+                        hasPortalAccess={!!contact.userId}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
