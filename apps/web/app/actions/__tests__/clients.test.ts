@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@saas/services", () => ({
   createClient: vi.fn(),
   updateClient: vi.fn(),
-  deleteClient: vi.fn(),
+  archiveClient: vi.fn(),
   getClientById: vi.fn(),
   listClientContacts: vi.fn(),
   addClientContact: vi.fn(),
@@ -29,7 +29,7 @@ import {
 import {
   createClient,
   updateClient,
-  deleteClient,
+  archiveClient,
   getClientById,
   listClientContacts,
   addClientContact,
@@ -42,7 +42,7 @@ import { revalidatePath } from "next/cache";
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedCreateClient = vi.mocked(createClient);
 const mockedUpdateClient = vi.mocked(updateClient);
-const mockedDeleteClient = vi.mocked(deleteClient);
+const mockedArchiveClient = vi.mocked(archiveClient);
 const mockedGetClientById = vi.mocked(getClientById);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 const mockedListClientContacts = vi.mocked(listClientContacts);
@@ -185,14 +185,14 @@ describe("updateClientAction", () => {
 
 describe("deleteClientAction", () => {
   it("13 — happy path", async () => {
-    mockedDeleteClient.mockResolvedValue(undefined as never);
+    mockedArchiveClient.mockResolvedValue(undefined as never);
     const result = await deleteClientAction("c1");
     expect(result).toEqual({ ok: true, data: undefined });
-    expect(mockedDeleteClient).toHaveBeenCalledWith("c1");
+    expect(mockedArchiveClient).toHaveBeenCalledWith("c1");
   });
 
   it("14 — service throw", async () => {
-    mockedDeleteClient.mockRejectedValue(new Error("db down"));
+    mockedArchiveClient.mockRejectedValue(new Error("db down"));
     const result = await deleteClientAction("c1");
     expect(result).toEqual({
       ok: false,
@@ -206,7 +206,7 @@ describe("deleteClientAction", () => {
   });
 
   it("16 — revalidatePath appelé", async () => {
-    mockedDeleteClient.mockResolvedValue(undefined as never);
+    mockedArchiveClient.mockResolvedValue(undefined as never);
     await deleteClientAction("c1");
     expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/clients");
   });
