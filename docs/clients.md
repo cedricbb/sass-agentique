@@ -82,6 +82,37 @@ La section "Accès portail" de la fiche client expose le CRUD complet des contac
 
 Les deux actions appellent `revalidatePath(/admin/clients/${clientId})` et suivent le pattern `try/catch → ok/fail/handleActionError` cohérent avec `addClientContactAction`.
 
+### Composants UI contacts (`apps/web/app/(admin)/admin/clients/_components/`)
+
+| Composant | Rôle |
+|---|---|
+| `AddClientContactDialog.tsx` | Dialog ajout contact (nom, email, rôle, isPrimary) |
+| `EditClientContactDialog.tsx` | Dialog édition contact (nom, email, rôle uniquement — isPrimary hors scope) |
+| `DeleteClientContactButton.tsx` | Bouton suppression contact avec AlertDialog de confirmation |
+
+#### `EditClientContactDialog`
+
+Props : `contact: { id, name, email, role }`, `clientId`.
+
+Pré-remplissage du Select rôle au montage et à chaque réouverture :
+- `role ∈ PREDEFINED_ROLES` → option correspondante sélectionnée
+- `role` valeur custom non listée → option "Autre" sélectionnée + champ texte pré-rempli avec la valeur
+- `role === null` → aucune sélection
+
+La fermeture du dialog sans submit (clic extérieur, Échap) réinitialise le state role à la valeur initiale du contact.
+
+`isPrimary` n'est pas exposé : deux contacts primaires sur un même client seraient possibles via édition concurrente. La désignation d'un contact principal fera l'objet d'une action dédiée ultérieure.
+
+#### `DeleteClientContactButton`
+
+Props : `contactId`, `clientId`, `contactName`, `hasPortalAccess: boolean`.
+
+Affiche un AlertDialog dont le wording varie selon `hasPortalAccess` :
+- `true` → *"Ce contact a un accès portail actif. La suppression révoquera cet accès. Cette action est irréversible."*
+- `false` → *"Ce contact sera définitivement supprimé. Cette action est irréversible."*
+
+Hard delete : les invitations en cours sont purgées par cascade DB ; si le contact a un `userId`, son rattachement au client est retiré.
+
 ## Architecture interne
 
 La page `apps/web/app/(admin)/admin/clients/[id]/page.tsx` est un Server Component. Les données sont chargées en parallèle via `Promise.all` :
@@ -109,3 +140,5 @@ Les helpers `formatCurrency` / `formatDate` viennent de `@/lib/format`. Les mont
 - `packages/services/src/__tests__/client.service.test.ts` — persistance create/update billingAddress, round-trip via `resolveBillingParty` ; `deleteClientContact` par contactId ; `listClientContacts` ordre isPrimary desc + name asc
 - `apps/web/lib/schemas/__tests__/client.schemas.test.ts` — validation Zod `billingAddress` object / optionnel / clé `address` ignorée ; identité entreprise (`siret`, `tvaIntra`, `legalForm`) optionnels et acceptent chaîne vide ; `updateClientContactSchema` partiel sans `clientId`
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` — visibilité conditionnelle des champs identité selon `type`, strip au submit pour `individual`
+- `apps/web/app/(admin)/admin/clients/_components/__tests__/EditClientContactDialog.test.tsx` — trigger, pré-remplissage name/email, pré-remplissage rôle prédéfini/custom/null, submit
+- `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientContactButton.test.tsx` — trigger, alertdialog, wording portail vs sans portail, confirm, cancel
