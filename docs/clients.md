@@ -50,6 +50,38 @@ Ces champs sont **optionnels** (nullable) — aucun backfill sur les clients exi
 
 Ces colonnes alimenteront le bloc `BillTo` du PDF dans la feature `feat-client-company-pdf-recipient` (le type `BillTo` de `billing-party.shared` expose déjà `siret?` et `tvaIntra?`).
 
+## Gestion des contacts portail (CRUD)
+
+La section "Accès portail" de la fiche client expose le CRUD complet des contacts.
+
+### Service (`packages/services/src/client.service.ts`)
+
+| Fonction | Signature | Comportement |
+|---|---|---|
+| `listClientContacts(clientId)` | `→ ClientContact[]` | Tri déterministe : `isPrimary DESC`, `name ASC` |
+| `addClientContact(input)` | `→ ClientContact` | Crée un contact (sans compte portail) |
+| `updateClientContact(id, patch)` | `→ ClientContact` | Met à jour name/email/role/isPrimary |
+| `deleteClientContact(contactId)` | `→ void` | Supprime par `id` du contact (transaction : purge les dépendances FK en amont) |
+| `removeClientContact(clientId, userId)` | `→ void` | Supprime par `userId` — flux portail existant, conservé |
+
+`deleteClientContact` opère en transaction : supprime d'abord les lignes dépendantes (ex. invitations référençant `contactId`), puis le contact. Ne jamais l'utiliser à la place de `removeClientContact` pour un contact avec compte portail actif.
+
+### Schémas Zod (`apps/web/lib/schemas/client.schemas.ts`)
+
+| Schéma | Dérivation |
+|---|---|
+| `addClientContactSchema` | Base — inclut `clientId` (obligatoire) |
+| `updateClientContactSchema` | `addClientContactSchema.omit({clientId}).partial()` — tous les champs optionnels, `clientId` non modifiable |
+
+### Server Actions (`apps/web/app/actions/clients.ts`)
+
+| Action | Signature | Garde |
+|---|---|---|
+| `updateClientContactAction(contactId, input)` | `→ ActionResult` | `requireAdmin` ; rejette si email dupliqué sur un *autre* contact du même client (`EMAIL_ALREADY_EXISTS`) |
+| `deleteClientContactAction(contactId, clientId)` | `→ ActionResult` | `requireAdmin` ; idempotent (pas de garde IDOR) |
+
+Les deux actions appellent `revalidatePath(/admin/clients/${clientId})` et suivent le pattern `try/catch → ok/fail/handleActionError` cohérent avec `addClientContactAction`.
+
 ## Architecture interne
 
 La page `apps/web/app/(admin)/admin/clients/[id]/page.tsx` est un Server Component. Les données sont chargées en parallèle via `Promise.all` :
@@ -74,6 +106,6 @@ Les helpers `formatCurrency` / `formatDate` viennent de `@/lib/format`. Les mont
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientQuotesSection.test.tsx`
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientInvoicesSection.test.tsx`
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` — soumet `billingAddress` comme objet structuré, vérifie l'absence de la clé `address`
-- `packages/services/src/__tests__/client.service.test.ts` — persistance create/update billingAddress, round-trip via `resolveBillingParty`
-- `apps/web/lib/schemas/__tests__/client.schemas.test.ts` — validation Zod `billingAddress` object / optionnel / clé `address` ignorée ; identité entreprise (`siret`, `tvaIntra`, `legalForm`) optionnels et acceptent chaîne vide
+- `packages/services/src/__tests__/client.service.test.ts` — persistance create/update billingAddress, round-trip via `resolveBillingParty` ; `deleteClientContact` par contactId ; `listClientContacts` ordre isPrimary desc + name asc
+- `apps/web/lib/schemas/__tests__/client.schemas.test.ts` — validation Zod `billingAddress` object / optionnel / clé `address` ignorée ; identité entreprise (`siret`, `tvaIntra`, `legalForm`) optionnels et acceptent chaîne vide ; `updateClientContactSchema` partiel sans `clientId`
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientForm.test.tsx` — visibilité conditionnelle des champs identité selon `type`, strip au submit pour `individual`
