@@ -8,6 +8,7 @@ vi.mock("@saas/services", () => ({
   getClientById: vi.fn(),
   getBusinessProfile: vi.fn(),
   setInvoicePdfKey: vi.fn(),
+  getClientContactWithUser: vi.fn(),
 }))
 
 vi.mock("@/lib/storage/r2", () => ({
@@ -36,6 +37,7 @@ import {
   getClientById,
   getBusinessProfile,
   setInvoicePdfKey,
+  getClientContactWithUser,
 } from "@saas/services"
 import {
   buildInvoiceKey,
@@ -52,6 +54,8 @@ const CLIENT_ID = "00000000-0000-0000-0000-000000000002"
 const OWNER_ID = "00000000-0000-0000-0000-000000000003"
 const PDF_KEY = "invoices/2026/06/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.pdf"
 const FAKE_PDF_BUFFER = Buffer.from("%PDF-fake")
+
+const CONTACT_ID = "00000000-0000-0000-0000-000000000004"
 
 const fixtureInvoice = {
   id: INVOICE_ID,
@@ -70,6 +74,7 @@ const fixtureInvoice = {
   quoteId: null,
   projectId: null,
   paidAt: null,
+  contactId: null,
 }
 
 const fixtureItems = [
@@ -241,5 +246,27 @@ describe("generateAndStoreInvoicePdf", () => {
 
     await expect(generateAndStoreInvoicePdf(INVOICE_ID)).resolves.toEqual({ pdfKey: PDF_KEY })
     expect((capturedBillFrom as Record<string, unknown>).logoUrl).toBeUndefined()
+  })
+
+  it("fetches_contact_and_maps_attention_when_invoice_has_contact_id", async () => {
+    setupHappyPath()
+    vi.mocked(getInvoiceById).mockResolvedValue({
+      ...fixtureInvoice,
+      contactId: CONTACT_ID,
+    } as never)
+    vi.mocked(getClientContactWithUser).mockResolvedValue({
+      contact: { id: CONTACT_ID, name: "Jean Dupont", clientId: CLIENT_ID, userId: "u1", isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date() },
+      user: { id: "u1", email: "jean@example.com", name: "Jean Dupont" },
+    } as never)
+    let capturedBillTo: unknown = null
+    vi.mocked(renderInvoicePdf).mockImplementation(async (model) => {
+      capturedBillTo = model.billTo
+      return FAKE_PDF_BUFFER
+    })
+
+    await generateAndStoreInvoicePdf(INVOICE_ID)
+
+    expect(vi.mocked(getClientContactWithUser)).toHaveBeenCalledWith(CONTACT_ID)
+    expect((capturedBillTo as Record<string, unknown>).attention).toBe("Jean Dupont")
   })
 })

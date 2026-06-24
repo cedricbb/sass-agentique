@@ -8,6 +8,7 @@ vi.mock("@saas/services", () => ({
   getClientById: vi.fn(),
   getBusinessProfile: vi.fn(),
   setQuotePdfKey: vi.fn(),
+  getClientContactWithUser: vi.fn(),
 }))
 
 vi.mock("@/lib/storage/r2", () => ({
@@ -52,6 +53,7 @@ import {
   getClientById,
   getBusinessProfile,
   setQuotePdfKey,
+  getClientContactWithUser,
 } from "@saas/services"
 import {
   buildQuoteKey,
@@ -65,6 +67,7 @@ import { renderQuotePdf } from "../render"
 const QUOTE_ID = "00000000-0000-0000-0000-000000000001"
 const CLIENT_ID = "00000000-0000-0000-0000-000000000002"
 const OWNER_ID = "00000000-0000-0000-0000-000000000003"
+const CONTACT_ID = "00000000-0000-0000-0000-000000000004"
 const PDF_KEY = "quotes/2026/06/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.pdf"
 const FAKE_PDF_BUFFER = Buffer.from("%PDF-fake")
 
@@ -83,6 +86,7 @@ const fixtureQuote = {
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
   projectId: null,
+  contactId: null,
 }
 
 const fixtureItems = [
@@ -246,5 +250,27 @@ describe("generateAndStoreQuotePdf", () => {
 
     await expect(generateAndStoreQuotePdf(QUOTE_ID)).resolves.toEqual({ pdfKey: PDF_KEY })
     expect((capturedBillFrom as Record<string, unknown>).logoUrl).toBeUndefined()
+  })
+
+  it("fetches_contact_and_maps_attention_when_quote_has_contact_id", async () => {
+    setupHappyPath()
+    vi.mocked(getQuoteById).mockResolvedValue({
+      ...fixtureQuote,
+      contactId: CONTACT_ID,
+    } as never)
+    vi.mocked(getClientContactWithUser).mockResolvedValue({
+      contact: { id: CONTACT_ID, name: "Marie Martin", clientId: CLIENT_ID, userId: "u1", isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date() },
+      user: { id: "u1", email: "marie@example.com", name: "Marie Martin" },
+    } as never)
+    let capturedBillTo: unknown = null
+    vi.mocked(renderQuotePdf).mockImplementation(async (model) => {
+      capturedBillTo = model.billTo
+      return FAKE_PDF_BUFFER
+    })
+
+    await generateAndStoreQuotePdf(QUOTE_ID)
+
+    expect(vi.mocked(getClientContactWithUser)).toHaveBeenCalledWith(CONTACT_ID)
+    expect((capturedBillTo as Record<string, unknown>).attention).toBe("Marie Martin")
   })
 })
