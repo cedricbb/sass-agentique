@@ -49,6 +49,7 @@ import {
   unarchiveClient,
   deleteClient,
   listClientContacts,
+  listClientContactsByOwner,
   addClientContact,
   removeClientContact,
   deleteClientContact,
@@ -355,6 +356,27 @@ describe("round_trip_billingAddress_through_resolveBillingParty", () => {
     expect(billTo.address).toEqual(billingAddress);
     expect(billTo.address.line1).toBe("10 rue Test");
     expect(billTo.address.city).toBe("Paris");
+  });
+});
+
+describe("listClientContactsByOwner", () => {
+  it("list_client_contacts_by_owner_returns_filtered_contacts", async () => {
+    const CONTACT_C1 = { ...CONTACT_FIXTURE, id: "cc-c1", clientId: "c-1", isPrimary: true, name: "Alice" };
+    const CONTACT_C2 = { ...CONTACT_FIXTURE, id: "cc-c2", clientId: "c-2", isPrimary: false, name: "Bob" };
+    dbMock.orderBy.mockResolvedValueOnce([
+      { clientContacts: CONTACT_C1 },
+      { clientContacts: CONTACT_C2 },
+    ]);
+    const result = await listClientContactsByOwner("owner-1");
+    expect(dbMock.select).toHaveBeenCalled();
+    expect(dbMock.from).toHaveBeenCalled();
+    expect(dbMock.innerJoin).toHaveBeenCalled();
+    expect(dbMock.where).toHaveBeenCalled();
+    expect(dbMock.orderBy).toHaveBeenCalled();
+    const orderArgs = dbMock.orderBy.mock.calls[0];
+    expect(orderArgs[1]).toMatchObject({ op: "desc" });
+    expect(orderArgs[2]).toMatchObject({ op: "asc" });
+    expect(result).toEqual([CONTACT_C1, CONTACT_C2]);
   });
 });
 

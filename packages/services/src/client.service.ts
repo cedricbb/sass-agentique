@@ -135,6 +135,18 @@ export async function listClientContacts(
     .orderBy(desc(clientContacts.isPrimary), asc(clientContacts.name));
 }
 
+export async function listClientContactsByOwner(
+  ownerId: string,
+): Promise<ClientContact[]> {
+  return db
+    .select({ clientContacts })
+    .from(clientContacts)
+    .innerJoin(clients, eq(clientContacts.clientId, clients.id))
+    .where(and(eq(clients.ownerId, ownerId), isNull(clients.archivedAt)))
+    .orderBy(asc(clientContacts.clientId), desc(clientContacts.isPrimary), asc(clientContacts.name))
+    .then((rows) => rows.map((r) => r.clientContacts));
+}
+
 export async function deleteClientContact(contactId: string): Promise<void> {
   await db.delete(clientContacts).where(eq(clientContacts.id, contactId));
 }
