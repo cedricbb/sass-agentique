@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Download } from "lucide-react";
-import { listClients, listAllProjects, getQuoteById, listQuoteItems, listPrestations, listInvoices } from "@saas/services";
+import { listClients, listAllProjects, getQuoteById, listQuoteItems, listPrestations, listInvoices, listClientContacts } from "@saas/services";
 import { computeQuoteTtc } from "@saas/services/quote.shared";
 import { Button } from "@/components/ui/button";
 import { QuoteForm } from "../_components/QuoteForm";
@@ -27,6 +27,8 @@ export default async function EditQuotePage({
     listInvoices(),
   ]);
   if (!quote) notFound();
+
+  const contacts = await listClientContacts(quote.clientId);
 
   const amounts = computeQuoteTtc(quote);
   const alreadyInvoiced = invoices.some((inv) => inv.quoteId === quote.id);
@@ -70,7 +72,7 @@ export default async function EditQuotePage({
       </section>
       <section>
         <h2 className="text-xl font-semibold mb-4">Informations</h2>
-        <QuoteForm initialData={quote} clients={clients} projects={projects} mode="edit" />
+        <QuoteForm initialData={quote} clients={clients} projects={projects} contacts={contacts} mode="edit" />
       </section>
     </div>
   );
