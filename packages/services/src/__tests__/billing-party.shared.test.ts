@@ -23,6 +23,47 @@ describe("resolveBillingParty", () => {
     expect(result.tvaIntra).toBeUndefined()
   })
 
+  it("resolves_without_contact_backward_compat", () => {
+    const client = {
+      name: "ACME Corp",
+      type: "company" as const,
+      email: null,
+      phone: null,
+      billingAddress: null,
+    }
+    const result = resolveBillingParty(client)
+    expect(result.siret).toBeUndefined()
+    expect(result.tvaIntra).toBeUndefined()
+    expect(result.attention).toBeUndefined()
+  })
+
+  it("resolves_client_siret_and_tva_intra", () => {
+    const client = {
+      name: "ACME Corp",
+      type: "company" as const,
+      email: null,
+      phone: null,
+      billingAddress: null,
+      siret: "12345678901234",
+      tvaIntra: "FR12345678901",
+    }
+    const result = resolveBillingParty(client, null)
+    expect(result.siret).toBe("12345678901234")
+    expect(result.tvaIntra).toBe("FR12345678901")
+  })
+
+  it("resolves_attention_from_contact_param", () => {
+    const client = {
+      name: "ACME Corp",
+      type: "company" as const,
+      email: null,
+      phone: null,
+      billingAddress: null,
+    }
+    const result = resolveBillingParty(client, { name: "Jean Dupont" })
+    expect(result.attention).toBe("Jean Dupont")
+  })
+
   it("resolves_client_with_null_address", () => {
     const client = {
       name: "John Doe",

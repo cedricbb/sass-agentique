@@ -22,6 +22,7 @@ export type BillTo = {
   phone?: string
   siret?: string
   tvaIntra?: string
+  attention?: string
 }
 
 export type ClientForBilling = {
@@ -30,6 +31,8 @@ export type ClientForBilling = {
   email: string | null
   phone: string | null
   billingAddress: unknown
+  siret?: string | null
+  tvaIntra?: string | null
 }
 
 export type EmitterInput = {
@@ -62,13 +65,19 @@ export function parseAddressJsonb(raw: unknown): PostalAddress {
   return {}
 }
 
-export function resolveBillingParty(client: ClientForBilling): BillTo {
+export function resolveBillingParty(
+  client: ClientForBilling,
+  contact?: { name: string } | null,
+): BillTo {
   return {
     name: client.name,
     type: client.type,
     address: parseAddressJsonb(client.billingAddress),
     email: client.email ?? undefined,
     phone: client.phone ?? undefined,
+    siret: client.siret ?? undefined,
+    tvaIntra: client.tvaIntra ?? undefined,
+    attention: contact?.name ?? undefined,
   }
 }
 
