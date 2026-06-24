@@ -22,8 +22,11 @@ import {
   type EmitterInput,
 } from "@saas/services/billing-party.shared"
 
-// Résoudre le destinataire (client chargé depuis DB par l'appelant)
-const billTo: BillTo = resolveBillingParty(client)
+// Résoudre le destinataire (client + contact optionnel chargés depuis DB par l'appelant)
+const contact = invoice.contactId
+  ? await getClientContactWithUser(invoice.contactId)
+  : null
+const billTo: BillTo = resolveBillingParty(client, contact)
 
 // Résoudre l'émetteur (depuis config env ou future table business_profile)
 const billFrom: BillFrom = resolveEmitter({
@@ -46,8 +49,8 @@ const lines: string[] = formatPostalAddress(billTo.address)
 |------|------|
 | `PostalAddress` | Adresse postale normalisée (tous champs optionnels) |
 | `BillFrom` | Émetteur : infos légales FR (name, legalForm, siret, tvaIntra, logoUrl, …) |
-| `BillTo` | Destinataire : name, type (company\|individual), address, siret?, tvaIntra? |
-| `ClientForBilling` | Sous-ensemble structurel de `Client` consommé par `resolveBillingParty` |
+| `BillTo` | Destinataire : name, type (company\|individual), address, siret?, tvaIntra?, attention? |
+| `ClientForBilling` | Sous-ensemble structurel de `Client` consommé par `resolveBillingParty` (inclut siret?, tvaIntra?) |
 | `EmitterInput` | Entrée source-agnostique de `resolveEmitter` |
 
 **Fonctions exportées**
@@ -55,20 +58,20 @@ const lines: string[] = formatPostalAddress(billTo.address)
 | Fonction | Comportement |
 |----------|-------------|
 | `parseAddressJsonb(raw)` | Normalise `clients.billingAddress` (jsonb) en `PostalAddress`. Tolère : string legacy → `{line1}`, objet structuré → extraction sélective, null/undefined → `{}`. Jamais de crash. |
-| `resolveBillingParty(client)` | Mappe `ClientForBilling` → `BillTo`. Délègue l'adresse à `parseAddressJsonb`. `siret`/`tvaIntra` → `undefined` jusqu'à R10-3. |
+| `resolveBillingParty(client, contact?)` | Mappe `ClientForBilling` → `BillTo`. Délègue l'adresse à `parseAddressJsonb`. Mappe `client.siret`/`tvaIntra` → `BillTo.siret`/`tvaIntra`. Mappe `contact?.name` → `BillTo.attention`. Second param optionnel : les appelants sans contact restent non cassés. |
 | `resolveEmitter(input)` | Mappe `EmitterInput` → `BillFrom`. L'appelant est responsable de sourcer les données (env ou future table). |
 | `formatPostalAddress(addr)` | Retourne un tableau de lignes non-vides : `[line1, line2, "zip city", state, country]`. |
 
 **Invariants de design**
 - `PostalAddress` est importé depuis `@saas/db` via `import type` (erasure à la compilation — zéro dépendance runtime vers `@saas/db`, `drizzle-orm` ou toute dépendance I/O).
-- `siret`/`tvaIntra` sur `BillTo` sont typés mais volontairement `undefined` jusqu'à R10-3 — le contrat du template est déjà prêt.
+- `siret`/`tvaIntra` sur `BillTo` sont alimentés depuis `client.siret`/`client.tvaIntra` (nullish → undefined). `attention` porte le nom du contact destinataire si fourni par l'appelant.
 - La source de `EmitterInput` (config env vs future table `business_profile`) est délibérément hors scope — arbitrage R10-1d.
 
 ## Liens vers tests
 
 `packages/services/src/__tests__/billing-party.shared.test.ts`
 
-10 cas unitaires couvrant : company avec adresse string, adresse null, jsonb structuré,
-émetteur complet, émetteur avec champs optionnels absents, émetteur iban/bic,
-formatPostalAddress complet, formatPostalAddress vide, formatPostalAddress ordre complet,
-formatPostalAddress tableau vide.
+13 cas unitaires couvrant : company avec adresse string, adresse null, jsonb structuré,
+siret/tvaIntra mappés depuis client, siret absent → undefined, attention depuis contact,
+sans contact (backward compat), émetteur complet, émetteur avec champs optionnels absents,
+émetteur iban/bic, formatPostalAddress complet, vide, ordre complet.
