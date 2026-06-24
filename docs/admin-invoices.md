@@ -2,9 +2,25 @@
 
 ## Ce que fait ce module
 
-Gestion complète des factures côté admin : liste paginée avec filtres, page détail par facture (édition, cycle de vie, lignes, montants, paiements), et téléchargement PDF des factures émises.
+Gestion complète des factures côté admin : liste paginée avec filtres, page détail par facture (édition, cycle de vie, lignes, montants, paiements), téléchargement PDF des factures émises, et sélection du contact destinataire (« À l'attention de »).
 
 ## Comment l'utiliser
+
+### Sélectionner le contact destinataire
+
+Le formulaire de facture expose un Select **"Destinataire (contact)"** permettant de cibler un contact spécifique du client (ex. : « À l'attention de … » dans le PDF à venir).
+
+**Création** (`/admin/invoices/new`) :
+- Le Select n'apparaît que lorsqu'un client est choisi.
+- Options : « Aucun (entreprise seule) » + les contacts du client sélectionné.
+- Aucun contact pré-sélectionné par défaut.
+- Changer de client réinitialise automatiquement la sélection à « Aucun ».
+- Le Select est masqué lorsque la facture est créée depuis un devis (`quoteSelected = true`) — le contact proviendra du devis via `createInvoiceFromQuote`.
+
+**Édition** (`/admin/invoices/[id]`) :
+- Le Select est toujours visible (client fixé).
+- Pré-rempli avec le `contactId` existant de la facture.
+- Options : contacts du client de la facture.
 
 ### Télécharger un PDF de facture
 
@@ -20,6 +36,15 @@ Le nom de fichier téléchargé suit le pattern : `facture-{invoice.number}.pdf`
 
 ## Architecture interne
 
+### Sélecteur de contact destinataire
+
+- `packages/services/src/client.service.ts` — `listClientContactsByOwner(ownerId)` : requête JOIN `clientContacts ↔ clients` filtrée sur `clients.ownerId = $ownerId AND clients.archivedAt IS NULL`, triée par `(clientId, desc isPrimary, asc name)`. Évite le N+1 sur la page de création ; réutilisable par le formulaire devis (3c).
+- `apps/web/app/(admin)/admin/invoices/new/page.tsx` — appelle `listClientContactsByOwner(admin.id)` et passe `contacts` à `InvoiceForm`.
+- `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — appelle `listClientContacts(invoice.clientId)` après résolution de la facture et passe `contacts` à `InvoiceForm`.
+- `apps/web/app/(admin)/admin/invoices/_components/InvoiceForm.tsx` — prop `contacts: ClientContact[]`, champ `contactId` géré par react-hook-form, `watch("clientId")` pour filtrer les options et reset à `""` lors du changement de client.
+
+### Téléchargement PDF
+
 - `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — Server Component qui charge la facture et rend le bouton conditionnel dans un `flex gap-4` avec le titre `<h1>`.
 - `apps/web/app/(admin)/admin/invoices/_components/InvoicesTable.tsx` — colonne `actions` : div flex contenant l'icône Download conditionnelle + le lien Pencil existant.
 
@@ -29,5 +54,7 @@ La route `/api/invoices/[id]/file` n'a pas été modifiée.
 
 ## Liens vers tests
 
+- `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceForm.test.tsx` — describe "contact select" : masquage sans client, affichage avec client, reset sur changement client, masquage en mode from-quote, pré-remplissage en édition.
+- `packages/services/src/__tests__/client.service.test.ts` — `list_client_contacts_by_owner_returns_filtered_contacts`
 - `apps/web/app/(admin)/admin/invoices/[id]/__tests__/page.test.tsx` — describe "Download button" : `shows_download_button_when_issued`, `hides_download_button_when_draft`
 - `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicesTable.test.tsx` — describe "Download icon" : `shows_download_icon_for_issued_invoice_row`, `hides_download_icon_for_draft_invoice_row`
