@@ -3,7 +3,11 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QuoteForm } from "../QuoteForm";
-import type { Client, Project, Quote } from "@saas/db";
+import type { Client, ClientContact, Project, Quote } from "@saas/db";
+
+Element.prototype.scrollIntoView = vi.fn();
+window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+window.HTMLElement.prototype.releasePointerCapture = vi.fn();
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -23,6 +27,20 @@ vi.mock("@/lib/toast", () => ({
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
+
+const mockContacts: ClientContact[] = [
+  {
+    id: "contact-1",
+    clientId: "c-1",
+    userId: null,
+    isPrimary: true,
+    role: null,
+    name: "Alice Dupont",
+    email: "alice@acme.com",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
 
 const mockClients: Client[] = [
   {
@@ -70,6 +88,12 @@ const mockQuote: Quote = {
   createdAt: new Date(),
   updatedAt: new Date(),
 } as Quote;
+
+async function selectOption(testId: string, optionName: string) {
+  fireEvent.click(screen.getByTestId(testId));
+  await waitFor(() => expect(screen.getByRole("option", { name: optionName })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole("option", { name: optionName }));
+}
 
 describe("QuoteForm", () => {
   it("T1 — create UI: affiche le sélecteur client et bouton Créer", () => {
@@ -151,6 +175,136 @@ describe("QuoteForm", () => {
       expect(mockUpdateQuoteAction).toHaveBeenCalledWith(
         "q-1",
         expect.not.objectContaining({ clientId: expect.anything() }),
+      );
+    });
+  });
+
+  it("T6 — create contact hidden: Select contact masqué sans client sélectionné", () => {
+    render(
+      <QuoteForm clients={mockClients} projects={mockProjects} contacts={mockContacts} mode="create" />,
+    );
+    expect(screen.queryByTestId("quote-contactId-select")).not.toBeInTheDocument();
+  });
+
+  it("T7 — create contact visible: Select contact affiché après sélection client", async () => {
+    render(
+      <QuoteForm clients={mockClients} projects={mockProjects} contacts={mockContacts} mode="create" />,
+    );
+
+    expect(screen.queryByTestId("quote-contactId-select")).not.toBeInTheDocument();
+
+    await selectOption("quote-clientId-select", "Acme Corp");
+
+    await waitFor(() => expect(screen.getByTestId("quote-contactId-select")).toBeInTheDocument());
+    expect(screen.getAllByText("Aucun (entreprise seule)").length).toBeGreaterThan(0);
+  });
+
+  it("T8 — create contact reset: changement client reset contactId à none", async () => {
+    const secondClient: Client = {
+      ...mockClients[0],
+      id: "c-2",
+      name: "Beta Ltd",
+      slug: "beta",
+    };
+    render(
+      <QuoteForm
+        clients={[...mockClients, secondClient]}
+        projects={mockProjects}
+        contacts={mockContacts}
+        mode="create"
+      />,
+    );
+
+    await selectOption("quote-clientId-select", "Acme Corp");
+    await waitFor(() => expect(screen.getByTestId("quote-contactId-select")).toBeInTheDocument());
+
+    await selectOption("quote-contactId-select", "Alice Dupont");
+
+    await selectOption("quote-clientId-select", "Beta Ltd");
+
+    await waitFor(() => {
+      const trigger = screen.getByTestId("quote-contactId-select");
+      expect(trigger).toHaveTextContent(/aucun \(entreprise seule\)/i);
+    });
+  });
+
+  it("T9 — create submit contactId: createQuoteAction reçoit contactId sélectionné", async () => {
+    mockCreateQuoteAction.mockResolvedValue({ ok: true, data: { id: "q-new" } });
+
+    render(
+      <QuoteForm clients={mockClients} projects={mockProjects} contacts={mockContacts} mode="create" />,
+    );
+
+    await selectOption("quote-clientId-select", "Acme Corp");
+    await waitFor(() => expect(screen.getByTestId("quote-contactId-select")).toBeInTheDocument());
+    await selectOption("quote-contactId-select", "Alice Dupont");
+
+    fireEvent.click(screen.getByRole("button", { name: /créer le devis/i }));
+
+    await waitFor(() => {
+      expect(mockCreateQuoteAction).toHaveBeenCalledWith(
+        expect.objectContaining({ contactId: "contact-1" }),
+      );
+    });
+  });
+
+  it("T10 — create submit no contact: createQuoteAction reçoit contactId undefined", async () => {
+    mockCreateQuoteAction.mockResolvedValue({ ok: true, data: { id: "q-new" } });
+
+    render(
+      <QuoteForm clients={mockClients} projects={mockProjects} contacts={mockContacts} mode="create" />,
+    );
+
+    await selectOption("quote-clientId-select", "Acme Corp");
+    await waitFor(() => expect(screen.getByTestId("quote-contactId-select")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /créer le devis/i }));
+
+    await waitFor(() => {
+      const call = mockCreateQuoteAction.mock.calls[0][0];
+      expect(call.contactId).toBeUndefined();
+    });
+  });
+
+  it("T11 — edit contact prefill: Select contact pré-rempli avec quote.contactId", () => {
+    const quoteWithContact: Quote = { ...mockQuote, contactId: "contact-1" } as Quote;
+
+    render(
+      <QuoteForm
+        initialData={quoteWithContact}
+        clients={mockClients}
+        projects={mockProjects}
+        contacts={mockContacts}
+        mode="edit"
+      />,
+    );
+
+    const trigger = screen.getByTestId("quote-contactId-select");
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveTextContent("Alice Dupont");
+  });
+
+  it("T12 — edit submit contactId: updateQuoteAction reçoit contactId", async () => {
+    mockUpdateQuoteAction.mockResolvedValue({ ok: true, data: mockQuote });
+
+    const quoteWithContact: Quote = { ...mockQuote, contactId: "contact-1" } as Quote;
+
+    render(
+      <QuoteForm
+        initialData={quoteWithContact}
+        clients={mockClients}
+        projects={mockProjects}
+        contacts={mockContacts}
+        mode="edit"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /mettre à jour/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateQuoteAction).toHaveBeenCalledWith(
+        "q-1",
+        expect.objectContaining({ contactId: "contact-1" }),
       );
     });
   });

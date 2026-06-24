@@ -6,7 +6,7 @@ import { useTransition } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Client, Project, Quote } from "@saas/db";
+import type { Client, ClientContact, Project, Quote } from "@saas/db";
 import { createQuoteAction, updateQuoteAction } from "@/app/actions/quotes";
 import { toastResult } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -30,12 +30,14 @@ import {
 
 const DEFAULT_VAT_BPS = 2000;
 const NONE_PROJECT_VALUE = "none";
+const NONE_CONTACT_VALUE = "none";
 
 const bpsToPercent = (bps: number) => bps / 100;
 const percentToBps = (pct: number) => Math.round(pct * 100);
 
 const baseFormSchema = z.object({
   projectId: z.string().optional(),
+  contactId: z.string().optional(),
   expiresAt: z.string().optional(),
   vatRatePercent: z.coerce.number().min(0).max(100),
   notes: z.string().optional(),
@@ -51,10 +53,11 @@ interface QuoteFormProps {
   initialData?: Quote;
   clients: Client[];
   projects: Project[];
+  contacts?: ClientContact[];
   mode: "create" | "edit";
 }
 
-export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormProps) {
+export function QuoteForm({ initialData, clients, projects, contacts, mode }: QuoteFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -65,6 +68,7 @@ export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormPro
     defaultValues: {
       clientId: "",
       projectId: initialData?.projectId ?? NONE_PROJECT_VALUE,
+      contactId: initialData?.contactId ?? NONE_CONTACT_VALUE,
       expiresAt: initialData?.expiresAt
         ? new Date(initialData.expiresAt).toISOString().split("T")[0]
         : undefined,
@@ -72,6 +76,13 @@ export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormPro
       notes: initialData?.notes ?? "",
     },
   });
+
+  const watchedClientId = form.watch("clientId");
+
+  function handleClientChange(value: string, fieldOnChange: (v: string) => void) {
+    fieldOnChange(value);
+    form.setValue("contactId", NONE_CONTACT_VALUE);
+  }
 
   const onSubmit = (data: FormValues) => {
     startTransition(async () => {
@@ -81,9 +92,12 @@ export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormPro
       if (mode === "create") {
         const projectId =
           data.projectId === NONE_PROJECT_VALUE ? undefined : data.projectId;
+        const contactId =
+          data.contactId === NONE_CONTACT_VALUE ? undefined : data.contactId;
         const result = await createQuoteAction({
           clientId: data.clientId!,
           projectId,
+          contactId,
           expiresAt,
           vatRateBps,
           notes: data.notes,
@@ -94,8 +108,11 @@ export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormPro
       } else {
         const projectId =
           data.projectId === NONE_PROJECT_VALUE ? null : data.projectId;
+        const contactId =
+          data.contactId === NONE_CONTACT_VALUE ? null : data.contactId;
         const result = await updateQuoteAction(initialData!.id, {
           projectId,
+          contactId,
           expiresAt: expiresAt ?? null,
           vatRateBps,
           notes: data.notes,
@@ -117,7 +134,7 @@ export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormPro
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Client</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={(v) => handleClientChange(v, field.onChange)} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="quote-clientId-select">
                       <SelectValue placeholder="Sélectionner un client" />
@@ -146,6 +163,66 @@ export function QuoteForm({ initialData, clients, projects, mode }: QuoteFormPro
             </p>
           </div>
         )}
+
+        {mode === "create"
+          ? watchedClientId && (
+              <FormField
+                control={form.control}
+                name="contactId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Destinataire (contact)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value ?? NONE_CONTACT_VALUE}>
+                      <FormControl>
+                        <SelectTrigger data-testid="quote-contactId-select">
+                          <SelectValue placeholder="Aucun (entreprise seule)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE_CONTACT_VALUE}>Aucun (entreprise seule)</SelectItem>
+                        {contacts
+                          ?.filter((c) => c.clientId === watchedClientId)
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )
+          : (
+            <FormField
+              control={form.control}
+              name="contactId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Destinataire (contact)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? NONE_CONTACT_VALUE}>
+                    <FormControl>
+                      <SelectTrigger data-testid="quote-contactId-select">
+                        <SelectValue placeholder="Aucun (entreprise seule)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={NONE_CONTACT_VALUE}>Aucun (entreprise seule)</SelectItem>
+                      {contacts
+                        ?.filter((c) => c.clientId === initialData?.clientId)
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
         <FormField
           control={form.control}
