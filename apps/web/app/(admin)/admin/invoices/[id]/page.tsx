@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Download } from "lucide-react";
-import { getInvoiceById, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations, paymentService } from "@saas/services";
+import { getInvoiceById, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations, paymentService, listClientContacts } from "@saas/services";
 import { computeInvoiceTtc } from "@saas/services/invoice.shared";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusActions } from "../_components/InvoiceStatusActions";
@@ -27,6 +27,8 @@ export default async function EditInvoicePage({
     listPrestations(),
   ]);
   if (!invoice) notFound();
+
+  const contacts = await listClientContacts(invoice.clientId);
 
   const [items, balance, payments] = await Promise.all([
     listInvoiceItems(id),
@@ -64,6 +66,7 @@ export default async function EditInvoicePage({
           initialData={invoice}
           clients={clients}
           projects={projects}
+          contacts={contacts}
           sourceQuote={sourceQuote}
           mode="edit"
         />

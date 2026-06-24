@@ -14,6 +14,7 @@ vi.mock("@saas/services", () => ({
   listClients: vi.fn().mockResolvedValue([]),
   listAllProjects: vi.fn().mockResolvedValue([]),
   listPrestations: vi.fn().mockResolvedValue([]),
+  listClientContacts: vi.fn().mockResolvedValue([]),
   getQuoteById: vi.fn().mockResolvedValue(null),
   listInvoiceItems: vi.fn().mockResolvedValue([]),
   paymentService: {
