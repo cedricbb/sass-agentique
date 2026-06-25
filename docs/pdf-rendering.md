@@ -199,12 +199,19 @@ Câblage dans les documents :
 Sous le `PdfHeader`, tout le contenu est wrappé dans `<View style={contentPadding}>`. La première rangée est un `flexDirection: "row"` `justifyContent: "space-between"` à deux colonnes :
 
 **Colonne gauche — Destinataire**
-- Libellé `"DESTINATAIRE"` (petit, couleur accent)
-- `billTo.name` (bold, toujours présent)
-- `billTo.email` — rendu uniquement si non-vide
-- `billTo.address` — rendu uniquement si non-vide
-- `billTo.phone` — rendu uniquement si non-vide
-- Aucune ligne vide n'est rendue si le champ est absent
+
+Ordre lockéa :
+
+1. Libellé `"DESTINATAIRE"` (petit, couleur accent)
+2. `billTo.name` (bold, toujours présent)
+3. `"À l'attention de {billTo.attention}"` — conditionnel (si `attention` renseigné)
+4. `billTo.address` via `formatPostalAddress` — rendu uniquement si non-vide
+5. `billTo.email` — rendu uniquement si non-vide
+6. `billTo.phone` — rendu uniquement si non-vide
+7. `"SIRET : {billTo.siret}"` — conditionnel (si `siret` renseigné)
+8. `"TVA : {billTo.tvaIntra}"` — conditionnel (si `tvaIntra` renseigné)
+
+Aucune ligne vide n'est rendue si le champ est absent.
 
 **Colonne droite — Méta**
 
@@ -370,6 +377,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | **R10-1g-a `invoice-pdf-route`** | ✅ livré | Route Handler `GET /api/invoices/[id]/file` — stream R2 inline + régénération paresseuse si `pdfKey` null et `issuedAt` set + lien réel dans `InvoiceRow` |
 | **R10-1g-b `emit-quote`** | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionQuoteStatusAction`) |
 | **feat-pdf-footer-legal-mentions** | ✅ livré | `PdfFooter` ancré — émetteur, IBAN/BIC, mentions légales B2B ; `formatPostalAddressOneLine` ; `iban`/`bic` sur `BillFrom` |
+| **feat-pdf-recipient-render** | ✅ livré | Bloc destinataire enrichi : `attention` (nom contact), `SIRET`, `TVA` conditionnels dans `InvoicePdf` et `QuotePdf` |
 | R10-1h-quote `quote-pdf-route` | 🔜 | Route Handler `GET /api/quotes/[id]/file` — stream R2 inline |
 
 ## Liens vers tests
@@ -380,9 +388,9 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 - `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 21 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF ; + `PdfHeader` (rendu avec/sans logo, sans `number` prop, logo inline) ; + `PdfFooter` (8 tests : émetteur ligne 1, identifiants ligne 2, mentions légales, délai paiement depuis dueAt/issuedAt, "Paiement à réception" sans dates, IBAN/BIC masqués si null, IBAN/BIC affichés si renseignés, "BIC" absent si iban/bic null)
 - `packages/services/src/__tests__/billing-party.shared.test.ts` — 10 tests dont 2 `formatPostalAddressOneLine` (vide/complet) + 1 `resolveEmitter` avec iban/bic
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
-- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 3 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`)
+- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 6 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`) ; `render_invoice_pdf_attention_line` (AC1) ; `render_invoice_pdf_siret_line` (AC2) ; `render_invoice_pdf_tva_intra_line` (AC3 — assertion sur "TVA :" avec deux-points pour éviter la collision avec le libellé TotalsBlock)
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
-- `apps/web/lib/pdf/__tests__/quote-pdf.test.tsx` — 1 test end-to-end `renderQuotePdf` : buffer `%PDF`, "DEVIS"/"Jean Dupont"/"validit" présents dans le texte extrait
+- `apps/web/lib/pdf/__tests__/quote-pdf.test.tsx` — 5 tests end-to-end `renderQuotePdf` : buffer `%PDF`, "DEVIS"/"Jean Dupont"/"validit" présents ; `render_quote_pdf_attention_line` (AC4) ; `render_quote_pdf_siret_line` (AC5) ; `render_quote_pdf_tva_intra_line` (AC6 — assertion "TVA :") ; `render_quote_pdf_no_optional_fields_no_labels` (AC8 — absence de "SIRET" / "TVA :" / "attention de" si champs vides)
 - `packages/services/src/__tests__/quote-pdf.shared.test.ts` — 5 tests purs `toQuotePdfModel` : tri sortOrder, calcul lignes, TTC via computeQuoteTtc, notes null/texte, dates null
 
 ### Helper d'extraction texte
