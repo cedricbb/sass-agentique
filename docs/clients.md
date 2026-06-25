@@ -143,6 +143,18 @@ Les sections devis et factures sont rendues par deux Server Components dédiés 
 
 Les helpers `formatCurrency` / `formatDate` viennent de `@/lib/format`. Les montants TTC sont calculés via `computeQuoteTtc` / `computeInvoiceTtc` depuis `@saas/services`.
 
+## E2E — sélecteurs stables DeleteClientButton
+
+`DeleteClientButton` expose des `data-testid` stables, insensibles au wording :
+
+| Élément | `data-testid` |
+|---|---|
+| Bouton déclencheur (AlertDialogTrigger) | `client-delete-trigger` |
+| Bouton de confirmation (AlertDialogAction) | `client-delete-confirm` |
+| Bouton d'annulation (AlertDialogCancel) | `client-delete-cancel` |
+
+Le helper e2e `deleteClientByName` (dans `tests/e2e/helpers/contracts.ts`) cible ces testids via `page.getByTestId(...)`. Ne pas remplacer ces sélecteurs par des sélecteurs textuels — tout renommage du wording casserait les tests E2E (régression CI observée après fix-client-contacts-labels-wording).
+
 ## Liens vers tests
 
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientQuotesSection.test.tsx`
