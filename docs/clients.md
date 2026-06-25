@@ -2,7 +2,7 @@
 
 ## Ce que fait le module Clients
 
-Gestion des clients de l'admin solo : création, édition des informations (nom, type, email, téléphone, adresse de facturation structurée, identité d'entreprise, notes), gestion des accès portail (contacts, invitations), et visualisation de l'historique devis et factures associés.
+Gestion des clients de l'admin solo : création, édition des informations (nom, type, email, téléphone, adresse de facturation structurée, identité d'entreprise, notes), gestion des contacts (invitations), et visualisation de l'historique devis et factures associés.
 
 ## Comment l'utiliser
 
@@ -11,7 +11,7 @@ Accès via `/admin/clients` (liste) et `/admin/clients/[id]` (fiche détail).
 La fiche détail expose trois zones :
 
 1. **Formulaire d'édition** — informations du client.
-2. **Accès portail** — contacts du client et statut invitation.
+2. **Contacts** — contacts du client et statut invitation.
 3. **Section Devis** — tableau des devis du client triés par date d'émission desc. Colonnes : Numéro, Statut, Émis le, Montant TTC. Chaque ligne est un lien vers `/admin/quotes/[id]`. Affiche "Aucun devis pour ce client." si vide.
 4. **Section Factures** — tableau des factures du client triées par date d'émission desc. Colonnes : Numéro, Statut, Émis le, Échéance, Montant TTC, Payé le. Chaque ligne est un lien vers `/admin/invoices/[id]`. Affiche "Aucune facture pour ce client." si vide.
 
@@ -52,7 +52,7 @@ Ces colonnes alimenteront le bloc `BillTo` du PDF dans la feature `feat-client-c
 
 ## Gestion des contacts portail (CRUD)
 
-La section "Accès portail" de la fiche client expose le CRUD complet des contacts.
+La section « Contacts » de la fiche client expose le CRUD complet des contacts.
 
 ### Service (`packages/services/src/client.service.ts`)
 
