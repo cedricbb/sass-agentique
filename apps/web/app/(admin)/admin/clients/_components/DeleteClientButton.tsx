@@ -30,7 +30,7 @@ export function DeleteClientButton({ clientId, clientName }: DeleteClientButtonP
   const handleDelete = () => {
     startTransition(async () => {
       const result = await deleteClientAction(clientId);
-      if (toastResult(result, "Client supprimé")) {
+      if (toastResult(result, "Client archivé")) {
         router.push("/admin/clients");
       }
     });
@@ -40,21 +40,20 @@ export function DeleteClientButton({ clientId, clientName }: DeleteClientButtonP
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" disabled={isPending}>
-          Supprimer
+          Archiver
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Supprimer {clientName} ?</AlertDialogTitle>
+          <AlertDialogTitle>Archiver {clientName} ?</AlertDialogTitle>
           <AlertDialogDescription>
-            Cette action est irréversible. Le client et toutes ses données associées seront
-            définitivement supprimés.
+            Le client n'apparaîtra plus dans la liste. Ses devis et factures restent conservés.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuler</AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete} disabled={isPending}>
-            Confirmer
+            Archiver
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

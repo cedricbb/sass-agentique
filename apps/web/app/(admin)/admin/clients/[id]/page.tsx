@@ -68,7 +68,7 @@ export default async function EditClientPage({
       <ClientForm initialData={result.data} />
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Accès portail</h2>
+          <h2 className="text-lg font-semibold">Contacts</h2>
           <AddClientContactDialog clientId={id} />
         </div>
         {contactsWithData.length === 0 ? (

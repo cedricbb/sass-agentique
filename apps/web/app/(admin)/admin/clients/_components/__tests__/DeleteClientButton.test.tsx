@@ -25,11 +25,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function triggerButton() {
-  return screen.getAllByRole("button", { name: /supprimer/i })[0];
+  return screen.getAllByRole("button", { name: /archiver/i })[0];
 }
 
 describe("DeleteClientButton", () => {
-  it("render — affiche bouton Supprimer", () => {
+  it("render — affiche bouton Archiver", () => {
     render(<DeleteClientButton clientId="c1" clientName="Acme" />);
     expect(triggerButton()).toBeInTheDocument();
   });
@@ -39,7 +39,7 @@ describe("DeleteClientButton", () => {
 
     render(<DeleteClientButton clientId="c1" clientName="Acme" />);
     fireEvent.click(triggerButton());
-    const confirmButton = await screen.findByRole("button", { name: /confirmer/i });
+    const confirmButton = await screen.findByRole("button", { name: /archiver/i });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
