@@ -39,7 +39,7 @@ export function DeleteClientButton({ clientId, clientName }: DeleteClientButtonP
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" disabled={isPending}>
+        <Button variant="destructive" disabled={isPending} data-testid="client-delete-trigger">
           Archiver
         </Button>
       </AlertDialogTrigger>
@@ -51,8 +51,8 @@ export function DeleteClientButton({ clientId, clientName }: DeleteClientButtonP
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Annuler</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={isPending}>
+          <AlertDialogCancel data-testid="client-delete-cancel">Annuler</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} disabled={isPending} data-testid="client-delete-confirm">
             Archiver
           </AlertDialogAction>
         </AlertDialogFooter>

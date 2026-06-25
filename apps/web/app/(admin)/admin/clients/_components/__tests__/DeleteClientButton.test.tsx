@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function triggerButton() {
-  return screen.getAllByRole("button", { name: /archiver/i })[0];
+  return screen.getByTestId("client-delete-trigger");
 }
 
 describe("DeleteClientButton", () => {
@@ -39,7 +39,7 @@ describe("DeleteClientButton", () => {
 
     render(<DeleteClientButton clientId="c1" clientName="Acme" />);
     fireEvent.click(triggerButton());
-    const confirmButton = await screen.findByRole("button", { name: /archiver/i });
+    const confirmButton = await screen.findByTestId("client-delete-confirm");
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
@@ -50,7 +50,7 @@ describe("DeleteClientButton", () => {
   it("cancel delete — ne déclenche pas deleteClientAction", async () => {
     render(<DeleteClientButton clientId="c1" clientName="Acme" />);
     fireEvent.click(triggerButton());
-    const cancelButton = await screen.findByRole("button", { name: /annuler/i });
+    const cancelButton = await screen.findByTestId("client-delete-cancel");
     fireEvent.click(cancelButton);
 
     expect(mockDeleteClientAction).not.toHaveBeenCalled();
