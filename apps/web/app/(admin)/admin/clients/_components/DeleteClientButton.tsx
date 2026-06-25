@@ -47,7 +47,7 @@ export function DeleteClientButton({ clientId, clientName }: DeleteClientButtonP
         <AlertDialogHeader>
           <AlertDialogTitle>Archiver {clientName} ?</AlertDialogTitle>
           <AlertDialogDescription>
-            Le client n'apparaîtra plus dans la liste. Ses devis et factures restent conservés.
+            Le client n&apos;apparaîtra plus dans la liste. Ses devis et factures restent conservés.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
