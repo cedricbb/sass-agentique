@@ -79,11 +79,14 @@ export function InvoicePdf(props: { model: InvoicePdfModel }): React.ReactElemen
           <View style={styles.recipientColumn}>
             <Text style={styles.sectionLabel}>Destinataire</Text>
             <Text style={styles.recipientName}>{model.billTo.name}</Text>
+            {model.billTo.attention ? <Text style={styles.recipientLine}>À l&apos;attention de {model.billTo.attention}</Text> : null}
             {model.billTo.email ? <Text style={styles.recipientLine}>{model.billTo.email}</Text> : null}
             {addressLines.map((line, i) => (
               <Text key={i} style={styles.recipientLine}>{line}</Text>
             ))}
             {model.billTo.phone ? <Text style={styles.recipientLine}>{model.billTo.phone}</Text> : null}
+            {model.billTo.siret ? <Text style={styles.recipientLine}>SIRET : {model.billTo.siret}</Text> : null}
+            {model.billTo.tvaIntra ? <Text style={styles.recipientLine}>TVA : {model.billTo.tvaIntra}</Text> : null}
           </View>
           <View style={styles.metaColumn}>
             <View style={styles.metaRow}>
