@@ -139,7 +139,7 @@ describe("ClientForm", () => {
     expect(screen.queryByTestId("legalForm-input")).not.toBeInTheDocument();
   });
 
-  it("individual_submit_strips_identity_fields", async () => {
+  it("individual_submit_sends_null_identity_fields", async () => {
     mockUpdateClientAction.mockResolvedValue({ ok: true, data: null });
 
     const individualClient = {
@@ -160,9 +160,46 @@ describe("ClientForm", () => {
 
     await waitFor(() => {
       const callArg = mockUpdateClientAction.mock.calls[0][1] as Record<string, unknown>;
-      expect(callArg.siret).toBeUndefined();
-      expect(callArg.tvaIntra).toBeUndefined();
-      expect(callArg.legalForm).toBeUndefined();
+      expect(callArg.siret).toBeNull();
+      expect(callArg.tvaIntra).toBeNull();
+      expect(callArg.legalForm).toBeNull();
+    });
+  });
+
+  it("switch_to_individual_resets_identity_fields", async () => {
+    const companyClient = {
+      id: "c1",
+      name: "Acme",
+      slug: "acme",
+      type: "company" as const,
+      email: null,
+      phone: null,
+      billingAddress: null,
+      notes: null,
+      siret: "12345678900010",
+      tvaIntra: "FR12123456789",
+      legalForm: "SASU",
+    };
+    render(<ClientForm initialData={companyClient as never} />);
+
+    expect(screen.getByTestId("siret-input")).toHaveValue("12345678900010");
+
+    fireEvent.click(screen.getByRole("combobox"));
+    await waitFor(() => screen.getByRole("option", { name: /particulier/i }));
+    fireEvent.click(screen.getByRole("option", { name: /particulier/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("siret-input")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("combobox"));
+    await waitFor(() => screen.getByRole("option", { name: /entreprise/i }));
+    fireEvent.click(screen.getByRole("option", { name: /entreprise/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("siret-input")).toHaveValue("");
+      expect(screen.getByTestId("tvaIntra-input")).toHaveValue("");
+      expect(screen.getByTestId("legalForm-input")).toHaveValue("");
     });
   });
 
