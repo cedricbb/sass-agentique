@@ -56,6 +56,7 @@ import {
   setPrimaryContact,
   getClientsForUser,
   getPrimaryClientForUser,
+  getClientContactById,
 } from "../client.service";
 import { generateSlug } from "../utils/slug";
 import { resolveBillingParty } from "../billing-party.shared";
@@ -417,6 +418,26 @@ describe("getPrimaryClientForUser", () => {
     dbMock.limit.mockResolvedValueOnce([]);
     const result = await getPrimaryClientForUser("u-archived");
     expect(dbMock.where).toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+});
+
+describe("getClientContactById", () => {
+  it("returns_contact_without_portal_account", async () => {
+    const contactWithoutPortal = { id: "cc-no-portal", clientId: "c1", name: "Jeanne Manuell", email: null, phone: null, role: null, isPrimary: false, userId: null, createdAt: new Date(), updatedAt: new Date() };
+    dbMock.limit.mockResolvedValueOnce([contactWithoutPortal]);
+
+    const result = await getClientContactById("cc-no-portal");
+
+    expect(result).toEqual(contactWithoutPortal);
+    expect(result?.userId).toBeNull();
+  });
+
+  it("returns null when contact not found", async () => {
+    dbMock.limit.mockResolvedValueOnce([]);
+
+    const result = await getClientContactById("unknown-id");
+
     expect(result).toBeNull();
   });
 });

@@ -125,6 +125,17 @@ export async function getClientContactWithUser(
   };
 }
 
+export async function getClientContactById(
+  contactId: string,
+): Promise<ClientContact | null> {
+  const [row] = await db
+    .select()
+    .from(clientContacts)
+    .where(eq(clientContacts.id, contactId))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function listClientContacts(
   clientId: string,
 ): Promise<ClientContact[]> {
