@@ -121,9 +121,9 @@ describe("ItemsTable", () => {
     const text = await extractPdfText(element)
     expect(containsNormalized(text, "Prestation alpha")).toBe(true)
     expect(containsNormalized(text, "Forfait beta")).toBe(true)
-    expect(normalize(text)).toContain("150.00")
-    expect(normalize(text)).toContain("300.00")
-    expect(normalize(text)).toContain("50.50")
+    expect(normalize(text)).toContain("150,00")
+    expect(normalize(text)).toContain("300,00")
+    expect(normalize(text)).toContain("50,50")
   })
 
   it("items_table_renders_empty_array_without_throwing", async () => {
@@ -228,9 +228,9 @@ describe("TotalsBlock", () => {
       }),
     )
     const text = await extractPdfText(element)
-    expect(normalize(text)).toContain("100.00")
-    expect(normalize(text)).toContain("20.00")
-    expect(normalize(text)).toContain("120.00")
+    expect(normalize(text)).toContain("100,00")
+    expect(normalize(text)).toContain("20,00")
+    expect(normalize(text)).toContain("120,00")
   })
 })
 
@@ -275,6 +275,8 @@ describe("PdfFooter", () => {
     const text = await extractPdfText(element)
     expect(normalize(text)).toContain("40")
     expect(containsNormalized(text, "CGV")).toBe(true)
+    expect(containsNormalized(text, "de retard")).toBe(true)
+    expect(containsNormalized(text, "forfaitaire")).toBe(true)
   })
 
   it("pdf_footer_renders_payment_delay_from_dates", async () => {
@@ -296,7 +298,7 @@ describe("PdfFooter", () => {
       React.createElement(PdfFooter, { billFrom: fullBillFrom, dueAt: null }),
     )
     const text = await extractPdfText(element)
-    expect(containsNormalized(text, "reception")).toBe(true)
+    expect(containsNormalized(text, "Paiement")).toBe(true)
   })
 
   it("pdf_footer_renders_in_quote_context", async () => {

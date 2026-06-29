@@ -2,6 +2,7 @@ import React from "react"
 import { Document, Page, View, Text, Image, StyleSheet, Svg, Polygon } from "@react-pdf/renderer"
 import type { BillFrom, BillTo } from "@saas/services/billing-party.shared"
 import { formatPostalAddress, formatPostalAddressOneLine } from "@saas/services/billing-party.shared"
+import { formatCurrency } from "../format"
 
 export const PDF_DARK = "#2A2A2A"
 export const PDF_ON_DARK = "#FFFFFF"
@@ -16,9 +17,6 @@ export type PdfLineItem = {
   totalHtCents: number
 }
 
-function centsToEur(cents: number): string {
-  return (cents / 100).toFixed(2) + " €"
-}
 
 const styles = StyleSheet.create({
   page: {
@@ -243,8 +241,8 @@ export function ItemsTable(props: { items: PdfLineItem[] }): React.ReactElement 
         <View key={i} style={styles.tableRow}>
           <Text style={styles.colDescription}>{item.description}</Text>
           <Text style={styles.colQty}>{item.quantity}</Text>
-          <Text style={styles.colUnitPrice}>{centsToEur(item.unitPriceHtCents)}</Text>
-          <Text style={styles.colTotal}>{centsToEur(item.totalHtCents)}</Text>
+          <Text style={styles.colUnitPrice}>{formatCurrency(item.unitPriceHtCents / 100)}</Text>
+          <Text style={styles.colTotal}>{formatCurrency(item.totalHtCents / 100)}</Text>
         </View>
       ))}
     </View>
@@ -260,15 +258,15 @@ export function TotalsBlock(props: {
     <View style={styles.totalsContainer}>
       <View style={styles.totalsRow}>
         <Text>Total HT</Text>
-        <Text>{centsToEur(props.totalHtCents)}</Text>
+        <Text>{formatCurrency(props.totalHtCents / 100)}</Text>
       </View>
       <View style={styles.totalsRow}>
         <Text>TVA</Text>
-        <Text>{centsToEur(props.vatCents)}</Text>
+        <Text>{formatCurrency(props.vatCents / 100)}</Text>
       </View>
       <View style={styles.totalsTtcRow}>
         <Text>Total TTC</Text>
-        <Text>{centsToEur(props.totalTtcCents)}</Text>
+        <Text>{formatCurrency(props.totalTtcCents / 100)}</Text>
       </View>
     </View>
   )
@@ -321,12 +319,12 @@ export function PdfFooter(props: {
 
   const paymentDelay =
     dueAt && issuedAt
-      ? `Paiement a ${Math.round((dueAt.getTime() - issuedAt.getTime()) / 86_400_000)} jours`
-      : "Paiement a reception"
+      ? `Paiement à ${Math.round((dueAt.getTime() - issuedAt.getTime()) / 86_400_000)} jours`
+      : "Paiement à réception"
 
   line3Parts.push(paymentDelay)
-  line3Parts.push("Penalites de retard : 3 fois le taux d'interet legal")
-  line3Parts.push("Indemnite forfaitaire pour frais de recouvrement : 40 euros")
+  line3Parts.push("Pénalités de retard : 3 fois le taux d'intérêt légal")
+  line3Parts.push("Indemnité forfaitaire pour frais de recouvrement : 40 euros")
   line3Parts.push("CGV sur demande")
   const line3 = line3Parts.join(" · ")
 
