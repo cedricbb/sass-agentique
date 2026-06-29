@@ -35,9 +35,9 @@ export const createClientSchema = z.object({
     country: z.string().optional(),
   }).optional(),
   notes: z.string().optional(),
-  siret: z.string().optional().or(z.literal("")),
-  tvaIntra: z.string().optional().or(z.literal("")),
-  legalForm: z.string().optional(),
+  siret: z.string().nullable().optional().or(z.literal("")),
+  tvaIntra: z.string().nullable().optional().or(z.literal("")),
+  legalForm: z.string().nullable().optional(),
 });
 
 export const updateClientSchema = createClientSchema.partial();

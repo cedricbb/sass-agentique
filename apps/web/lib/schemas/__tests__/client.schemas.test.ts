@@ -77,6 +77,20 @@ describe("company identity fields", () => {
     const result = createClientSchema.parse({ name: "X", slug: "x", type: "company", siret: "" });
     expect(result.siret).toBe("");
   });
+
+  it("accepts_null_identity_fields", () => {
+    const result = updateClientSchema.parse({
+      name: "X",
+      slug: "x",
+      type: "individual",
+      siret: null,
+      tvaIntra: null,
+      legalForm: null,
+    });
+    expect(result.siret).toBeNull();
+    expect(result.tvaIntra).toBeNull();
+    expect(result.legalForm).toBeNull();
+  });
 });
 
 describe("updateClientSchema", () => {
