@@ -300,3 +300,25 @@ interaction des deux).
 Condition de retrait : absence de nouvelle occurrence en R10 + confirmation
 que le fix `"use client"` ([ui-toast-helper-use-client]) était la cause
 réelle et que ce pattern n'a pas de comportement pathologique intrinsèque.
+
+## Vérification de types (type-check)
+
+La vérification de types se fait TOUJOURS via :
+- `pnpm check-types` (racine) — délègue à `turbo run check-types`, qui exécute
+  `tsc --noEmit` DANS chaque package avec SON propre `tsconfig.json`.
+- ou `pnpm --filter @saas/<pkg> check-types` pour cibler un package.
+
+JAMAIS `tsc --noEmit` / `npx tsc --noEmit` / `pnpm exec tsc` depuis la racine du
+monorepo. Le tsc-racine ignore les `tsconfig.json` par-package (notamment
+`paths: { "@/*": ["./*"] }` de `apps/web`, le flag `jsx`, les `types`), ce qui
+produit des FAUX POSITIFS systémiques — `TS2307 Cannot find module '@/...'`,
+JSX flag manquant, implicit-any (ex. `deleteErr`) — qui n'existent pas sous
+Turborepo et ne reflètent aucune erreur réelle.
+
+La CI (`lint-typecheck` → `pnpm check-types`) fait foi. Une preuve de type-check
+dans un evidence QA n'est valide que si elle provient de `pnpm check-types`
+(ou `pnpm --filter <pkg> check-types`), jamais d'un tsc-racine.
+
+Tous les packages (`agents`, `config`, `db`, `permissions`, `services`, `ui`,
+`workflows`) et `apps/web` exposent un script `check-types` → la couverture
+`turbo run check-types` est exhaustive.
