@@ -2,6 +2,7 @@ import React from "react"
 import { View, Text, StyleSheet } from "@react-pdf/renderer"
 import type { InvoicePdfModel } from "@saas/services/invoice-pdf.shared"
 import { formatPostalAddress } from "@saas/services/billing-party.shared"
+import { formatDate } from "../format"
 import {
   PageFrame,
   ItemsTable,
@@ -63,10 +64,6 @@ const styles = StyleSheet.create({
   },
 })
 
-function formatDate(date: Date | null): string {
-  if (!date) return "—"
-  return date.toISOString().slice(0, 10)
-}
 
 export function InvoicePdf(props: { model: InvoicePdfModel }): React.ReactElement {
   const { model } = props

@@ -45,7 +45,28 @@ describe("renderInvoicePdf", () => {
     expect(containsNormalized(text, "FACTURE")).toBe(true)
     expect(containsNormalized(text, "Acme SAS")).toBe(true)
     expect(containsNormalized(text, "Jean Dupont")).toBe(true)
-    expect(containsNormalized(text, "120.00")).toBe(true)
+    expect(containsNormalized(text, "120,00")).toBe(true)
+  })
+
+  it("render_invoice_pdf_dates_in_fr_format", async () => {
+    const model = toInvoicePdfModel({
+      invoice: {
+        number: "INV-2024-DATE",
+        status: "Envoyée",
+        issuedAt: new Date("2024-01-15"),
+        dueAt: new Date("2024-02-15"),
+        totalEurCents: 1000,
+        vatRateBps: 2000,
+        notes: null,
+      },
+      items: [{ description: "Item", quantity: 1, unitPriceEurCents: 1000, sortOrder: 0 }],
+      billFrom,
+      billTo,
+    })
+
+    const buffer = await renderInvoicePdf(model)
+    const text = decodePdfHexStrings(decompressPdfStreams(buffer))
+    expect(containsNormalized(text, "15/01/2024")).toBe(true)
   })
 
   it("render_invoice_pdf_does_not_contain_emitter_block", async () => {
