@@ -8,7 +8,7 @@ vi.mock("@saas/services", () => ({
   getClientById: vi.fn(),
   getBusinessProfile: vi.fn(),
   setInvoicePdfKey: vi.fn(),
-  getClientContactWithUser: vi.fn(),
+  getClientContactById: vi.fn(),
 }))
 
 vi.mock("@/lib/storage/r2", () => ({
@@ -37,7 +37,7 @@ import {
   getClientById,
   getBusinessProfile,
   setInvoicePdfKey,
-  getClientContactWithUser,
+  getClientContactById,
 } from "@saas/services"
 import {
   buildInvoiceKey,
@@ -254,9 +254,8 @@ describe("generateAndStoreInvoicePdf", () => {
       ...fixtureInvoice,
       contactId: CONTACT_ID,
     } as never)
-    vi.mocked(getClientContactWithUser).mockResolvedValue({
-      contact: { id: CONTACT_ID, name: "Jean Dupont", clientId: CLIENT_ID, userId: "u1", isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date() },
-      user: { id: "u1", email: "jean@example.com", name: "Jean Dupont" },
+    vi.mocked(getClientContactById).mockResolvedValue({
+      id: CONTACT_ID, name: "Jean Dupont", clientId: CLIENT_ID, userId: "u1", isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date(),
     } as never)
     let capturedBillTo: unknown = null
     vi.mocked(renderInvoicePdf).mockImplementation(async (model) => {
@@ -266,7 +265,27 @@ describe("generateAndStoreInvoicePdf", () => {
 
     await generateAndStoreInvoicePdf(INVOICE_ID)
 
-    expect(vi.mocked(getClientContactWithUser)).toHaveBeenCalledWith(CONTACT_ID)
+    expect(vi.mocked(getClientContactById)).toHaveBeenCalledWith(CONTACT_ID)
     expect((capturedBillTo as Record<string, unknown>).attention).toBe("Jean Dupont")
+  })
+
+  it("resolves_attention_for_contact_without_portal_account", async () => {
+    setupHappyPath()
+    vi.mocked(getInvoiceById).mockResolvedValue({
+      ...fixtureInvoice,
+      contactId: CONTACT_ID,
+    } as never)
+    vi.mocked(getClientContactById).mockResolvedValue({
+      id: CONTACT_ID, name: "Marie Sans-Compte", clientId: CLIENT_ID, userId: null, isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date(),
+    } as never)
+    let capturedBillTo: unknown = null
+    vi.mocked(renderInvoicePdf).mockImplementation(async (model) => {
+      capturedBillTo = model.billTo
+      return FAKE_PDF_BUFFER
+    })
+
+    await generateAndStoreInvoicePdf(INVOICE_ID)
+
+    expect((capturedBillTo as Record<string, unknown>).attention).toBe("Marie Sans-Compte")
   })
 })

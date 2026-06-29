@@ -6,7 +6,7 @@ import {
   getClientById,
   getBusinessProfile,
   setQuotePdfKey,
-  getClientContactWithUser,
+  getClientContactById,
 } from "@saas/services"
 import {
   resolveBillingParty,
@@ -71,17 +71,17 @@ export async function generateAndStoreQuotePdf(quoteId: string): Promise<{ pdfKe
 
   if (quote.pdfKey != null) return { pdfKey: quote.pdfKey }
 
-  const [items, client, profile, contactResult] = await Promise.all([
+  const [items, client, profile, contact] = await Promise.all([
     listQuoteItems(quoteId),
     getClientById(quote.clientId),
     getBusinessProfile(quote.ownerId),
-    quote.contactId ? getClientContactWithUser(quote.contactId) : null,
+    quote.contactId ? getClientContactById(quote.contactId) : null,
   ])
 
   if (!client) throw new ClientNotFoundError(quote.clientId)
   if (!profile) throw new BusinessProfileRequiredError(quote.ownerId)
 
-  const billTo = resolveBillingParty(client, contactResult?.contact ?? null)
+  const billTo = resolveBillingParty(client, contact ?? null)
   const logoUrl = await resolveEmitterLogoDataUri(profile)
   const billFrom = resolveEmitter({ ...toEmitterInput(profile), logoUrl })
   const statusLabel = resolveQuoteStatusLabel(quote.status)

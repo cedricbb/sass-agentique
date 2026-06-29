@@ -8,7 +8,7 @@ vi.mock("@saas/services", () => ({
   getClientById: vi.fn(),
   getBusinessProfile: vi.fn(),
   setQuotePdfKey: vi.fn(),
-  getClientContactWithUser: vi.fn(),
+  getClientContactById: vi.fn(),
 }))
 
 vi.mock("@/lib/storage/r2", () => ({
@@ -53,7 +53,7 @@ import {
   getClientById,
   getBusinessProfile,
   setQuotePdfKey,
-  getClientContactWithUser,
+  getClientContactById,
 } from "@saas/services"
 import {
   buildQuoteKey,
@@ -258,9 +258,8 @@ describe("generateAndStoreQuotePdf", () => {
       ...fixtureQuote,
       contactId: CONTACT_ID,
     } as never)
-    vi.mocked(getClientContactWithUser).mockResolvedValue({
-      contact: { id: CONTACT_ID, name: "Marie Martin", clientId: CLIENT_ID, userId: "u1", isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date() },
-      user: { id: "u1", email: "marie@example.com", name: "Marie Martin" },
+    vi.mocked(getClientContactById).mockResolvedValue({
+      id: CONTACT_ID, name: "Marie Martin", clientId: CLIENT_ID, userId: "u1", isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date(),
     } as never)
     let capturedBillTo: unknown = null
     vi.mocked(renderQuotePdf).mockImplementation(async (model) => {
@@ -270,7 +269,27 @@ describe("generateAndStoreQuotePdf", () => {
 
     await generateAndStoreQuotePdf(QUOTE_ID)
 
-    expect(vi.mocked(getClientContactWithUser)).toHaveBeenCalledWith(CONTACT_ID)
+    expect(vi.mocked(getClientContactById)).toHaveBeenCalledWith(CONTACT_ID)
     expect((capturedBillTo as Record<string, unknown>).attention).toBe("Marie Martin")
+  })
+
+  it("resolves_attention_for_contact_without_portal_account", async () => {
+    setupHappyPath()
+    vi.mocked(getQuoteById).mockResolvedValue({
+      ...fixtureQuote,
+      contactId: CONTACT_ID,
+    } as never)
+    vi.mocked(getClientContactById).mockResolvedValue({
+      id: CONTACT_ID, name: "Paul Sans-Compte", clientId: CLIENT_ID, userId: null, isPrimary: false, email: null, phone: null, role: null, createdAt: new Date(), updatedAt: new Date(),
+    } as never)
+    let capturedBillTo: unknown = null
+    vi.mocked(renderQuotePdf).mockImplementation(async (model) => {
+      capturedBillTo = model.billTo
+      return FAKE_PDF_BUFFER
+    })
+
+    await generateAndStoreQuotePdf(QUOTE_ID)
+
+    expect((capturedBillTo as Record<string, unknown>).attention).toBe("Paul Sans-Compte")
   })
 })

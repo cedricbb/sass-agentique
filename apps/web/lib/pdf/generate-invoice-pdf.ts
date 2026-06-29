@@ -6,7 +6,7 @@ import {
   getClientById,
   getBusinessProfile,
   setInvoicePdfKey,
-  getClientContactWithUser,
+  getClientContactById,
 } from "@saas/services"
 import {
   resolveBillingParty,
@@ -90,17 +90,17 @@ export async function generateAndStoreInvoicePdf(invoiceId: string): Promise<{ p
 
   if (invoice.pdfKey != null) return { pdfKey: invoice.pdfKey }
 
-  const [items, client, profile, contactResult] = await Promise.all([
+  const [items, client, profile, contact] = await Promise.all([
     listInvoiceItems(invoiceId),
     getClientById(invoice.clientId),
     getBusinessProfile(invoice.ownerId),
-    invoice.contactId ? getClientContactWithUser(invoice.contactId) : null,
+    invoice.contactId ? getClientContactById(invoice.contactId) : null,
   ])
 
   if (!client) throw new ClientNotFoundError(invoice.clientId)
   if (!profile) throw new BusinessProfileRequiredError(invoice.ownerId)
 
-  const billTo = resolveBillingParty(client, contactResult?.contact ?? null)
+  const billTo = resolveBillingParty(client, contact ?? null)
   const logoUrl = await resolveEmitterLogoDataUri(profile)
   const billFrom = resolveEmitter({ ...toEmitterInput(profile), logoUrl })
   const statusLabel = resolveInvoiceStatusLabel(invoice.status)
