@@ -150,7 +150,7 @@ export function ClientForm({ initialData }: ClientFormProps) {
                 <FormItem>
                   <FormLabel>SIRET</FormLabel>
                   <FormControl>
-                    <Input data-testid="siret-input" {...field} />
+                    <Input data-testid="siret-input" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +164,7 @@ export function ClientForm({ initialData }: ClientFormProps) {
                 <FormItem>
                   <FormLabel>TVA Intracommunautaire</FormLabel>
                   <FormControl>
-                    <Input data-testid="tvaIntra-input" {...field} />
+                    <Input data-testid="tvaIntra-input" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -178,7 +178,7 @@ export function ClientForm({ initialData }: ClientFormProps) {
                 <FormItem>
                   <FormLabel>Forme juridique</FormLabel>
                   <FormControl>
-                    <Input data-testid="legalForm-input" {...field} />
+                    <Input data-testid="legalForm-input" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
