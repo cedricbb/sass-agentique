@@ -23,8 +23,11 @@ import {
 } from "@saas/services/billing-party.shared"
 
 // Résoudre le destinataire (client + contact optionnel chargés depuis DB par l'appelant)
+// ⚠ Utiliser getClientContactById (simple select sans join users) — les contacts de
+// facturation n'ont pas nécessairement de compte portail (userId: null). Utiliser
+// getClientContactWithUser exclut ces contacts via inner join → BillTo.attention absent.
 const contact = invoice.contactId
-  ? await getClientContactWithUser(invoice.contactId)
+  ? await getClientContactById(invoice.contactId)
   : null
 const billTo: BillTo = resolveBillingParty(client, contact)
 
