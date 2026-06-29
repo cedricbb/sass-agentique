@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, useEffect } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
@@ -65,11 +65,19 @@ export function ClientForm({ initialData }: ClientFormProps) {
 
   const clientType = form.watch("type");
 
+  useEffect(() => {
+    if (clientType !== "company") {
+      form.setValue("siret", "");
+      form.setValue("tvaIntra", "");
+      form.setValue("legalForm", "");
+    }
+  }, [clientType, form]);
+
   const onSubmit = (data: FormValues) => {
     startTransition(async () => {
       const payload =
         data.type !== "company"
-          ? { ...data, siret: undefined, tvaIntra: undefined, legalForm: undefined }
+          ? { ...data, siret: null, tvaIntra: null, legalForm: null }
           : data;
       const result = initialData
         ? await updateClientAction(initialData.id, payload)
