@@ -237,7 +237,7 @@ type PdfLineItem = {
 }
 ```
 
-Les montants sont exprimés en centimes entiers. La conversion `centsToEur` est interne au module.
+Les montants sont exprimés en centimes entiers. La conversion en euros FR utilise `formatCurrency(cents / 100)` importé depuis `apps/web/lib/format` (Intl `fr-FR`, style `currency`, séparateur décimal virgule → « 500,00 € »).
 
 ## Architecture interne
 
@@ -378,6 +378,7 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 | **R10-1g-b `emit-quote`** | ✅ livré | Pré-check émetteur + génération PDF synchrone best-effort au passage `draft→sent` (via `transitionQuoteStatusAction`) |
 | **feat-pdf-footer-legal-mentions** | ✅ livré | `PdfFooter` ancré — émetteur, IBAN/BIC, mentions légales B2B ; `formatPostalAddressOneLine` ; `iban`/`bic` sur `BillFrom` |
 | **feat-pdf-recipient-render** | ✅ livré | Bloc destinataire enrichi : `attention` (nom contact), `SIRET`, `TVA` conditionnels dans `InvoicePdf` et `QuotePdf` |
+| **feat-pdf-fr-localization** | ✅ livré | Localisation FR : montants virgule décimale (`formatCurrency` Intl), dates `jj/mm/aaaa` (`formatDate` Intl partagé), accents mentions légales PdfFooter |
 | R10-1h-quote `quote-pdf-route` | 🔜 | Route Handler `GET /api/quotes/[id]/file` — stream R2 inline |
 
 ## Liens vers tests
@@ -385,10 +386,10 @@ Importés depuis `@saas/services/billing-party.shared`. Le sous-chemin est expos
 - `apps/web/lib/pdf/__tests__/generate-invoice-pdf.test.ts` — 10 tests mock-only : retour pdfKey, immutabilité, BusinessProfileRequiredError, rollback R2, setInvoicePdfKey, ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/lib/pdf/__tests__/generate-quote-pdf.test.ts` — 9 tests mock-only : retour pdfKey, immutabilité (pdfKey set → pas de render/upload), BusinessProfileRequiredError, rollback R2 (setQuotePdfKey rejet → deletePdfFromR2), ordre guards + logo data URI injecté dans billFrom, logoUrl undefined si pas de logoKey, logo fetch failure best-effort (génération continue)
 - `apps/web/app/actions/__tests__/quotes.test.ts` — 5 tests émission : pré-check profil null bloque la transition (AC1), draft→sent génère PDF après transition (AC2), échec PDF n'est pas bloquant (AC3), transitions non-sent ignorent pré-check et PDF (AC4), quote introuvable au pré-check (AC5)
-- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 21 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide), TotalsBlock ; + palette PDF ; + `PdfHeader` (rendu avec/sans logo, sans `number` prop, logo inline) ; + `PdfFooter` (8 tests : émetteur ligne 1, identifiants ligne 2, mentions légales, délai paiement depuis dueAt/issuedAt, "Paiement à réception" sans dates, IBAN/BIC masqués si null, IBAN/BIC affichés si renseignés, "BIC" absent si iban/bic null)
+- `apps/web/lib/pdf/__tests__/primitives.test.tsx` — 23 tests : PageFrame, PartyBlock (BillFrom complet, BillTo minimal, BillFrom avec logoUrl → Image rendu, BillFrom sans logoUrl → pas d'Image), ItemsTable (items + tableau vide, montants avec virgule décimale FR), TotalsBlock (montants FR) ; + palette PDF ; + `PdfHeader` (rendu avec/sans logo, sans `number` prop, logo inline) ; + `PdfFooter` (9 tests : émetteur ligne 1, identifiants ligne 2, mentions légales accentuées (`de retard`, `forfaitaire`), délai paiement depuis dueAt/issuedAt, "Paiement à réception" sans dates, IBAN/BIC masqués si null, IBAN/BIC affichés si renseignés, "BIC" absent si iban/bic null)
 - `packages/services/src/__tests__/billing-party.shared.test.ts` — 10 tests dont 2 `formatPostalAddressOneLine` (vide/complet) + 1 `resolveEmitter` avec iban/bic
 - `apps/web/lib/pdf/__tests__/render.test.ts` — smoke test `renderToPdfBuffer` retourne un Buffer avec magic bytes `%PDF`
-- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 6 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`) ; `render_invoice_pdf_attention_line` (AC1) ; `render_invoice_pdf_siret_line` (AC2) ; `render_invoice_pdf_tva_intra_line` (AC3 — assertion sur "TVA :" avec deux-points pour éviter la collision avec le libellé TotalsBlock)
+- `apps/web/lib/pdf/__tests__/invoice-pdf.test.tsx` — 8 tests end-to-end `renderInvoicePdf` : buffer `%PDF` + "FACTURE"/"Jean Dupont" présents ; absence du label émetteur (`render_invoice_pdf_does_not_contain_emitter_block`) ; billTo minimal sans "undefined"/"null" (`render_invoice_pdf_minimal_billto_no_undefined`) ; `render_invoice_pdf_attention_line` (AC1) ; `render_invoice_pdf_siret_line` (AC2) ; `render_invoice_pdf_tva_intra_line` (AC3 — assertion sur "TVA :" avec deux-points pour éviter la collision avec le libellé TotalsBlock) ; montants FR `"150,00"` sans point décimal (`render_invoice_pdf_produces_valid_pdf_with_content`) ; dates FR `"15/01/2024"` format `jj/mm/aaaa` (`render_invoice_pdf_dates_in_fr_format`)
 - `packages/services/src/__tests__/invoice-pdf.shared.test.ts` (ou voisin) — tests purs `toInvoicePdfModel` : tri sortOrder, calcul lignes, TTC via computeInvoiceTtc, dates null, notes absentes
 - `apps/web/lib/pdf/__tests__/quote-pdf.test.tsx` — 5 tests end-to-end `renderQuotePdf` : buffer `%PDF`, "DEVIS"/"Jean Dupont"/"validit" présents ; `render_quote_pdf_attention_line` (AC4) ; `render_quote_pdf_siret_line` (AC5) ; `render_quote_pdf_tva_intra_line` (AC6 — assertion "TVA :") ; `render_quote_pdf_no_optional_fields_no_labels` (AC8 — absence de "SIRET" / "TVA :" / "attention de" si champs vides)
 - `packages/services/src/__tests__/quote-pdf.shared.test.ts` — 5 tests purs `toQuotePdfModel` : tri sortOrder, calcul lignes, TTC via computeQuoteTtc, notes null/texte, dates null
