@@ -7,3 +7,11 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.click('button[type="submit"]');
   await page.waitForURL(/\/admin/);
 }
+
+export async function loginAsOwnerB(page: Page): Promise<void> {
+  await page.goto("/login");
+  await page.fill('input[name="email"]', "admin-b@saas.dev");
+  await page.fill('input[name="password"]', "admin1234");
+  await page.click('button[type="submit"]');
+  await page.waitForURL(/\/admin/);
+}

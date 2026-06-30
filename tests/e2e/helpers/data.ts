@@ -41,3 +41,7 @@ export const SEED_CONTRACT_ACTIVE_COUNT = 2;
 export const SEED_CONTRACT_CANCELED_COUNT = 1;
 export const SEED_CONTRACT_PRESTATION = "Maintenance mensuelle";
 export const SEED_CONTRACT_PRICE_FR = "50,00 €";
+
+export const SEED_OWNER_B_EMAIL = "admin-b@saas.dev";
+export const SEED_OWNER_B_PASSWORD = "admin1234";
+export const SEED_OWNER_B_CLIENT_NAME = "OwnerB-Isolated-Corp";
