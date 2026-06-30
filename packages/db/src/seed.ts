@@ -645,11 +645,19 @@ async function main() {
   });
 
   await db.insert(schema.clientContacts).values({
+    clientId: acme.id,
+    name: "Acme Secondaire",
+    email: "secondary@acme.dev",
+    userId: null,
+    isPrimary: false,
+  });
+
+  await db.insert(schema.clientContacts).values({
     clientId: bob.id,
     name: "Client Bob",
     email: "client-bob@saas.dev",
     userId: clientBobUser.id,
-    isPrimary: true,
+    isPrimary: false,
   });
 
   await db.insert(schema.clientContacts).values({
