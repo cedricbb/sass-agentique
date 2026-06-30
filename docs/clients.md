@@ -58,6 +58,8 @@ La section « Contacts » de la fiche client expose le CRUD complet des contacts
 
 | Fonction | Signature | Comportement |
 |---|---|---|
+| `listClients(opts?)` | `→ Client[]` | Retourne tous les clients (toute table, sans filtre owner). **Usage legacy** — migrer vers `listClientsByOwner` dans les nouveaux call sites. |
+| `listClientsByOwner(ownerId, opts?)` | `→ Client[]` | Retourne uniquement les clients de `ownerId` (clause `eq(clients.ownerId, ownerId)`). Par défaut exclut les archivés ; `opts.includeArchived = true` pour tout retourner. |
 | `getClientNamesByIds(ids)` | `→ Record<string, { name: string; archived: boolean }>` | Résout name + statut d'archivage pour un lot d'ids, **sans filtre `archivedAt`** — inclut les clients archivés. Retourne `{}` pour un tableau vide sans exécuter de requête. |
 | `listClientContacts(clientId)` | `→ ClientContact[]` | Tri déterministe : `isPrimary DESC`, `name ASC` |
 | `addClientContact(input)` | `→ ClientContact` | Crée un contact (sans compte portail) |
@@ -156,6 +158,21 @@ Les helpers `formatCurrency` / `formatDate` viennent de `@/lib/format`. Les mont
 
 Le helper e2e `deleteClientByName` (dans `tests/e2e/helpers/contracts.ts`) cible ces testids via `page.getByTestId(...)`. Ne pas remplacer ces sélecteurs par des sélecteurs textuels — tout renommage du wording casserait les tests E2E (régression CI observée après fix-client-contacts-labels-wording).
 
+## Multi-tenant : ownerScope
+
+Le helper `ownerScope` (`packages/services/src/owner-scope.ts`) est la brique partagée du chantier multi-tenant. Il construit la clause SQL de scoping ownerId de façon typée :
+
+```ts
+ownerScope<T extends { ownerId: AnyPgColumn }>(table: T, ownerId: string): SQL
+// → eq(table.ownerId, ownerId)
+```
+
+Contrainte TypeScript : n'accepte que les tables Drizzle portant une colonne `ownerId`. Les tables sans `ownerId` (ex. contacts) doivent conserver le join via `clients`.
+
+La page `/admin/clients` utilise `listClientsByOwner(user.id)` (user issu de `requireAdmin()`) — les clients d'un owner ne sont pas visibles par un autre owner.
+
+`listClients()` reste en place temporairement pour les 15 autres call sites non encore migrés. Ne pas la supprimer avant que tous les call sites soient basculés.
+
 ## Liens vers tests
 
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/ClientQuotesSection.test.tsx`
@@ -168,3 +185,5 @@ Le helper e2e `deleteClientByName` (dans `tests/e2e/helpers/contracts.ts`) cible
 - `apps/web/app/(admin)/admin/clients/_components/__tests__/DeleteClientContactButton.test.tsx` — trigger, alertdialog, wording portail vs sans portail, confirm, cancel
 - `apps/web/app/actions/__tests__/clients.test.ts` — `setPrimaryClientContactAction` : rejet non-admin, succès, échec service
 - `packages/services/src/__tests__/client.service.test.ts` — `setPrimaryContact` : exclusivité en transaction, garde appartenance client
+- `packages/services/src/__tests__/owner-scope.test.ts` — `ownerScope` clause SQL, `listClientsByOwner` filtre par owner, exclusion cross-owner, option `includeArchived`
+- `tests/e2e/clients-isolation.spec.ts` — isolation bidirectionnelle `/admin/clients` : owner A ne voit pas les clients B, owner B ne voit pas les clients A
