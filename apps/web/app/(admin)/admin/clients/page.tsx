@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listClients } from "@saas/services";
+import { listClientsByOwner } from "@saas/services";
 import { Button } from "@/components/ui/button";
 import { ClientsTable } from "./_components/ClientsTable";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Clients — Admin" };
 
@@ -12,7 +13,8 @@ export default async function ClientsPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   await searchParams;
-  const clients = await listClients();
+  const user = await requireAdmin();
+  const clients = await listClientsByOwner(user.id);
 
   return (
     <div className="space-y-4">
