@@ -24,8 +24,10 @@ Le formulaire de devis expose un Select **"Destinataire (contact)"** (`data-test
 
 **Création** (`/admin/quotes/new`) :
 - Le Select est **masqué** tant qu'aucun client n'est sélectionné.
-- Après sélection d'un client, il affiche les contacts de ce client + l'option "Aucun (entreprise seule)" (valeur par défaut).
-- Changer de client **remet le contact à "Aucun"** automatiquement.
+- Après sélection d'un client, il affiche les contacts de ce client + l'option "Aucun (entreprise seule)".
+- Si le client possède un contact principal (`isPrimary = true`), il est **pré-sélectionné automatiquement**.
+- Si le client n'a pas de contact principal, le Select reste sur "Aucun (entreprise seule)".
+- Changer de client re-pré-sélectionne le contact principal du nouveau client (ou "Aucun" si absent).
 - `createQuoteAction` reçoit `contactId` (UUID string) ou `undefined` si "Aucun".
 
 **Édition** (`/admin/quotes/[id]`) :
@@ -67,11 +69,12 @@ const clientNames = Object.fromEntries(
 
 Le pattern commun : `<Button asChild><a href="/api/quotes/{id}/file" download="devis-{number}.pdf">...</a></Button>`. L'attribut `download` force le téléchargement plutôt que l'ouverture en onglet, même si la route répond `Content-Disposition: inline`.
 
-`QuoteForm` utilise `react-hook-form` avec `watch("clientId")` pour filtrer les contacts et déclencher le reset (`setValue("contactId", NONE_CONTACT_VALUE)`) à chaque changement de client. La constante `NONE_CONTACT_VALUE` est partagée avec `InvoiceForm` (pattern symétrique, sans le cas from-invoice). Le sentinel `"none"` est converti en `undefined` avant l'envoi à l'action.
+`QuoteForm` utilise `react-hook-form`. Le handler `handleClientChange` (mode création uniquement) résout `contacts.find(c => c.clientId === value && c.isPrimary)?.id ?? NONE_CONTACT_VALUE` pour pré-sélectionner le contact principal du client, ou retomber sur « Aucun ». La constante `NONE_CONTACT_VALUE` est partagée avec `InvoiceForm` (pattern symétrique). Le sentinel `"none"` est converti en `undefined` avant l'envoi à l'action. En mode édition, le client est verrouillé (pas de handler) — `initialData.contactId` est préservé tel quel.
 
 ## Liens vers tests
 
 - `apps/web/app/api/quotes/[id]/file/__tests__/route.test.ts` — 8 tests couvrant : stream 200, quote absent, lazy regen, brouillon 404, R2NotFoundError 404, erreur R2 générique 500, redirect non-admin, échec regen.
 - `apps/web/app/(admin)/admin/quotes/[id]/__tests__/page.test.tsx` — `shows_download_button_when_issued`, `hides_download_button_when_draft`
 - `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuotesTable.test.tsx` — `shows_download_icon_for_issued_quote_row`, `hides_download_icon_for_draft_quote_row`
-- `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteForm.test.tsx` — T6–T12 couvrant : masquage sans client, affichage après client, reset au changement client, submit avec/sans contactId, pré-remplissage edit, submit edit.
+- `apps/web/app/(admin)/admin/quotes/_components/__tests__/QuoteForm.test.tsx` — T6–T12 couvrant : masquage sans client, affichage après client, pré-sélection contact principal au changement client, submit avec/sans contactId, pré-remplissage edit, submit edit.
+- `apps/web/tests/e2e/admin-preselect-contact.spec.ts` — tests Playwright partagés avec admin-invoices : pré-sélection devis, fallback sans contact principal, re-pré-sélection au changement de client.

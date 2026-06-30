@@ -13,8 +13,9 @@ Le formulaire de facture expose un Select **"Destinataire (contact)"** permettan
 **Création** (`/admin/invoices/new`) :
 - Le Select n'apparaît que lorsqu'un client est choisi.
 - Options : « Aucun (entreprise seule) » + les contacts du client sélectionné.
-- Aucun contact pré-sélectionné par défaut.
-- Changer de client réinitialise automatiquement la sélection à « Aucun ».
+- Si le client possède un contact principal (`isPrimary = true`), il est **pré-sélectionné automatiquement** dès la sélection du client.
+- Si le client n'a pas de contact principal, le Select reste sur « Aucun (entreprise seule) ».
+- Changer de client re-pré-sélectionne le contact principal du nouveau client (ou « Aucun » si absent).
 - Le Select est masqué lorsque la facture est créée depuis un devis (`quoteSelected = true`) — le contact proviendra du devis via `createInvoiceFromQuote`.
 
 **Édition** (`/admin/invoices/[id]`) :
@@ -41,7 +42,7 @@ Le nom de fichier téléchargé suit le pattern : `facture-{invoice.number}.pdf`
 - `packages/services/src/client.service.ts` — `listClientContactsByOwner(ownerId)` : requête JOIN `clientContacts ↔ clients` filtrée sur `clients.ownerId = $ownerId AND clients.archivedAt IS NULL`, triée par `(clientId, desc isPrimary, asc name)`. Évite le N+1 sur la page de création ; réutilisable par le formulaire devis (3c).
 - `apps/web/app/(admin)/admin/invoices/new/page.tsx` — appelle `listClientContactsByOwner(admin.id)` et passe `contacts` à `InvoiceForm`.
 - `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — appelle `listClientContacts(invoice.clientId)` après résolution de la facture et passe `contacts` à `InvoiceForm`.
-- `apps/web/app/(admin)/admin/invoices/_components/InvoiceForm.tsx` — prop `contacts: ClientContact[]`, champ `contactId` géré par react-hook-form, `watch("clientId")` pour filtrer les options et reset à `""` lors du changement de client.
+- `apps/web/app/(admin)/admin/invoices/_components/InvoiceForm.tsx` — prop `contacts: ClientContact[]`, champ `contactId` géré par react-hook-form. Le handler `handleClientChange` (mode création uniquement) résout `contacts.find(c => c.clientId === value && c.isPrimary)?.id ?? NONE_CONTACT_VALUE` pour pré-sélectionner le contact principal ou retomber sur « Aucun ».
 
 ### Résolution des noms de clients dans la liste
 
@@ -72,7 +73,8 @@ La route `/api/invoices/[id]/file` n'a pas été modifiée.
 
 ## Liens vers tests
 
-- `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceForm.test.tsx` — describe "contact select" : masquage sans client, affichage avec client, reset sur changement client, masquage en mode from-quote, pré-remplissage en édition.
+- `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceForm.test.tsx` — describe "contact select" : masquage sans client, affichage avec client, pré-sélection contact principal au changement client, masquage en mode from-quote, pré-remplissage en édition.
+- `apps/web/tests/e2e/admin-preselect-contact.spec.ts` — tests Playwright : pré-sélection facture/devis, fallback sans contact principal, re-pré-sélection au changement de client.
 - `packages/services/src/__tests__/client.service.test.ts` — `list_client_contacts_by_owner_returns_filtered_contacts`
 - `apps/web/app/(admin)/admin/invoices/[id]/__tests__/page.test.tsx` — describe "Download button" : `shows_download_button_when_issued`, `hides_download_button_when_draft`
 - `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicesTable.test.tsx` — describe "Download icon" : `shows_download_icon_for_issued_invoice_row`, `hides_download_icon_for_draft_invoice_row`
