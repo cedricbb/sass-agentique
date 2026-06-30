@@ -1,4 +1,5 @@
 export * from "./auth.service";
+export * from "./owner-scope";
 export * from "./email.service";
 export * from "./utils/slug";
 export * from "./totp.service";

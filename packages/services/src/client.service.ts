@@ -11,6 +11,7 @@ import {
 } from "@saas/db";
 import { eq, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { generateSlug } from "./utils/slug";
+import { ownerScope } from "./owner-scope";
 
 export type ListClientsOptions = { includeArchived?: boolean };
 export type CreateClientInput = Omit<NewClient, "slug"> & { slug?: string };
@@ -32,6 +33,17 @@ export async function listClients(
     .select()
     .from(clients)
     .where(opts?.includeArchived ? undefined : isNull(clients.archivedAt));
+}
+
+export async function listClientsByOwner(
+  ownerId: string,
+  opts?: ListClientsOptions,
+): Promise<Client[]> {
+  const scope = ownerScope(clients, ownerId);
+  return db
+    .select()
+    .from(clients)
+    .where(opts?.includeArchived ? scope : and(scope, isNull(clients.archivedAt)));
 }
 
 export type ClientNameEntry = { name: string; archived: boolean };
