@@ -262,7 +262,7 @@ describe("QuoteForm", () => {
 
     await waitFor(() => {
       const call = mockCreateQuoteAction.mock.calls[0][0];
-      expect(call.contactId).toBeUndefined();
+      expect(call.contactId).toBe("contact-1");
     });
   });
 
