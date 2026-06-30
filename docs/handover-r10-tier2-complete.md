@@ -1,77 +1,107 @@
-# Handover — R10 Tier 2 (entreprise/contact) — COMPLET
+# Handover — R10 Tier 2 (entreprise/contact) — COMPLET & STABILISÉ
 
-**Statut** : clos. CI verte (run #347, E2E Playwright inclus). 1628 tests unitaires verts.
-**Périmètre livré** : identité entreprise du client + CRUD contacts first-class + destinataire-contact de bout en bout (saisie → persistance → PDF).
+**Statut** : clos, testé manuellement, stabilisé. CI verte (dernier run avec E2E Playwright). 1635 tests unitaires verts.
+**Périmètre** : identité entreprise du client + CRUD contacts first-class + destinataire-contact de bout en bout (saisie → persistance → PDF), PDF entièrement localisé FR.
 
 ---
 
 ## 1. Résumé exécutif
 
-Le Tier 2 ajoute la notion de **contact destinataire** et d'**identité d'entreprise** aux documents financiers. Une facture/un devis est émis pour une entreprise (client) et peut désormais être adressé « à l'attention de » un contact, avec le SIRET/TVA de l'entreprise affichés sur le PDF. Les contacts sont gérables en CRUD complet (ajout/édition/suppression/contact principal) depuis la fiche entreprise.
+Le Tier 2 ajoute la notion de **contact destinataire** et d'**identité d'entreprise** aux documents financiers : une facture/un devis est émis pour une entreprise (client), peut être adressé « à l'attention de » un contact, avec SIRET/TVA affichés sur le PDF. Contacts gérables en CRUD complet (ajout/édition/suppression/principal).
 
-12 YAMLs exécutés (10 feat + 2 fix correctifs), un par un, commit entre chaque, CI verte à chaque étape.
-
----
-
-## 2. YAMLs livrés (ordre chronologique)
-
-1. **feat-shared-postal-address** — Consolidation des 3 définitions du type adresse en un `PostalAddress` canonique unique dans `@saas/db` ; `billing-party.shared` l'importe via `import type` (zero-runtime-DB préservé). Aucun push (type-level).
-2. **feat-client-company-identity** — `siret` / `tvaIntra` / `legalForm` (text nullable) sur `clients` ; champs de formulaire conditionnels au `type === "company"` (masqués/non persistés pour un particulier). Push requis.
-3. **feat-client-contact-mutations-backend** — `deleteClientContact(contactId)` (purge FK transactionnelle des invitations en cascade DB), `orderBy` déterministe sur `listClientContacts`, actions `updateClientContactAction` + `deleteClientContactAction`, schéma `updateClientContactSchema`.
-4. **feat-client-contact-edit-delete-ui** — `EditClientContactDialog` (name/email/role, sans `isPrimary`) + `DeleteClientContactButton`, câblés dans la fiche entreprise.
-5. **feat-set-primary-client-contact** — `setPrimaryContactById(clientId, contactId)` avec exclusivité transactionnelle (un seul principal), action + `SetPrimaryContactButton` + badge « Principal ». (Refonte de l'ancien `setPrimaryContact(clientId, userId)` orphelin.)
-6. **feat-invoice-quote-contact-column** — `contactId` (uuid nullable, FK `onDelete: "set null"`) sur invoices ET quotes ; `createInvoiceFromQuote` copie le `contactId` ; zod create/update enrichis. Push requis.
-7. **feat-invoice-recipient-contact-ui** — Select « Destinataire (contact) » dans `InvoiceForm` (filtré par client, reset au changement, masqué en from-quote, pré-rempli en edit) + service `listClientContactsByOwner(ownerId)`.
-8. **feat-quote-recipient-contact-ui** — Idem pour `QuoteForm` (miroir allégé, réutilise `listClientContactsByOwner`).
-9. **feat-pdf-recipient-resolve** — `BillTo.attention` + `resolveBillingParty(client, contact?)` mappe `client.siret/tvaIntra` et `contact.name` ; `generate-invoice-pdf` / `generate-quote-pdf` fetchent le contact conditionnellement. `resolveBillingParty` reste pur (zero-runtime-DB).
-10. **feat-pdf-recipient-render** — `InvoicePdf` / `QuotePdf` affichent « À l'attention de [contact] » + SIRET/TVA dans le bloc destinataire (conditionnels). PDF immuable : seules les nouvelles émissions sont impactées.
-11. **fix-client-contacts-labels-wording** — Relibellé section « Accès portail » → « Contacts » + wording d'archivage honnête sur `DeleteClientButton`.
-12. **fix-delete-client-e2e-helper-testid** — Correctif CI : `data-testid` stables sur `DeleteClientButton` + helper e2e `deleteClientByName` ciblant les testid (insensible au wording). Débloque le job E2E cassé par le YAML 11.
+La feature a été livrée en **12 YAMLs** (phase sprint), puis un **test manuel** a révélé des frictions traitées en **4 YAMLs de stabilisation** + un correctif process (dette TS). Tout est désormais validé fonctionnellement et visuellement.
 
 ---
 
-## 3. Invariants verrouillés ce sprint
+## 2. YAMLs livrés
 
-À propager dans `docs/structural-invariants.md` (workspace-side).
+### Phase sprint (Tier 2 — feature)
 
-- **PostalAddress canonique** : défini une seule fois dans `@saas/db` ; jamais redéfini ailleurs ; les `*.shared` l'importent via `import type`.
-- **Identité de facturation** : `siret` / `tvaIntra` / `legalForm` nommés identiquement sur `businessProfiles` ET `clients` (cohérence cross-table, jamais `vatNumber`).
-- **Suppression client = archivage** : `deleteClientAction` appelle `archiveClient` (soft delete via `archivedAt`) car les FK restrict de `quotes`/`invoices` interdisent le hard delete. `listClients`/`getClientsForUser` filtrent `isNull(archivedAt)`.
-- **FK destinataire-contact = `onDelete: "set null"`** sur documents financiers (jamais cascade) : un contact hard-deleté laisse la facture/devis intacte, `contactId` → null (historique comptable préservé).
-- **Exclusivité contact principal** : au plus un `clientContact.isPrimary = true` par client, garanti par transaction applicative (`setPrimaryContactById`).
-- **`listClientContactsByOwner` scopé `ownerId`** (+ `archivedAt IS NULL`) : anti-fuite cross-owner (préparation multi-tenant).
-- **`*.shared` zero-runtime-DB** : `resolveBillingParty` reste pure, le contact lui est passé en paramètre (jamais de fetch dans un `.shared`).
-- **Tests PDF en ASCII** : l'extraction de texte du buffer (décodeur hex) ne garde que l'ASCII → assertions sur termes ASCII (nom, « SIRET », « TVA », valeurs), jamais sur la chaîne accentuée « À l'attention de ».
-- **`data-testid` stables pour delete** : tout composant suppression/archivage avec `AlertDialog` expose `{entity}-delete-trigger` / `-confirm` / `-cancel` ; les helpers e2e ciblent les testid, jamais le label texte.
-- **[e2e-helper-blast-radius]** : renommer un label interactif (bouton/trigger/titre de dialog) impose un grep des **helpers e2e** qui interagissent par texte (`grep -rn "<ancien>|<nouveau>" tests/e2e/`), pas seulement les assertions.
+1. **feat-shared-postal-address** — `PostalAddress` canonique unique dans `@saas/db` ; les `*.shared` l'importent via `import type`. Type-level, pas de push.
+2. **feat-client-company-identity** — `siret`/`tvaIntra`/`legalForm` (nullable) sur `clients` ; champs conditionnels au `type === "company"`. Push.
+3. **feat-client-contact-mutations-backend** — `deleteClientContact`, `orderBy` déterministe, actions update/delete, `updateClientContactSchema`.
+4. **feat-client-contact-edit-delete-ui** — `EditClientContactDialog` + `DeleteClientContactButton`.
+5. **feat-set-primary-client-contact** — `setPrimaryContactById` (exclusivité transactionnelle) + bouton + badge « Principal ».
+6. **feat-invoice-quote-contact-column** — `contactId` uuid nullable, FK `onDelete: "set null"` sur invoices ET quotes ; `createInvoiceFromQuote` copie le `contactId`. Push.
+7. **feat-invoice-recipient-contact-ui** — Select destinataire dans `InvoiceForm` + `listClientContactsByOwner(ownerId)`.
+8. **feat-quote-recipient-contact-ui** — miroir `QuoteForm`.
+9. **feat-pdf-recipient-resolve** — `BillTo.attention` + `resolveBillingParty(client, contact?)` mappe siret/tvaIntra/attention.
+10. **feat-pdf-recipient-render** — `InvoicePdf`/`QuotePdf` affichent « À l'attention de » + SIRET/TVA.
+11. **fix-client-contacts-labels-wording** — relibellé « Accès portail » → « Contacts » + wording d'archivage.
+12. **fix-delete-client-e2e-helper-testid** — data-testid stables sur `DeleteClientButton` + helper e2e ciblant les testid (débloque la CI e2e cassée par le #11).
+
+### Phase stabilisation (post test manuel)
+
+13. **fix-pdf-recipient-attention-contact-fetch** — BUG MAJEUR : « À l'attention de » jamais affiché. `getClientContactWithUser` faisait un `innerJoin(users)` → retournait `null` pour les contacts sans compte portail (la majorité). Remplacé par `getClientContactById` (select sans join) dans les generate-*-pdf. Test anti-récidive (contact `userId: null`).
+14. **fix-client-identity-strip-null** — BUG A3 : passer un client en Particulier n'effaçait pas SIRET/TVA en DB. `onSubmit` envoyait `undefined` (omis) au lieu de `null` explicite → `.set({...patch})` n'écrasait pas. Corrigé + reset visuel au switch + zod nullable.
+15. **feat-pdf-fr-localization** — PDF polish : montants `Intl fr-FR` (« 500,00 € »), dates `jj/mm/aaaa`, accents des mentions légales. Réutilise les utils `formatCurrency`/`formatDate` existants (suppression de 3 duplications).
+16. **fix-archived-client-name-in-lists** — #9 : un client archivé affichait « — » sur ses factures/devis. Nouveau `getClientNamesByIds` (sans filtre `archivedAt`) ; les listes affichent « {nom} (archivé) ». `listClients` inchangé (Select création exclut toujours les archivés).
+
+### Correctif process (hors pipeline)
+
+- **Dette TS config réglée** — voir §3 (invariant « Vérification de types »). Mise à jour directe de `01-STRUCTURAL-INVARIANTS.md` + templates Orchid, pas de YAML.
 
 ---
 
-## 4. Apprentissages process (intégrés en cours de sprint)
+## 3. Invariants verrouillés (à maintenir dans `docs/structural-invariants.md`)
 
-- **Vérifier l'existant avant de spec** : le YAML 2 a révélé que l'écran contacts existait déjà (add/list/role/invite) → re-cadrage en « compléter le CRUD » (edit/delete) au lieu de « créer l'écran ». Vérification systématique du codebase avant génération depuis.
-- **Factories `$inferSelect` exhaustives** : ajouter une colonne (même nullable) la rend requise dans `$inferSelect` → tout factory/fixture de test du type doit l'inclure (TS2719). À lister en collateral dès le design (raté au YAML 1 `ClientsTable.test.tsx`, anticipé ensuite).
-- **Mock `@saas/services`** : ajouter un appel service dans une page casse le mock du test de cette page → compléter le mock (anticipé en collateral à partir du 3c).
-- **Découpage par couche** pour les features cross-couche (data/UI ou résolution/rendu) — évite de toucher deux fois les mêmes fichiers.
-- **Miss du sprint** : `fix-client-contacts-labels-wording` a cassé le job E2E car le helper partagé `deleteClientByName` interagissait par texte avec un label renommé, hors du grep de cadrage (centré sur les assertions). Corrigé par data-testid + invariant ci-dessus.
+**Données & domaine**
+- `PostalAddress` canonique unique dans `@saas/db` ; les `*.shared` l'importent via `import type`.
+- `siret`/`tvaIntra`/`legalForm` nommés identiquement sur `businessProfiles` ET `clients`.
+- Suppression client = **archivage** (`archivedAt`), jamais hard delete (FK restrict des quotes/invoices).
+- FK destinataire-contact sur documents financiers = `onDelete: "set null"` (préserve l'historique comptable).
+- Au plus un `clientContact.isPrimary` par client (transaction applicative).
+
+**Résolution & requêtes**
+- `*.shared` **zero-runtime-DB** : `resolveBillingParty` pure, contact passé en param (jamais de fetch dedans).
+- Pour résoudre un **contact destinataire** (sans besoin du compte portail) → `getClientContactById` (select par id). `getClientContactWithUser` (inner join users) est réservé aux flux portail et **exclut** les contacts sans compte.
+- Les **listes de documents** (factures/devis) résolvent le nom client via `getClientNamesByIds` (sans filtre `archivedAt`, traçabilité). `listClients` (filtré `archivedAt`) est réservé aux **sélecteurs de création** et à la liste clients.
+- `listClientContactsByOwner` scopé `ownerId` (anti-fuite multi-tenant).
+
+**Form & persistance**
+- Un champ conditionnel à **effacer en DB** doit être envoyé explicitement à `null` dans le payload update — l'omettre/`undefined` ne l'efface pas (le spread `.set()` ignore les clés absentes).
+- Réutiliser les utils de formatage FR existants (`formatCurrency`/`formatDate` de `lib/format`), ne pas dupliquer.
+
+**Tests & process**
+- Tests PDF : assertions en **ASCII** (décodeur hex) — pas d'accents, pas de symbole `€`, pas d'espace insécable Intl.
+- data-testid stables `{entity}-delete-trigger`/`-confirm`/`-cancel` ; les helpers e2e ciblent les testid, jamais le label texte.
+- **[e2e-helper-blast-radius]** renommer un label interactif impose un grep des helpers e2e (pas seulement des assertions).
+- **Vérification de types** : toujours `pnpm check-types` (= `turbo run check-types`, per-package avec le bon `tsconfig`) ou `pnpm --filter <pkg> check-types`. JAMAIS `tsc --noEmit` depuis la racine du monorepo (faux positifs systémiques `TS2307 @/...`, JSX flag, implicit-any qui n'existent pas sous Turbo). La CI fait foi. Critère QA = `exit 0` (plus de tolérance « erreurs pré-existantes »).
 
 ---
 
-## 5. Dette & backlog reporté
+## 4. Apprentissages process & infra
+
+- **Decoupling test/runtime (récurrent, le plus coûteux)** : un mock qui simule le « happy path » d'une fonction masque ses contraintes runtime. Le bug PDF #13 (inner join excluant `userId: null`) est passé vert en test car les mocks renvoyaient `{ contact }`. Leçon : pour toute fonction DB réutilisée, le test doit couvrir le **cas réel limite** (ici : contact sans compte portail), pas seulement le cas nominal.
+- **Vérifier l'existant avant de spec** : le PDF « polish » du backlog était déjà implémenté à 90 % ; seuls 3 écarts de localisation FR restaient. Toujours regarder le code/les rendus avant de cadrer.
+- **Renommer un label interactif** casse les helpers e2e qui cliquent par texte (incident #11→#12). Grep des helpers obligatoire.
+- **Distinguer bug / malentendu de test** : sur 10 frictions du test manuel, seules 3 étaient de vrais bugs (PDF attention, A3, #9) ; 3 étaient des malentendus (comportements de création testés en édition), le reste env/UX. Trier avant de spec évite de corriger des non-bugs.
+- **Infra Orchid — double daemon** : lancer une task via la TUI démarre un conteneur `compose run` éphémère portant **son propre daemon kernel**, qui entre en collision avec le `orchid-os-kernel` permanent (deux pilotes sur `pipeline_states_changed`/`orphan_chain_detected` → `respawn_skipped_lease_active` alors que `pipeline_leases` est vide). Symptôme : `tl_completed` en ~5 s, `$0.00`, pas de `rca.md`. Diagnostic rapide : `docker ps --filter ancestor=orchid-os/swarm-cli:latest` doit montrer **un seul** daemon en régime permanent ; deux = collision.
+
+---
+
+## 5. Dette & backlog (mis à jour)
 
 | Item | Détail | Priorité |
 |---|---|---|
-| **Dette TS config** | Le check-types des agents devrait pointer `turbo check-types` per-package (résout les alias `@/`) plutôt que `tsc --noEmit` root (faux positifs `TS2307`/`TS17004` récurrents qui masquent les vraies régressions). Typer aussi le `deleteErr` implicit any de `generate-invoice-pdf`. | Moyenne |
-| Garde serveur `contactId ↔ clientId` | Actuellement l'appartenance du contact au client est assurée par l'UI uniquement (l'UI ne propose que les bons contacts). Durcir côté action si besoin. | Basse |
-| Pré-sélection contact principal | Les forms facture/devis ont NONE par défaut. Pré-sélectionner automatiquement le contact principal du client serait plus pratique. | Basse |
-| Validation SIRET/TVA | Champs souples (pas de regex) côté clients. Durcir si exigence réglementaire. | Basse |
-| **R10 Tier 1 — PDF polish** | Typographie/spacing, table teintée + totaux encadrés, footer émetteur (IBAN/BIC, null handling), mentions légales TVA, « CGV sur demande ». Toujours en attente. | À planifier |
+| ~~Dette TS config~~ | ✅ RÉGLÉE — invariant « Vérification de types » + templates Orchid alignés sur `pnpm check-types`. | — |
+| ~~R10 Tier 1 PDF polish~~ | ✅ FAIT — localisation FR complète (#15) ; table teintée / totaux encadrés / footer IBAN-BIC déjà présents. | — |
+| **Scoping `ownerId` (multi-tenant)** | `listInvoices`/`listQuotes`/`getClientNamesByIds` ne filtrent pas par `ownerId`. **Pré-existant**, inoffensif en single-admin, mais **leak cross-tenant** dès le passage multi-tenant. Remonté par le security report du #16. | Haute (multi-tenant) |
+| **Anonymisation RGPD client (ex-#10)** | Le hard delete d'un client est sans valeur (un client a quasi toujours des documents → FK restrict → archivage). Le vrai besoin multi-tenant = droit à l'effacement RGPD, à traiter par **anonymisation** (neutraliser nom/email/SIRET tout en conservant les pièces comptables), pas par `DELETE`. | À traiter au chantier multi-tenant |
+| Garde serveur `contactId ↔ clientId` | Appartenance assurée par l'UI seulement. Durcir côté action si besoin. | Basse |
+| Pré-sélection contact principal | Forms facture/devis à « Aucun » par défaut ; pré-sélectionner le contact principal du client serait plus pratique. | Basse |
+| Validation SIRET/TVA | Champs souples (pas de regex). Durcir si exigence réglementaire. | Basse |
+| MailHog (B9) | Env : aucun mail reçu (`10.100.2.9:1025`, réseau Docker `backend`). Bloque le test des invitations portail. Hors code. | Basse (env) |
+| Nit review #16 | Un test de non-régression `listClients` placé dans le mauvais `describe`. Cosmétique. | Très basse |
 
 ---
 
 ## 6. État pour reprendre
 
-- Branche `main` verte, sprint Tier 2 mergé.
-- Le destinataire-contact est complet de bout en bout : saisie (facture + devis) → persistance (`contactId` set-null) → résolution → rendu PDF (« à l'attention de » + SIRET/TVA).
-- **Pré-requis test manuel** : pour voir le destinataire sur un PDF, émettre un **nouveau** document (PDF immuable) avec un client `company` (SIRET/TVA renseignés) et un contact sélectionné.
-- **Pistes suivantes** : R10 Tier 1 (PDF polish, backlog ci-dessus), ou Tier 3 si défini.
+- `main` verte, Tier 2 mergé et stabilisé. Aucun bug ouvert.
+- Destinataire-contact complet de bout en bout : saisie (facture + devis) → persistance (`contactId` set-null) → résolution (`getClientContactById`) → PDF (« à l'attention de » + SIRET/TVA), entièrement localisé FR.
+- **Pré-requis test PDF** : PDF immuable → émettre un **nouveau** document pour voir tout changement de rendu.
+- **Pistes suivantes, par valeur** :
+  1. **Chantier multi-tenant** — le plus structurant. Y rattacher le scoping `ownerId` (dette de sécurité) et l'anonymisation RGPD (ex-#10). C'est là que `listClientContactsByOwner` (déjà scopé) sert de repère.
+  2. Confort : pré-sélection auto du contact principal dans les forms.
+  3. Env : régler MailHog pour débloquer le test des invitations portail.
