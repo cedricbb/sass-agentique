@@ -13,6 +13,9 @@ export const SEED_PAYMENT_REFS = ["pi_seed_002", "vir_seed_003", "chk_seed_004"]
 export const SEED_CONTRACT_COUNT = 3;
 export const SEED_CONTRACT_ACTIVE_COUNT = 2;
 export const SEED_CONTRACT_CANCELED_COUNT = 1;
+export const SEED_OWNER_B_EMAIL = "admin-b@saas.dev";
+export const SEED_OWNER_B_PASSWORD = "admin1234";
+export const SEED_OWNER_B_CLIENT_NAME = "OwnerB-Isolated-Corp";
 import { env } from "@saas/config";
 
 const BCRYPT_ROUNDS = 12;
@@ -670,8 +673,55 @@ async function main() {
 
   console.log("✅ 3 client users créés + contacts liés");
 
+  // ── Owner B (admin) ─────────────────────────────────────────────────────────
+  const adminBPassword = await bcrypt.hash("admin1234", BCRYPT_ROUNDS);
+
+  const [ownerBUser] = await db
+    .insert(schema.users)
+    .values({
+      email: "admin-b@saas.dev",
+      hashedPassword: adminBPassword,
+      name: "Owner B Admin",
+      role: "admin",
+      emailVerified: true,
+    })
+    .onConflictDoUpdate({
+      target: schema.users.email,
+      set: { role: "admin", name: "Owner B Admin" },
+    })
+    .returning();
+
+  await db
+    .insert(schema.businessProfiles)
+    .values({
+      ownerId: ownerBUser.id,
+      name: "Owner B Consulting",
+      legalForm: "SASU",
+      email: "admin-b@saas.dev",
+    })
+    .onConflictDoUpdate({
+      target: schema.businessProfiles.ownerId,
+      set: { name: "Owner B Consulting" },
+    });
+
+  await db
+    .insert(schema.clients)
+    .values({
+      ownerId: ownerBUser.id,
+      name: "OwnerB-Isolated-Corp",
+      slug: "ownerb-isolated-corp",
+      type: "company",
+    })
+    .onConflictDoUpdate({
+      target: schema.clients.slug,
+      set: { name: "OwnerB-Isolated-Corp", ownerId: ownerBUser.id },
+    });
+
+  console.log(`✅ Owner B créé : admin-b@saas.dev / admin1234 + client OwnerB-Isolated-Corp`);
+
   console.log("\n🎉 Seed terminé !\n");
   console.log("  Admin   : admin@saas.dev / admin1234");
+  console.log("  Admin B : admin-b@saas.dev / admin1234");
   console.log("  Client  : client-acme@saas.dev / client1234");
   console.log("  Client  : client-bob@saas.dev / client1234");
   console.log("  Client  : client-globex@saas.dev / client1234");
