@@ -27,6 +27,12 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /auth\.setup\.ts/,
+      grep: /^authenticate$/,
+    },
+    {
+      name: "setup-owner-b",
+      testMatch: /auth\.setup\.ts/,
+      grep: /authenticate owner-b/,
     },
     {
       name: "chromium",
@@ -35,6 +41,14 @@ export default defineConfig({
         storageState: "tests/e2e/.auth/user.json",
       },
       dependencies: ["setup"],
+    },
+    {
+      name: "chromium-owner-b",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "tests/e2e/.auth/owner-b.json",
+      },
+      dependencies: ["setup-owner-b"],
     },
   ],
 
