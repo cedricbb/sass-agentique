@@ -37,6 +37,26 @@ La liste des contacts est chargée côté serveur (page parente) via `listClient
 
 ## Architecture interne
 
+### Résolution des noms de clients dans la liste
+
+La page `/admin/quotes` résout les noms des clients via `getClientNamesByIds(ids)` (sans filtre `archivedAt`). Pour les clients archivés, le suffixe `(archivé)` est ajouté dans la map avant d'être passé à `QuotesTable` :
+
+```ts
+const clientNames = Object.fromEntries(
+  Object.entries(namesMap).map(([id, { name, archived }]) => [
+    id,
+    archived ? `${name} (archivé)` : name,
+  ])
+);
+```
+
+`listClients()` n'est PAS utilisée ici : elle filtre `archivedAt IS NULL` et est réservée aux Selects de création (on ne crée pas de devis pour un client archivé).
+
+- `packages/services/src/client.service.ts` — `getClientNamesByIds(ids)` : requête `WHERE id IN (...)` sans filtre d'archivage, retourne `Record<string, { name: string; archived: boolean }>`.
+- `apps/web/app/(admin)/admin/quotes/page.tsx` — construit la map via `getClientNamesByIds` sur les `clientId` des devis listés.
+
+### Téléchargement PDF et détail
+
 - `apps/web/app/api/quotes/[id]/file/route.ts` — Route Handler Node.js (runtime `nodejs`) qui :
   1. Vérifie l'accès admin (`requireAdmin()`).
   2. Charge le devis (`getQuoteById`). Absent → 404.

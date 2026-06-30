@@ -43,6 +43,24 @@ Le nom de fichier téléchargé suit le pattern : `facture-{invoice.number}.pdf`
 - `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — appelle `listClientContacts(invoice.clientId)` après résolution de la facture et passe `contacts` à `InvoiceForm`.
 - `apps/web/app/(admin)/admin/invoices/_components/InvoiceForm.tsx` — prop `contacts: ClientContact[]`, champ `contactId` géré par react-hook-form, `watch("clientId")` pour filtrer les options et reset à `""` lors du changement de client.
 
+### Résolution des noms de clients dans la liste
+
+La page `/admin/invoices` résout les noms des clients via `getClientNamesByIds(ids)` (sans filtre `archivedAt`). Pour les clients archivés, le suffixe `(archivé)` est ajouté dans la map avant d'être passé à `InvoicesTable` :
+
+```ts
+const clientNames = Object.fromEntries(
+  Object.entries(namesMap).map(([id, { name, archived }]) => [
+    id,
+    archived ? `${name} (archivé)` : name,
+  ])
+);
+```
+
+`listClients()` n'est PAS utilisée pour ce cas : elle filtre `archivedAt IS NULL` et est réservée aux Selects de création (on ne crée pas de facture pour un client archivé).
+
+- `packages/services/src/client.service.ts` — `getClientNamesByIds(ids)` : requête `WHERE id IN (...)` sans filtre d'archivage, retourne `Record<string, { name: string; archived: boolean }>`.
+- `apps/web/app/(admin)/admin/invoices/page.tsx` — construit la map via `getClientNamesByIds` sur les `clientId` des factures listées.
+
 ### Téléchargement PDF
 
 - `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — Server Component qui charge la facture et rend le bouton conditionnel dans un `flex gap-4` avec le titre `<h1>`.

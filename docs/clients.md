@@ -58,6 +58,7 @@ La section « Contacts » de la fiche client expose le CRUD complet des contacts
 
 | Fonction | Signature | Comportement |
 |---|---|---|
+| `getClientNamesByIds(ids)` | `→ Record<string, { name: string; archived: boolean }>` | Résout name + statut d'archivage pour un lot d'ids, **sans filtre `archivedAt`** — inclut les clients archivés. Retourne `{}` pour un tableau vide sans exécuter de requête. |
 | `listClientContacts(clientId)` | `→ ClientContact[]` | Tri déterministe : `isPrimary DESC`, `name ASC` |
 | `addClientContact(input)` | `→ ClientContact` | Crée un contact (sans compte portail) |
 | `updateClientContact(id, patch)` | `→ ClientContact` | Met à jour name/email/role/isPrimary |
