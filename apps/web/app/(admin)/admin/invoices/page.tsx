@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { listInvoices, listClients } from "@saas/services";
+import { listInvoices, getClientNamesByIds } from "@saas/services";
 import { Button } from "@/components/ui/button";
 import { InvoicesTable } from "./_components/InvoicesTable";
 
 export const metadata: Metadata = { title: "Factures — Admin" };
 
 export default async function InvoicesPage() {
-  const [invoices, clients] = await Promise.all([
-    listInvoices(),
-    listClients(),
-  ]);
-
+  const invoices = await listInvoices();
+  const clientIds = [...new Set(invoices.map((i) => i.clientId))];
+  const clientLookup = await getClientNamesByIds(clientIds);
   const clientNames: Record<string, string> = Object.fromEntries(
-    clients.map((c) => [c.id, c.name]),
+    Object.entries(clientLookup).map(([id, { name, archived }]) => [
+      id,
+      archived ? `${name} (archivé)` : name,
+    ]),
   );
 
   return (

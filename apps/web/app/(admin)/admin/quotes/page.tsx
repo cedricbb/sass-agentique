@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { listQuotes, listClients } from "@saas/services";
+import { listQuotes, getClientNamesByIds } from "@saas/services";
 import { Button } from "@/components/ui/button";
 import { QuotesTable } from "./_components/QuotesTable";
 
 export const metadata: Metadata = { title: "Devis — Admin" };
 
 export default async function QuotesPage() {
-  const [quotes, clients] = await Promise.all([
-    listQuotes(),
-    listClients(),
-  ]);
-
+  const quotes = await listQuotes();
+  const clientIds = [...new Set(quotes.map((q) => q.clientId))];
+  const clientLookup = await getClientNamesByIds(clientIds);
   const clientNames: Record<string, string> = Object.fromEntries(
-    clients.map((c) => [c.id, c.name]),
+    Object.entries(clientLookup).map(([id, { name, archived }]) => [
+      id,
+      archived ? `${name} (archivé)` : name,
+    ]),
   );
 
   return (
