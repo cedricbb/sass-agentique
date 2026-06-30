@@ -37,6 +37,7 @@ vi.mock("drizzle-orm", () => ({
   isNull: vi.fn((col: unknown) => ({ op: "isNull", col })),
   asc: vi.fn((col: unknown) => ({ op: "asc", col })),
   desc: vi.fn((col: unknown) => ({ op: "desc", col })),
+  inArray: vi.fn((col: unknown, vals: unknown) => ({ op: "inArray", col, vals })),
 }));
 
 import {
@@ -57,6 +58,7 @@ import {
   getClientsForUser,
   getPrimaryClientForUser,
   getClientContactById,
+  getClientNamesByIds,
 } from "../client.service";
 import { generateSlug } from "../utils/slug";
 import { resolveBillingParty } from "../billing-party.shared";
@@ -419,6 +421,50 @@ describe("getPrimaryClientForUser", () => {
     const result = await getPrimaryClientForUser("u-archived");
     expect(dbMock.where).toHaveBeenCalled();
     expect(result).toBeNull();
+  });
+});
+
+describe("getClientNamesByIds", () => {
+  it("get_client_names_by_ids_returns_empty_record_for_empty_ids", async () => {
+    const result = await getClientNamesByIds([]);
+    expect(dbMock.select).not.toHaveBeenCalled();
+    expect(result).toEqual({});
+  });
+
+  it("get_client_names_by_ids_returns_active_client_with_archived_false", async () => {
+    dbMock.where.mockResolvedValueOnce([{ id: "c1", name: "Acme", archivedAt: null }]);
+    const result = await getClientNamesByIds(["c1"]);
+    expect(result).toEqual({ c1: { name: "Acme", archived: false } });
+  });
+
+  it("get_client_names_by_ids_returns_archived_client_with_archived_true", async () => {
+    dbMock.where.mockResolvedValueOnce([{ id: "c1", name: "Archived Corp", archivedAt: new Date() }]);
+    const result = await getClientNamesByIds(["c1"]);
+    expect(result).toEqual({ c1: { name: "Archived Corp", archived: true } });
+  });
+
+  it("get_client_names_by_ids_archived_suffix_applied", async () => {
+    dbMock.where.mockResolvedValueOnce([
+      { id: "c1", name: "Active Corp", archivedAt: null },
+      { id: "c2", name: "Archived Corp", archivedAt: new Date() },
+    ]);
+    const lookup = await getClientNamesByIds(["c1", "c2"]);
+    const clientNames: Record<string, string> = Object.fromEntries(
+      Object.entries(lookup).map(([id, { name, archived }]) => [
+        id,
+        archived ? `${name} (archivé)` : name,
+      ]),
+    );
+    expect(clientNames["c1"]).toBe("Active Corp");
+    expect(clientNames["c2"]).toBe("Archived Corp (archivé)");
+  });
+
+  it("list_clients_excludes_archived_by_default", async () => {
+    dbMock.where.mockResolvedValueOnce([CLIENT_FIXTURE]);
+    const result = await listClients();
+    const whereArg = dbMock.where.mock.calls[0][0];
+    expect(whereArg).toHaveProperty("op", "isNull");
+    expect(result).toEqual([CLIENT_FIXTURE]);
   });
 });
 

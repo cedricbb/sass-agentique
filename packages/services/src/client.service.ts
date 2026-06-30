@@ -9,7 +9,7 @@ import {
   type ClientContact,
   type NewClientContact,
 } from "@saas/db";
-import { eq, and, isNull, asc, desc } from "drizzle-orm";
+import { eq, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { generateSlug } from "./utils/slug";
 
 export type ListClientsOptions = { includeArchived?: boolean };
@@ -32,6 +32,21 @@ export async function listClients(
     .select()
     .from(clients)
     .where(opts?.includeArchived ? undefined : isNull(clients.archivedAt));
+}
+
+export type ClientNameEntry = { name: string; archived: boolean };
+
+export async function getClientNamesByIds(
+  ids: string[],
+): Promise<Record<string, ClientNameEntry>> {
+  if (ids.length === 0) return {};
+  const rows = await db
+    .select({ id: clients.id, name: clients.name, archivedAt: clients.archivedAt })
+    .from(clients)
+    .where(inArray(clients.id, ids));
+  return Object.fromEntries(
+    rows.map((r) => [r.id, { name: r.name, archived: r.archivedAt !== null }]),
+  );
 }
 
 export async function getClientById(id: string): Promise<Client | null> {
