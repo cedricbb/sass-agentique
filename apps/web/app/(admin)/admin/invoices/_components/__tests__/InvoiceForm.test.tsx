@@ -543,7 +543,7 @@ describe("InvoiceForm", () => {
 
     await waitFor(() => {
       const args = mockCreateInvoiceAction.mock.calls[0][0];
-      expect(args.contactId).toBeUndefined();
+      expect(args.contactId).toBe("ct-1");
     });
   });
 

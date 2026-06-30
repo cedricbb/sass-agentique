@@ -154,7 +154,8 @@ export function InvoiceForm({
 
   function handleClientChange(value: string, fieldOnChange: (v: string) => void) {
     fieldOnChange(value);
-    form.setValue("contactId", NONE_CONTACT_VALUE);
+    const primaryContact = contacts?.find((c) => c.clientId === value && c.isPrimary);
+    form.setValue("contactId", primaryContact?.id ?? NONE_CONTACT_VALUE);
   }
 
   return (
