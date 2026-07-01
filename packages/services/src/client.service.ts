@@ -34,6 +34,21 @@ export async function listClients(
     .where(opts?.includeArchived ? undefined : isNull(clients.archivedAt));
 }
 
+export async function listClientsByOwner(
+  ownerId: string,
+  opts?: ListClientsOptions,
+): Promise<Client[]> {
+  return db
+    .select()
+    .from(clients)
+    .where(
+      and(
+        eq(clients.ownerId, ownerId),
+        opts?.includeArchived ? undefined : isNull(clients.archivedAt),
+      ),
+    );
+}
+
 export type ClientNameEntry = { name: string; archived: boolean };
 
 export async function getClientNamesByIds(
