@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listInvoices, getClientNamesByIds } from "@saas/services";
+import { requireAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { InvoicesTable } from "./_components/InvoicesTable";
 
 export const metadata: Metadata = { title: "Factures — Admin" };
 
 export default async function InvoicesPage() {
-  const invoices = await listInvoices();
+  const user = await requireAdmin();
+  const invoices = await listInvoices({ ownerId: user.id });
   const clientIds = [...new Set(invoices.map((i) => i.clientId))];
   const clientLookup = await getClientNamesByIds(clientIds);
   const clientNames: Record<string, string> = Object.fromEntries(
