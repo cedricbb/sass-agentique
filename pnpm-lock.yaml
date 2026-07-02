@@ -11,9 +11,18 @@ importers:
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.58.2
+      '@saas/db':
+        specifier: workspace:^
+        version: link:packages/db
+      '@saas/services':
+        specifier: workspace:^
+        version: link:packages/services
       '@vitest/coverage-v8':
         specifier: ^3.0.0
         version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.13)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2))
+      drizzle-orm:
+        specifier: ^0.38.4
+        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(@types/react@19.2.14)(postgres@3.4.8)(react@19.2.4)
       prettier:
         specifier: ^3.5.0
         version: 3.8.1

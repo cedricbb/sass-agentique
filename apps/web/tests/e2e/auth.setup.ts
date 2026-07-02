@@ -8,15 +8,6 @@ setup("authenticate admin", async ({ page }) => {
   await page.context().storageState({ path: "tests/e2e/.auth/admin.json" });
 });
 
-setup("authenticate admin-b", async ({ page }) => {
-  await page.goto("/login");
-  await page.fill('input[name="email"]', "admin-b@saas.dev");
-  await page.fill('input[name="password"]', "admin1234");
-  await page.click('button[type="submit"]');
-  await page.waitForURL(/\/admin/);
-  await page.context().storageState({ path: "tests/e2e/.auth/admin-b.json" });
-});
-
 setup("authenticate acme", async ({ page }) => {
   await page.goto("/login");
   await page.fill('input[name="email"]', "client-acme@saas.dev");

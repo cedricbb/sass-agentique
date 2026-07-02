@@ -13,16 +13,22 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@saas/db": "workspace:*",
+    "@saas/services": "workspace:*",
+    "@vitest/coverage-v8": "^3.0.0",
+    "drizzle-orm": "^0.38.4",
+    "prettier": "^3.5.0",
     "turbo": "^2.4.0",
     "typescript": "^5.7.0",
-    "prettier": "^3.5.0",
-    "vitest": "^3.0.0",
-    "@vitest/coverage-v8": "^3.0.0",
-    "@playwright/test": "^1.50.0"
+    "vitest": "^3.0.0"
   },
   "pnpm": {
     "peerDependencyRules": {
-      "ignoreMissing": ["react", "react-dom"],
+      "ignoreMissing": [
+        "react",
+        "react-dom"
+      ],
       "allowedVersions": {
         "zod": "3 || 4"
       }
