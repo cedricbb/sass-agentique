@@ -9,8 +9,12 @@ vi.mock("next/navigation", () => ({
   notFound: vi.fn(),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  requireAdmin: vi.fn().mockResolvedValue({ id: "owner-1" }),
+}));
+
 vi.mock("@saas/services", () => ({
-  getInvoiceById: vi.fn(),
+  getInvoiceByIdForOwner: vi.fn(),
   listClients: vi.fn().mockResolvedValue([]),
   listAllProjects: vi.fn().mockResolvedValue([]),
   listPrestations: vi.fn().mockResolvedValue([]),
@@ -59,12 +63,12 @@ vi.mock("../../_components/InvoicePaymentsList", () => ({
   InvoicePaymentsList: () => <div data-testid="mock-payments-list" />,
 }));
 
-import { getInvoiceById } from "@saas/services";
+import { getInvoiceByIdForOwner } from "@saas/services";
 
 afterEach(cleanup);
 
 async function renderPage(invoice: Record<string, unknown>) {
-  (getInvoiceById as ReturnType<typeof vi.fn>).mockResolvedValue(invoice);
+  (getInvoiceByIdForOwner as ReturnType<typeof vi.fn>).mockResolvedValue(invoice);
   const EditInvoicePage = (await import("../page")).default;
   const result = render(await EditInvoicePage({ params: Promise.resolve({ id: "inv-1" }) }));
   return result;

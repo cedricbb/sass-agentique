@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Download } from "lucide-react";
-import { getInvoiceById, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations, paymentService, listClientContacts } from "@saas/services";
+import { getInvoiceByIdForOwner, listClients, listAllProjects, getQuoteById, listInvoiceItems, listPrestations, paymentService, listClientContacts } from "@saas/services";
 import { computeInvoiceTtc } from "@saas/services/invoice.shared";
+import { requireAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusActions } from "../_components/InvoiceStatusActions";
 import { InvoiceForm } from "../_components/InvoiceForm";
@@ -20,8 +21,9 @@ export default async function EditInvoicePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireAdmin();
   const [invoice, clients, projects, prestations] = await Promise.all([
-    getInvoiceById(id),
+    getInvoiceByIdForOwner(id, user.id),
     listClients(),
     listAllProjects(),
     listPrestations(),
