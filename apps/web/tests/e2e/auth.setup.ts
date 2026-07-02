@@ -1,5 +1,4 @@
 import { test as setup } from "@playwright/test";
-
 setup("authenticate admin", async ({ page }) => {
   await page.goto("/login");
   await page.fill('input[name="email"]', "admin@saas.dev");

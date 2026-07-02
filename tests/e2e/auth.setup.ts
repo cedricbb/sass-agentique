@@ -4,7 +4,7 @@ import { loginAsAdmin, loginAsOwnerB } from './helpers/auth';
 const authFile = 'tests/e2e/.auth/user.json';
 const authFileOwnerB = 'tests/e2e/.auth/owner-b.json';
 
-setup('authenticate', async ({ page }) => {
+setup('authenticate admin', async ({ page }) => {
   await loginAsAdmin(page);
   await expect(page).toHaveURL(/\/admin/);
   await page.context().storageState({ path: authFile });
