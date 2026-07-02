@@ -33,7 +33,7 @@ test.describe("admin invoices page — owner B", () => {
     expect(ownerAInvoiceHref).toBeTruthy();
 
     const response = await page.goto(ownerAInvoiceHref!);
-    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
     await expect(page.getByText(SEED_INVOICE_NUMBER)).not.toBeVisible();
   });
 });
