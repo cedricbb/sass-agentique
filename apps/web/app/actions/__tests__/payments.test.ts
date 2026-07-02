@@ -20,7 +20,7 @@ vi.mock("@saas/services", () => {
       computeInvoiceBalance: vi.fn(),
       PaymentDeletionOnPaidInvoiceError,
     },
-    getInvoiceById: vi.fn(),
+    getInvoiceByIdForOwner: vi.fn(),
     PaymentDeletionOnPaidInvoiceError,
   };
 });
@@ -40,7 +40,7 @@ import {
   listAllPaymentsAction,
   getPaymentByIdAction,
 } from "../payments";
-import { paymentService, getInvoiceById } from "@saas/services";
+import { paymentService, getInvoiceByIdForOwner } from "@saas/services";
 import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -51,7 +51,7 @@ const mockedListPayments = vi.mocked(paymentService.listPaymentsByInvoice);
 const mockedListAllPayments = vi.mocked(paymentService.listAllPayments);
 const mockedGetPaymentById = vi.mocked(paymentService.getPaymentById);
 const mockedComputeBalance = vi.mocked(paymentService.computeInvoiceBalance);
-const mockedGetInvoiceById = vi.mocked(getInvoiceById);
+const mockedGetInvoiceByIdForOwner = vi.mocked(getInvoiceByIdForOwner);
 const mockedRevalidatePath = vi.mocked(revalidatePath);
 
 const INVOICE_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -112,7 +112,7 @@ beforeEach(() => {
 
 describe("createPaymentAction", () => {
   it("T1 — happy path partial payment", async () => {
-    mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 0, balanceCents: 10000, isFullyPaid: false });
     mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: false });
     const result = await createPaymentAction(validInput);
@@ -120,7 +120,7 @@ describe("createPaymentAction", () => {
   });
 
   it("T2 — happy path fully paid", async () => {
-    mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 5000, balanceCents: 5000, isFullyPaid: false });
     mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: true });
     const result = await createPaymentAction({ ...validInput, amountCents: 5000 });
@@ -128,44 +128,44 @@ describe("createPaymentAction", () => {
   });
 
   it("T3 — invoice not found", async () => {
-    mockedGetInvoiceById.mockResolvedValue(null as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(null as never);
     const result = await createPaymentAction(validInput);
     expect(result).toMatchObject({ ok: false, error: { code: "INVOICE_NOT_FOUND", status: 404 } });
   });
 
   it("T4 — invoice status draft", async () => {
-    mockedGetInvoiceById.mockResolvedValue({ ...mockInvoice, status: "draft" } as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue({ ...mockInvoice, status: "draft" } as never);
     const result = await createPaymentAction(validInput);
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_INVOICE_NOT_OPEN", status: 400 } });
   });
 
   it("T5 — invoice status overdue", async () => {
-    mockedGetInvoiceById.mockResolvedValue({ ...mockInvoice, status: "overdue" } as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue({ ...mockInvoice, status: "overdue" } as never);
     const result = await createPaymentAction(validInput);
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_INVOICE_NOT_OPEN", status: 400 } });
   });
 
   it("T6 — invoice status paid", async () => {
-    mockedGetInvoiceById.mockResolvedValue({ ...mockInvoice, status: "paid" } as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue({ ...mockInvoice, status: "paid" } as never);
     const result = await createPaymentAction(validInput);
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_INVOICE_NOT_OPEN", status: 400 } });
   });
 
   it("T7 — invoice status cancelled", async () => {
-    mockedGetInvoiceById.mockResolvedValue({ ...mockInvoice, status: "cancelled" } as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue({ ...mockInvoice, status: "cancelled" } as never);
     const result = await createPaymentAction(validInput);
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_INVOICE_NOT_OPEN", status: 400 } });
   });
 
   it("T8 — over-payment", async () => {
-    mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 10000, balanceCents: 0, isFullyPaid: false });
     const result = await createPaymentAction({ ...validInput, amountCents: 3000 });
     expect(result).toMatchObject({ ok: false, error: { code: "PAYMENT_OVERPAYMENT", status: 400 } });
   });
 
   it("T8bis — accepts exact TTC payment (no overpayment)", async () => {
-    mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 0, balanceCents: 10000, isFullyPaid: false });
     mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: false });
     const result = await createPaymentAction({ ...validInput, amountCents: 12000 });
@@ -188,13 +188,32 @@ describe("createPaymentAction", () => {
   });
 
   it("T12 — revalidatePath called twice", async () => {
-    mockedGetInvoiceById.mockResolvedValue(mockInvoice as never);
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(mockInvoice as never);
     mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 0, balanceCents: 10000, isFullyPaid: false });
     mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: false });
     await createPaymentAction(validInput);
     expect(mockedRevalidatePath).toHaveBeenCalledTimes(2);
     expect(mockedRevalidatePath).toHaveBeenCalledWith("/admin/invoices");
     expect(mockedRevalidatePath).toHaveBeenCalledWith(`/admin/invoices/${INVOICE_ID}`);
+  });
+
+  it("T20 — createPaymentAction uses owner-scoped lookup with admin id", async () => {
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(mockInvoice as never);
+    mockedComputeBalance.mockResolvedValue({ totalCents: 10000, paidCents: 0, balanceCents: 10000, isFullyPaid: false });
+    mockedCreatePayment.mockResolvedValue({ payment: mockPayment as never, invoiceMarkedAsPaid: false });
+
+    await createPaymentAction(validInput);
+
+    expect(mockedGetInvoiceByIdForOwner).toHaveBeenCalledWith(INVOICE_ID, "admin-1");
+  });
+
+  it("T21 — foreign invoice (scoped lookup null) → INVOICE_NOT_FOUND, no createPayment", async () => {
+    mockedGetInvoiceByIdForOwner.mockResolvedValue(null as never);
+
+    const result = await createPaymentAction(validInput);
+
+    expect(result).toMatchObject({ ok: false, error: { code: "INVOICE_NOT_FOUND", status: 404 } });
+    expect(mockedCreatePayment).not.toHaveBeenCalled();
   });
 });
 

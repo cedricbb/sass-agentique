@@ -8,7 +8,7 @@ import {
   type PaymentCreateValues,
   type ListAllPaymentsValues,
 } from "@/lib/schemas/payment.schemas";
-import { paymentService, getInvoiceById } from "@saas/services";
+import { paymentService, getInvoiceByIdForOwner } from "@saas/services";
 import { computeInvoiceTtc } from "@saas/services/invoice.shared";
 import {
   withAdmin,
@@ -27,7 +27,7 @@ export async function createPaymentAction(
     const user = await requireAdmin();
     const data = createPaymentSchema.parse(input);
 
-    const invoice = await getInvoiceById(data.invoiceId);
+    const invoice = await getInvoiceByIdForOwner(data.invoiceId, user.id);
     if (!invoice) {
       return fail("INVOICE_NOT_FOUND", "Invoice introuvable.", 404);
     }
