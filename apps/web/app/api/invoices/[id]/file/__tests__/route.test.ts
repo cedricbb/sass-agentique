@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@saas/services", () => ({
-  getInvoiceById: vi.fn(),
+  getInvoiceByIdForOwner: vi.fn(),
 }));
 vi.mock("@/lib/storage/r2", () => ({
   streamPdfFromR2: vi.fn(),
@@ -19,12 +19,14 @@ vi.mock("@/lib/pdf/generate-invoice-pdf", () => ({
 }));
 
 import { GET } from "../route";
-import { getInvoiceById } from "@saas/services";
+import { getInvoiceByIdForOwner } from "@saas/services";
 import { streamPdfFromR2, R2NotFoundError } from "@/lib/storage/r2";
 import { requireAdmin } from "@/lib/auth";
 import { generateAndStoreInvoicePdf } from "@/lib/pdf/generate-invoice-pdf";
 
-const mockGetInvoiceById = getInvoiceById as ReturnType<typeof vi.fn>;
+const mockGetInvoiceByIdForOwner = getInvoiceByIdForOwner as ReturnType<
+  typeof vi.fn
+>;
 const mockStreamPdf = streamPdfFromR2 as ReturnType<typeof vi.fn>;
 const mockRequireAdmin = requireAdmin as ReturnType<typeof vi.fn>;
 const mockGeneratePdf = generateAndStoreInvoicePdf as ReturnType<typeof vi.fn>;
@@ -43,8 +45,22 @@ describe("GET /api/invoices/[id]/file", () => {
     mockRequireAdmin.mockResolvedValue({ id: "admin-1" });
   });
 
+  it("route GET calls getInvoiceByIdForOwner with session owner id", async () => {
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
+      id: "test-id",
+      pdfKey: "invoices/x.pdf",
+      number: "F-001",
+      issuedAt: new Date(),
+    });
+    mockStreamPdf.mockResolvedValue({ body: new ReadableStream(), contentLength: 10 });
+
+    await GET(makeRequest(), makeParams());
+
+    expect(mockGetInvoiceByIdForOwner).toHaveBeenCalledWith("test-id", "admin-1");
+  });
+
   it("returns 200 with PDF stream and correct headers", async () => {
-    mockGetInvoiceById.mockResolvedValue({
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
       id: "test-id",
       pdfKey: "invoices/x.pdf",
       number: "F-001",
@@ -65,7 +81,7 @@ describe("GET /api/invoices/[id]/file", () => {
   });
 
   it("returns 404 when invoice not found", async () => {
-    mockGetInvoiceById.mockResolvedValue(null);
+    mockGetInvoiceByIdForOwner.mockResolvedValue(null);
 
     const response = await GET(makeRequest(), makeParams());
 
@@ -74,7 +90,7 @@ describe("GET /api/invoices/[id]/file", () => {
   });
 
   it("triggers lazy regen when pdfKey null and issuedAt set", async () => {
-    mockGetInvoiceById.mockResolvedValue({
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
       id: "test-id",
       pdfKey: null,
       number: "F-002",
@@ -92,7 +108,7 @@ describe("GET /api/invoices/[id]/file", () => {
   });
 
   it("returns 404 when pdfKey null and issuedAt null", async () => {
-    mockGetInvoiceById.mockResolvedValue({
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
       id: "test-id",
       pdfKey: null,
       number: "F-003",
@@ -106,7 +122,7 @@ describe("GET /api/invoices/[id]/file", () => {
   });
 
   it("returns 404 when R2NotFoundError thrown", async () => {
-    mockGetInvoiceById.mockResolvedValue({
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
       id: "test-id",
       pdfKey: "invoices/x.pdf",
       number: "F-001",
@@ -120,7 +136,7 @@ describe("GET /api/invoices/[id]/file", () => {
   });
 
   it("returns 500 and logs on generic R2 error", async () => {
-    mockGetInvoiceById.mockResolvedValue({
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
       id: "test-id",
       pdfKey: "invoices/x.pdf",
       number: "F-001",
@@ -150,7 +166,7 @@ describe("GET /api/invoices/[id]/file", () => {
   });
 
   it("returns 404 when lazy regen throws", async () => {
-    mockGetInvoiceById.mockResolvedValue({
+    mockGetInvoiceByIdForOwner.mockResolvedValue({
       id: "test-id",
       pdfKey: null,
       number: "F-004",

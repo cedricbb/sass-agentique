@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { getInvoiceById } from "@saas/services";
+import { getInvoiceByIdForOwner } from "@saas/services";
 import { streamPdfFromR2, R2NotFoundError } from "@/lib/storage/r2";
 import { generateAndStoreInvoicePdf } from "@/lib/pdf/generate-invoice-pdf";
 
@@ -10,10 +10,10 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  await requireAdmin();
+  const user = await requireAdmin();
   const { id } = await params;
 
-  const invoice = await getInvoiceById(id);
+  const invoice = await getInvoiceByIdForOwner(id, user.id);
   if (!invoice) {
     return new Response("Not Found", { status: 404 });
   }
