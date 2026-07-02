@@ -6,8 +6,8 @@ const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
 // En CI on sert le build compilé (next start), plus rapide et stable.
 // En local on utilise next dev sur le serveur déjà lancé.
 const webServerCommand = process.env.CI
-  ? `pnpm --filter @saas/web build && pnpm --filter @saas/web start`
-  : `pnpm --filter @saas/web dev`;
+    ? `pnpm --filter @saas/web build && pnpm --filter @saas/web start`
+    : `pnpm --filter @saas/web dev`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -19,8 +19,20 @@ export default defineConfig({
 
   use: {
     baseURL: BASE_URL,
-    trace: "on-first-retry",
+    trace: process.env.CI ? "retain-on-failure" : "on",
+    video: process.env.CI ? "retain-on-failure" : "on",
     screenshot: "only-on-failure",
+    launchOptions: {
+      args: [
+        "--disable-dev-shm-usage",
+        "--no-sandbox",
+        "--disable-gpu",
+      ],
+    },
+  },
+
+  expect: {
+    timeout: process.env.CI ? 10_000 : 7_000,
   },
 
   projects: [
@@ -61,8 +73,8 @@ export default defineConfig({
     env: {
       PORT,
       DATABASE_URL:
-        process.env.DATABASE_URL ??
-        "postgresql://postgres:password@localhost:5432/saas",
+          process.env.DATABASE_URL ??
+          "postgresql://postgres:password@localhost:5432/saas",
       R2_ENDPOINT: process.env.R2_ENDPOINT ?? "",
       R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ?? "",
       R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ?? "",
