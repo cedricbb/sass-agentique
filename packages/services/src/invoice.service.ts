@@ -87,12 +87,15 @@ export async function generateInvoiceNumber(ownerId: string, year?: number): Pro
   return generateInvoiceNumberTx(db, ownerId, year);
 }
 
-export type ListInvoicesOptions = { clientId?: string; status?: InvoiceStatus | InvoiceStatus[] };
+export type ListInvoicesOptions = { clientId?: string; status?: InvoiceStatus | InvoiceStatus[]; ownerId?: string };
 export type CreateInvoiceInput = Omit<NewInvoice, "number" | "totalEurCents"> & { number?: string };
 export type UpdateInvoicePatch = Omit<Partial<NewInvoice>, "status" | "totalEurCents" | "number" | "paidAt">;
 
 export async function listInvoices(opts?: ListInvoicesOptions): Promise<Invoice[]> {
   const conditions = [];
+  if (opts?.ownerId) {
+    conditions.push(eq(invoices.ownerId, opts.ownerId));
+  }
   if (opts?.clientId) {
     conditions.push(eq(invoices.clientId, opts.clientId));
   }
@@ -121,6 +124,16 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
     .select()
     .from(invoices)
     .where(eq(invoices.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getInvoiceByIdForOwner(id: string, ownerId: string): Promise<Invoice | null> {
+  if (!UUID_RE.test(id)) return null;
+  const [row] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.ownerId, ownerId)))
     .limit(1);
   return row ?? null;
 }

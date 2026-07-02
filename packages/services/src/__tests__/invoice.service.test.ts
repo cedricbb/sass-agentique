@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
 
 const makeDrizzleMock = () => {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -53,6 +54,7 @@ import {
   getInvoiceByNumber,
   createInvoice,
   updateInvoice,
+  getInvoiceByIdForOwner,
   transitionInvoiceStatus,
   deleteInvoice,
   createInvoiceFromQuote,
@@ -206,6 +208,43 @@ describe("listInvoices", () => {
     await listInvoices({ status: ["draft", "sent"] });
     expect(dbMock.where).toHaveBeenCalled();
     expect(dbMock.orderBy).toHaveBeenCalled();
+  });
+});
+
+describe("listInvoices ownerId scope", () => {
+  it("listInvoices filtre par ownerId via eq", async () => {
+    dbMock.orderBy!.mockResolvedValueOnce([INV_FIXTURE]);
+    await listInvoices({ ownerId: OWNER_ID });
+    expect(eq).toHaveBeenCalledWith("ownerId", OWNER_ID);
+    expect(dbMock.where).toHaveBeenCalled();
+  });
+});
+
+describe("getInvoiceByIdForOwner", () => {
+  it("getInvoiceByIdForOwner retourne l'invoice quand id et owner correspondent", async () => {
+    dbMock.limit!.mockResolvedValueOnce([INV_FIXTURE]);
+    const result = await getInvoiceByIdForOwner(INV_ID, OWNER_ID);
+    expect(result).toEqual(INV_FIXTURE);
+    expect(eq).toHaveBeenCalledWith("ownerId", OWNER_ID);
+  });
+
+  it("getInvoiceByIdForOwner retourne null quand owner different", async () => {
+    dbMock.limit!.mockResolvedValueOnce([]);
+    const result = await getInvoiceByIdForOwner(INV_ID, "b0b0b0b0-c1c1-d2d2-e3e3-f4f4f4f4f4f4");
+    expect(result).toBeNull();
+    expect(eq).toHaveBeenCalledWith("ownerId", "b0b0b0b0-c1c1-d2d2-e3e3-f4f4f4f4f4f4");
+  });
+
+  it("getInvoiceByIdForOwner retourne null pour id non-UUID sans select", async () => {
+    const result = await getInvoiceByIdForOwner("not-a-uuid", OWNER_ID);
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it("getInvoiceByIdForOwner retourne null quand aucune ligne", async () => {
+    dbMock.limit!.mockResolvedValueOnce([]);
+    const result = await getInvoiceByIdForOwner(INV_ID, OWNER_ID);
+    expect(result).toBeNull();
   });
 });
 
