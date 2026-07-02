@@ -71,6 +71,19 @@ Le pattern commun : `<Button asChild><a href="/api/invoices/{id}/file" download=
 
 La route `/api/invoices/[id]/file` n'a pas été modifiée.
 
+### Isolation par owner (lecture)
+
+La liste et le détail admin des factures sont scopés à l'owner courant — un owner ne voit ni ne peut accéder par URL directe aux factures d'un autre owner.
+
+- `packages/services/src/invoice.service.ts` — `listInvoices(opts?)` accepte un filtre optionnel `ownerId` dans `ListInvoicesOptions` (aux côtés de `clientId`/`status`), composé en clause `eq(invoices.ownerId, opts.ownerId)`. `getInvoiceByIdForOwner(id, ownerId)` (nouvelle fonction, `ownerId` obligatoire) retourne `null` si l'id est malformé, si la facture n'existe pas, ou si elle appartient à un autre owner — les trois cas sont indistinguables (anti-IDOR, jamais de 403 qui confirmerait l'existence).
+- `apps/web/app/(admin)/admin/invoices/page.tsx` — `requireAdmin()` + `listInvoices({ ownerId: user.id })`.
+- `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — `requireAdmin()` + `getInvoiceByIdForOwner(id, user.id)` ; `if (!invoice) notFound()` existant suffit tel quel (404 uniforme, gratuit).
+- Pattern répliqué : clause `eq(table.ownerId, ownerId)` inline dans le service, comme `listClientsByOwner` (`client.service.ts`) — pas de helper générique.
+
+**`getInvoiceById(id)` et `transitionInvoiceStatus` restent volontairement non scopées.** Elles sont appelées par les handlers Inngest de traitement des webhooks Stripe (`payment-intent-succeeded.ts`, `payment-intent-failed.ts`, `stripe-events-poll-fallback.ts`), qui n'ont pas de session admin ni de `user.id` disponible — leur frontière de confiance est la signature Stripe vérifiée, pas l'ownership. Ne pas les faire migrer vers un scoping owner sans avoir audité précisément ces call sites.
+
+Les mutations (édition, transition de statut, lignes de facture) ne sont pas couvertes par ce scoping — chantier séparé.
+
 ## Liens vers tests
 
 - `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoiceForm.test.tsx` — describe "contact select" : masquage sans client, affichage avec client, pré-sélection contact principal au changement client, masquage en mode from-quote, pré-remplissage en édition.
@@ -78,3 +91,5 @@ La route `/api/invoices/[id]/file` n'a pas été modifiée.
 - `packages/services/src/__tests__/client.service.test.ts` — `list_client_contacts_by_owner_returns_filtered_contacts`
 - `apps/web/app/(admin)/admin/invoices/[id]/__tests__/page.test.tsx` — describe "Download button" : `shows_download_button_when_issued`, `hides_download_button_when_draft`
 - `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicesTable.test.tsx` — describe "Download icon" : `shows_download_icon_for_issued_invoice_row`, `hides_download_icon_for_draft_invoice_row`
+- `packages/services/src/__tests__/invoice.service.test.ts` — `getInvoiceByIdForOwner` (id malformé, inexistant, cross-owner, nominal), `listInvoices` filtre `ownerId`
+- `tests/e2e/invoices-isolation.spec.ts` — isolation `/admin/invoices` : owner A voit sa facture seed, owner B voit une liste vide, owner B reçoit 404 sur l'URL directe d'une facture owner A
