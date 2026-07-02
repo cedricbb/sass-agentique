@@ -27,7 +27,7 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /auth\.setup\.ts/,
-      grep: /^authenticate$/,
+      grep: /authenticate admin/,
     },
     {
       name: "setup-owner-b",
