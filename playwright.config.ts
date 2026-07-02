@@ -44,7 +44,7 @@ export default defineConfig({
     },
     {
       name: "chromium-owner-b",
-      testMatch: /clients-isolation\.spec\.ts/,
+      testMatch: /(clients-isolation|invoices-isolation)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "tests/e2e/.auth/owner-b.json",
