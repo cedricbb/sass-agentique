@@ -69,18 +69,20 @@ const clientNames = Object.fromEntries(
 
 Le pattern commun : `<Button asChild><a href="/api/invoices/{id}/file" download="facture-{number}.pdf">...</a></Button>`. L'attribut `download` force le téléchargement plutôt que l'ouverture en onglet, même si la route répond `Content-Disposition: inline`.
 
-La route `/api/invoices/[id]/file` n'a pas été modifiée.
+La route `/api/invoices/[id]/file` reste responsable du streaming du PDF ; sa lookup a été rescopée à l'owner courant (cf. section suivante).
 
 ### Isolation par owner (lecture)
 
-La liste et le détail admin des factures sont scopés à l'owner courant — un owner ne voit ni ne peut accéder par URL directe aux factures d'un autre owner.
+La liste, le détail admin, le téléchargement PDF et la création de paiement des factures sont scopés à l'owner courant — un owner ne voit ni ne peut agir par URL/UUID direct sur les factures d'un autre owner.
 
-- `packages/services/src/invoice.service.ts` — `listInvoices(opts?)` accepte un filtre optionnel `ownerId` dans `ListInvoicesOptions` (aux côtés de `clientId`/`status`), composé en clause `eq(invoices.ownerId, opts.ownerId)`. `getInvoiceByIdForOwner(id, ownerId)` (nouvelle fonction, `ownerId` obligatoire) retourne `null` si l'id est malformé, si la facture n'existe pas, ou si elle appartient à un autre owner — les trois cas sont indistinguables (anti-IDOR, jamais de 403 qui confirmerait l'existence).
+- `packages/services/src/invoice.service.ts` — `listInvoices(opts?)` accepte un filtre optionnel `ownerId` dans `ListInvoicesOptions` (aux côtés de `clientId`/`status`), composé en clause `eq(invoices.ownerId, opts.ownerId)`. `getInvoiceByIdForOwner(id, ownerId)` (`ownerId` obligatoire) retourne `null` si l'id est malformé, si la facture n'existe pas, ou si elle appartient à un autre owner — les trois cas sont indistinguables (anti-IDOR, jamais de 403 qui confirmerait l'existence).
 - `apps/web/app/(admin)/admin/invoices/page.tsx` — `requireAdmin()` + `listInvoices({ ownerId: user.id })`.
 - `apps/web/app/(admin)/admin/invoices/[id]/page.tsx` — `requireAdmin()` + `getInvoiceByIdForOwner(id, user.id)` ; `if (!invoice) notFound()` existant suffit tel quel (404 uniforme, gratuit).
+- `apps/web/app/api/invoices/[id]/file/route.ts` — `const user = await requireAdmin()` + `getInvoiceByIdForOwner(id, user.id)` avant de streamer le PDF ; `null` → `404`. Corrige un IDOR où un admin d'un autre owner pouvait télécharger le PDF (numéro, montant, identité fiscale) d'une facture qui n'était pas la sienne.
+- `apps/web/app/actions/payments.ts` (`createPaymentAction`) — `getInvoiceByIdForOwner(data.invoiceId, user.id)` avant lecture montant/statut et `createPayment`. Corrige un IDOR où un admin d'un autre owner pouvait lire une facture étrangère et lui rattacher un paiement cross-tenant ; `null` → `INVOICE_NOT_FOUND`/404, `createPayment` non appelé.
 - Pattern répliqué : clause `eq(table.ownerId, ownerId)` inline dans le service, comme `listClientsByOwner` (`client.service.ts`) — pas de helper générique.
 
-**`getInvoiceById(id)` et `transitionInvoiceStatus` restent volontairement non scopées.** Elles sont appelées par les handlers Inngest de traitement des webhooks Stripe (`payment-intent-succeeded.ts`, `payment-intent-failed.ts`, `stripe-events-poll-fallback.ts`), qui n'ont pas de session admin ni de `user.id` disponible — leur frontière de confiance est la signature Stripe vérifiée, pas l'ownership. Ne pas les faire migrer vers un scoping owner sans avoir audité précisément ces call sites.
+**`getInvoiceById(id)` et `transitionInvoiceStatus` restent volontairement non scopées, et exclusivement réservées aux handlers Inngest des webhooks Stripe.** Elles sont appelées par `payment-intent-succeeded.ts`, `payment-intent-failed.ts`, `stripe-events-poll-fallback.ts`, qui n'ont pas de session admin ni de `user.id` disponible — leur frontière de confiance est la signature Stripe vérifiée, pas l'ownership. Tout nouvel appelant disposant d'une session admin doit utiliser `getInvoiceByIdForOwner` ; `getInvoiceById(id)` sous session admin est le signe d'un IDOR (déjà rencontré deux fois : route de téléchargement PDF et `createPaymentAction`, cf. ci-dessus). Ne pas migrer les handlers webhook vers un scoping owner sans avoir audité précisément ces call sites.
 
 Les mutations (édition, transition de statut, lignes de facture) ne sont pas couvertes par ce scoping — chantier séparé.
 
@@ -93,3 +95,6 @@ Les mutations (édition, transition de statut, lignes de facture) ne sont pas co
 - `apps/web/app/(admin)/admin/invoices/_components/__tests__/InvoicesTable.test.tsx` — describe "Download icon" : `shows_download_icon_for_issued_invoice_row`, `hides_download_icon_for_draft_invoice_row`
 - `packages/services/src/__tests__/invoice.service.test.ts` — `getInvoiceByIdForOwner` (id malformé, inexistant, cross-owner, nominal), `listInvoices` filtre `ownerId`
 - `tests/e2e/invoices-isolation.spec.ts` — isolation `/admin/invoices` : owner A voit sa facture seed, owner B voit une liste vide, owner B reçoit 404 sur l'URL directe d'une facture owner A
+- `apps/web/tests/e2e/owner-isolation-invoice-file.spec.ts` — `owner_b_cannot_download_owner_a_invoice_pdf_404` : owner B, `GET /api/invoices/<UUID owner A>/file` → 404
+- `apps/web/app/api/invoices/[id]/file/__tests__/route.test.ts` — assertion `getInvoiceByIdForOwner` appelée avec l'id de session (`toHaveBeenCalledWith(id, ownerId)`)
+- `apps/web/app/actions/__tests__/payments.test.ts` — `createPaymentAction uses owner-scoped lookup with admin id` (lookup scopée) ; `foreign invoice (scoped lookup null) → INVOICE_NOT_FOUND, no createPayment`
